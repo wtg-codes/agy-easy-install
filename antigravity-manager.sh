@@ -1,6 +1,16 @@
 #!/usr/bin/env bash
 set -e
 
+# Colors for a cooler terminal output
+C_RED='\033[0;31m'
+C_GREEN='\033[0;32m'
+C_YELLOW='\033[1;33m'
+C_BLUE='\033[0;34m'
+C_CYAN='\033[0;36m'
+C_MAG='\033[0;35m'
+C_BOLD='\033[1m'
+C_RESET='\033[0m'
+
 # Configuration
 DOWNLOAD_URL="https://edgedl.me.gvt1.com/edgedl/release2/j0qc3/antigravity/stable/1.23.2-4781536860569600/linux-x64/Antigravity.tar.gz"
 MANAGER_URL="https://raw.githubusercontent.com/wtg-codes/agv-easy-install/main/antigravity-manager.sh"
@@ -17,20 +27,20 @@ DESKTOP_FILE_USER="$DESKTOP_DIR/google-antigravity.desktop"
 ICON_PATH="$APP_DIR/resources/app/out/vs/workbench/contrib/antigravityCustomAppIcon/browser/media/antigravity/antigravity.png"
 
 save_manager_locally() {
-    echo "💾 Saving Antigravity Manager to your system..."
+    echo -e "${C_CYAN}💾 Saving Antigravity Manager to your system...${C_RESET}"
     mkdir -p "$BIN_DIR"
     curl -sL "$MANAGER_URL" -o "$BIN_DIR/antigravity-manager"
     chmod +x "$BIN_DIR/antigravity-manager"
-    echo "✅ Manager saved! You can now type 'antigravity-manager' in your terminal anytime to manage the app."
+    echo -e "${C_GREEN}✅ Manager saved!${C_RESET} You can now type '${C_BOLD}antigravity-manager${C_RESET}' in your terminal anytime to manage the app."
 }
 
 remove_manager_script() {
-    echo "🗑️ Removing Antigravity Manager script..."
+    echo -e "${C_RED}🗑️  Removing Antigravity Manager script...${C_RESET}"
     if [ -f "$BIN_DIR/antigravity-manager" ]; then
         rm -f "$BIN_DIR/antigravity-manager"
-        echo "✅ Manager script removed from your system."
+        echo -e "${C_GREEN}✅ Manager script removed from your system.${C_RESET}"
     else
-        echo "ℹ️ Manager script was not found on your system."
+        echo -e "${C_YELLOW}ℹ️  Manager script was not found on your system.${C_RESET}"
     fi
 }
 
@@ -45,18 +55,18 @@ detect_distro() {
 }
 
 check_deps() {
-    echo "🔍 Checking dependencies..."
+    echo -e "${C_CYAN}🔍 Checking dependencies...${C_RESET}"
     # Get glibc version safely (fixes the broken pipe and double-print error)
     GLIBC_VERSION=$(ldd --version 2>/dev/null | awk 'NR==1 {print $NF}')
-    echo "   Detected glibc: $GLIBC_VERSION"
+    echo -e "   Detected glibc: ${C_BOLD}$GLIBC_VERSION${C_RESET}"
     
     # Simple version check (split by dot)
     MAJOR=$(echo $GLIBC_VERSION | cut -d. -f1)
     MINOR=$(echo $GLIBC_VERSION | cut -d. -f2)
     
     if [ "$MAJOR" -lt 2 ] || { [ "$MAJOR" -eq 2 ] && [ "$MINOR" -lt 28 ]; }; then
-        echo "⚠️  Warning: Your glibc version ($GLIBC_VERSION) is lower than the recommended 2.28."
-        echo "   Antigravity might not run correctly."
+        echo -e "${C_YELLOW}⚠️  Warning: Your glibc version ($GLIBC_VERSION) is lower than the recommended 2.28.${C_RESET}"
+        echo -e "   Antigravity might not run correctly."
     fi
 }
 
@@ -64,25 +74,25 @@ install_repo() {
     detect_distro
     case "$DISTRO" in
         ubuntu|debian|kali|linuxmint)
-            echo "🔑 Fetching repository keys..."
+            echo -e "${C_BLUE}🔑 Fetching repository keys...${C_RESET}"
             sudo mkdir -p /etc/apt/keyrings
             curl -fSsL "https://us-central1-apt.pkg.dev/doc/repo-signing-key.gpg" | \
                 sudo gpg --dearmor --yes -o /etc/apt/keyrings/antigravity-repo-key.gpg
             
-            echo "📦 Configuring APT repository..."
+            echo -e "${C_BLUE}📦 Configuring APT repository...${C_RESET}"
             echo "deb [signed-by=/etc/apt/keyrings/antigravity-repo-key.gpg] https://us-central1-apt.pkg.dev/projects/antigravity-auto-updater-dev/ antigravity-debian main" | \
                 sudo tee /etc/apt/sources.list.d/antigravity.list > /dev/null
             
-            echo "🔄 Updating package lists..."
+            echo -e "${C_BLUE}🔄 Updating package lists...${C_RESET}"
             sudo apt update
             
-            echo "🚀 Installing Antigravity..."
+            echo -e "${C_MAG}🚀 Installing Antigravity...${C_RESET}"
             sudo apt install -y antigravity
             
-            echo "✅ Installation complete! You can now launch 'antigravity' from your terminal or app menu."
+            echo -e "${C_GREEN}✅ Installation complete!${C_RESET} You can now launch '${C_BOLD}antigravity${C_RESET}' from your terminal or app menu."
             ;;
         fedora|rhel|centos|amzn)
-            echo "📦 Setting up RPM repository..."
+            echo -e "${C_BLUE}📦 Setting up RPM repository...${C_RESET}"
             sudo tee /etc/yum.repos.d/antigravity.repo << EOL
 [antigravity-rpm]
 name=Antigravity RPM Repository
@@ -94,35 +104,31 @@ EOL
             sudo dnf install -y antigravity
             ;;
         *)
-            echo "❌ Distribution $DISTRO not explicitly supported for repo install."
-            echo "   Falling back to Tarball installation..."
+            echo -e "${C_RED}❌ Distribution $DISTRO not explicitly supported for repo install.${C_RESET}"
+            echo -e "   ${C_YELLOW}Falling back to Tarball installation...${C_RESET}"
             do_install_tarball
             ;;
     esac
 }
 
 do_install_tarball() {
-    echo "🚀 Starting Google Antigravity Standalone (Tarball) Installation..."
+    echo -e "${C_MAG}🚀 Starting Google Antigravity Standalone (Tarball) Installation...${C_RESET}"
 
-    echo "📁 Preparing directories..."
-    mkdir -p "$BIN_DIR"
-    mkdir -p "$APP_DIR"
-    mkdir -p "$WORKSPACE_DIR"
-    mkdir -p "$DESKTOP_DIR"
-    mkdir -p "$(dirname "$DESKTOP_FILE_SYS")"
+    echo -e "${C_CYAN}📁 Preparing directories...${C_RESET}"
+    mkdir -p "$BIN_DIR" "$APP_DIR" "$WORKSPACE_DIR" "$DESKTOP_DIR" "$(dirname "$DESKTOP_FILE_SYS")"
 
     TMP_DIR=$(mktemp -d)
 
-    echo "⬇️ Downloading Antigravity..."
+    echo -e "${C_BLUE}⬇️  Downloading Antigravity...${C_RESET}"
     curl -sL "$DOWNLOAD_URL" -o "$TMP_DIR/Antigravity.tar.gz"
 
-    echo "📦 Extracting archive..."
+    echo -e "${C_BLUE}📦 Extracting archive...${C_RESET}"
     tar -xzf "$TMP_DIR/Antigravity.tar.gz" -C "$APP_DIR" --strip-components=1
 
-    echo "🔗 Creating symlink..."
+    echo -e "${C_BLUE}🔗 Creating symlink...${C_RESET}"
     ln -sf "$APP_DIR/antigravity" "$BIN_DIR/antigravity"
 
-    echo "🖼️ Registering application icon..."
+    echo -e "${C_BLUE}🖼️  Registering application icon...${C_RESET}"
     cat << EOF > "$DESKTOP_FILE_SYS"
 [Desktop Entry]
 Version=1.0
@@ -135,12 +141,12 @@ Type=Application
 Categories=Development;IDE;
 EOF
 
-    echo "🖥️ Adding shortcut to Desktop..."
+    echo -e "${C_CYAN}🖥️  Adding shortcut to Desktop...${C_RESET}"
     cp "$DESKTOP_FILE_SYS" "$DESKTOP_FILE_USER"
     chmod +x "$DESKTOP_FILE_USER"
     
     if command -v gio &> /dev/null; then
-        echo "🛡️ Marking desktop shortcut as trusted..."
+        echo -e "${C_CYAN}🛡️  Marking desktop shortcut as trusted...${C_RESET}"
         gio set "$DESKTOP_FILE_USER" metadata::trusted true || true
     fi
 
@@ -149,22 +155,22 @@ EOF
         update-desktop-database "$HOME/.local/share/applications" || true
     fi
 
-    echo "🧹 Cleaning up..."
+    echo -e "${C_CYAN}🧹 Cleaning up...${C_RESET}"
     rm -rf "$TMP_DIR"
 
-    echo "🔍 Verifying PATH..."
+    echo -e "${C_CYAN}🔍 Verifying PATH...${C_RESET}"
     if [[ ":$PATH:" != *":$BIN_DIR:"* ]]; then
-        echo "⚠️  WARNING: $BIN_DIR is not in your PATH."
-        echo "Please add the following line to your ~/.bashrc:"
-        echo "export PATH=\"\$HOME/.local/bin:\$PATH\""
+        echo -e "${C_YELLOW}⚠️  WARNING: $BIN_DIR is not in your PATH.${C_RESET}"
+        echo -e "Please add the following line to your ~/.bashrc:"
+        echo -e "${C_BOLD}export PATH=\"\$HOME/.local/bin:\$PATH\"${C_RESET}"
     fi
 
-    echo "🎉 Installation Complete!"
-    echo "Your workspace is ready at: $WORKSPACE_DIR"
+    echo -e "${C_GREEN}🎉 Installation Complete!${C_RESET}"
+    echo -e "Your workspace is ready at: ${C_BOLD}$WORKSPACE_DIR${C_RESET}"
 }
 
 do_remove() {
-    echo "🧹 Removing Google Antigravity..."
+    echo -e "${C_RED}🧹 Removing Google Antigravity...${C_RESET}"
     # Try removing repo package if exists
     detect_distro
     if command -v apt &> /dev/null && [ -f /etc/apt/sources.list.d/antigravity.list ]; then
@@ -185,11 +191,11 @@ do_remove() {
         update-desktop-database "$HOME/.local/share/applications" || true
     fi
     
-    echo "✅ Uninstalled successfully. (Note: Your code in $WORKSPACE_DIR was kept safe)."
+    echo -e "${C_GREEN}✅ Uninstalled successfully.${C_RESET} (Note: Your code in $WORKSPACE_DIR was kept safe)."
 }
 
 print_usage() {
-    echo "Usage: $0 [OPTION]"
+    echo -e "${C_BOLD}Usage:${C_RESET} $0 [OPTION]"
     echo "Options:"
     echo "  --install   Run the interactive installation wizard."
     echo "  --remove    Uninstall Antigravity."
@@ -199,25 +205,32 @@ if [ "$1" == "--remove" ]; then
     do_remove
     exit 0
 elif [ "$1" == "--install" ] || [ -z "$1" ]; then
-    echo "------------------------------------------"
-    echo "   Google Antigravity Manager"
-    echo "------------------------------------------"
+    echo -e "${C_BLUE}${C_BOLD}==========================================${C_RESET}"
+    echo -e "${C_CYAN}${C_BOLD}        🚀 Google Antigravity Setup${C_RESET}"
+    echo -e "${C_BLUE}${C_BOLD}==========================================${C_RESET}"
     check_deps
     echo ""
-    echo "What would you like to do?"
-    echo "1) Install via Standard Repository (Best for updates, requires sudo)"
-    echo "2) Install via Standalone Tarball (Installs to ~/.local, no sudo needed)"
-    echo "3) Remove/Uninstall an existing Antigravity setup"
-    echo "4) Remove the Antigravity Manager script"
-    echo "5) Cancel"
-    read -p "Select an option [1-5]: " choice < /dev/tty
+    echo -e "${C_BOLD}What would you like to do?${C_RESET}"
+    echo -e "  ${C_CYAN}1)${C_RESET} Install via Standard Repository ${C_GREEN}(Best for updates, requires sudo)${C_RESET}"
+    echo -e "  ${C_CYAN}2)${C_RESET} Install via Standalone Tarball ${C_YELLOW}(Installs to ~/.local, no sudo needed)${C_RESET}"
+    echo -e "  ${C_CYAN}3)${C_RESET} Install/Update this Manager script locally"
+    echo -e "  ${C_CYAN}4)${C_RESET} Remove/Uninstall an existing Antigravity setup"
+    echo -e "  ${C_CYAN}5)${C_RESET} Remove the Antigravity Manager script"
+    echo -e "  ${C_CYAN}6)${C_RESET} Cancel"
+    
+    # Safely print the prompt and read the input from the tty
+    echo -ne "${C_BOLD}Select an option [1-6]: ${C_RESET}"
+    read choice < /dev/tty
+
+    echo "" # Add a blank line for breathing room
 
     case $choice in
-        1) install_repo; save_manager_locally ;;
-        2) do_install_tarball; save_manager_locally ;;
-        3) do_remove ;;
-        4) remove_manager_script ;;
-        *) echo "Cancelled."; exit 0 ;;
+        1) install_repo; echo ""; save_manager_locally ;;
+        2) do_install_tarball; echo ""; save_manager_locally ;;
+        3) save_manager_locally ;;
+        4) do_remove ;;
+        5) remove_manager_script ;;
+        *) echo -e "${C_YELLOW}Cancelled.${C_RESET}"; exit 0 ;;
     esac
 else
     print_usage
