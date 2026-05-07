@@ -27,8 +27,8 @@ detect_distro() {
 
 check_deps() {
     echo "🔍 Checking dependencies..."
-    # Get glibc version (e.g., 2.35)
-    GLIBC_VERSION=$(ldd --version 2>/dev/null | awk 'NR==1' | grep -oP '\d+\.\d+')
+    # Get glibc version safely (fixes the broken pipe and double-print error)
+    GLIBC_VERSION=$(ldd --version 2>/dev/null | awk 'NR==1 {print $NF}')
     echo "   Detected glibc: $GLIBC_VERSION"
     
     # Simple version check (split by dot)
@@ -45,14 +45,23 @@ install_repo() {
     detect_distro
     case "$DISTRO" in
         ubuntu|debian|kali|linuxmint)
-            echo "📦 Setting up DEB repository..."
+            echo "🔑 Fetching repository keys..."
             sudo mkdir -p /etc/apt/keyrings
-            curl -fSsL https://us-central1-apt.pkg.dev/doc/repo-signing-key.gpg | \
+            curl -fSsL "https://us-central1-apt.pkg.dev/doc/repo-signing-key.gpg" | \
                 sudo gpg --dearmor --yes -o /etc/apt/keyrings/antigravity-repo-key.gpg
-            echo "deb [signed-by=/etc/apt/keyrings/antigravity-repo-key.gpg] https://us-central1-apt.pkg.dev/projects/antigravity-auto-updater-dev/antigravity-apt antigravity main" | \
+            
+            echo "📦 Configuring APT repository..."
+            # FIXED: Correct Artifact Registry formatting (URL PROJECT_ID REPO_NAME main)
+            echo "deb [arch=amd64 signed-by=/etc/apt/keyrings/antigravity-repo-key.gpg] https://us-central1-apt.pkg.dev/projects/antigravity-auto-updater-dev antigravity-apt main" | \
                 sudo tee /etc/apt/sources.list.d/antigravity.list > /dev/null
+            
+            echo "🔄 Updating package lists..."
             sudo apt update
+            
+            echo "🚀 Installing Antigravity..."
             sudo apt install -y antigravity
+            
+            echo "✅ Installation complete! You can now launch 'antigravity' from your terminal or app menu."
             ;;
         fedora|rhel|centos|amzn)
             echo "📦 Setting up RPM repository..."
@@ -101,7 +110,7 @@ do_install_tarball() {
 Version=1.0
 Name=Google Antigravity
 Comment=Secure Agentic Development IDE
-Exec=$BIN_DIR/antigravity
+Exec=$BIN_DIR/antigravity %F
 Icon=$ICON_PATH
 Terminal=false
 Type=Application
@@ -115,6 +124,11 @@ EOF
     if command -v gio &> /dev/null; then
         echo "🛡️ Marking desktop shortcut as trusted..."
         gio set "$DESKTOP_FILE_USER" metadata::trusted true || true
+    fi
+
+    # Refresh app menu
+    if command -v update-desktop-database &> /dev/null; then
+        update-desktop-database "$HOME/.local/share/applications" || true
     fi
 
     echo "🧹 Cleaning up..."
@@ -148,6 +162,11 @@ do_remove() {
     rm -f "$BIN_DIR/antigravity"
     rm -f "$DESKTOP_FILE_SYS"
     rm -f "$DESKTOP_FILE_USER"
+    
+    if command -v update-desktop-database &> /dev/null; then
+        update-desktop-database "$HOME/.local/share/applications" || true
+    fi
+    
     echo "✅ Uninstalled successfully. (Note: Your code in $WORKSPACE_DIR was kept safe)."
 }
 
