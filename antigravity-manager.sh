@@ -28,7 +28,7 @@ detect_distro() {
 check_deps() {
     echo "🔍 Checking dependencies..."
     # Get glibc version (e.g., 2.35)
-    GLIBC_VERSION=$(ldd --version | head -n 1 | grep -oP '\d+\.\d+' | head -n 1)
+    GLIBC_VERSION=$(ldd --version 2>/dev/null | awk 'NR==1' | grep -oP '\d+\.\d+')
     echo "   Detected glibc: $GLIBC_VERSION"
     
     # Simple version check (split by dot)
@@ -171,7 +171,7 @@ elif [ "$1" == "--install" ] || [ -z "$1" ]; then
     echo "1) Standard Repository (Best for updates, requires sudo)"
     echo "2) Standalone Tarball (Installs to ~/.local, no sudo needed for app)"
     echo "3) Cancel"
-    read -p "Select an option [1-3]: " choice
+    read -p "Select an option [1-3]: " choice < /dev/tty
 
     case $choice in
         1) install_repo ;;
