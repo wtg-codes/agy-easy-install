@@ -31,6 +31,27 @@
         details > summary::-webkit-details-marker {
             display: none;
         }
+
+        /* Print styles for PDF Export */
+        @media print {
+            body {
+                background: #0f172a !important; /* Forces the dark theme on the PDF */
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+            .no-print {
+                display: none !important;
+            }
+            .max-w-3xl {
+                max-width: 100% !important;
+                border: none !important;
+                box-shadow: none !important;
+            }
+            /* Prevent page breaks inside steps */
+            .flex.gap-4, .bg-amber-900\/20, .bg-slate-900\/80 {
+                page-break-inside: avoid;
+            }
+        }
     </style>
 </head>
 <body class="text-slate-300 font-sans min-h-screen flex flex-col items-center justify-center p-4 sm:p-8">
@@ -38,7 +59,14 @@
     <div class="max-w-3xl w-full bg-slate-800/50 backdrop-blur-sm border border-slate-700 rounded-3xl shadow-2xl overflow-hidden">
 
         <!-- Header -->
-        <div class="bg-slate-800/80 p-8 border-b border-slate-700 text-center">
+        <div class="relative bg-slate-800/80 p-8 border-b border-slate-700 text-center">
+            
+            <!-- Export PDF Button -->
+            <button onclick="window.print()" class="no-print absolute top-4 right-4 flex items-center gap-2 p-2 px-3 text-sm font-medium text-slate-300 hover:text-white bg-slate-700/50 hover:bg-slate-700 rounded-lg border border-slate-600 transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500" title="Save as PDF">
+                <i data-lucide="file-down" class="w-4 h-4"></i>
+                <span class="hidden sm:inline">Export PDF</span>
+            </button>
+
             <div class="inline-flex items-center justify-center p-4 bg-indigo-500/20 text-indigo-400 rounded-2xl mb-4">
                 <i data-lucide="rocket" class="w-10 h-10"></i>
             </div>
@@ -109,7 +137,7 @@
                         </code>
 
                         <!-- Copy Button -->
-                        <button id="copyBtn" onclick="copyCommand()" class="absolute top-1/2 -translate-y-1/2 right-3 p-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg border border-slate-600 transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500" title="Copy to clipboard">
+                        <button id="copyBtn" onclick="copyCommand()" class="no-print absolute top-1/2 -translate-y-1/2 right-3 p-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg border border-slate-600 transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500" title="Copy to clipboard">
                             <i data-lucide="clipboard" id="copyIcon" class="w-5 h-5"></i>
                         </button>
                     </div>
@@ -221,7 +249,7 @@
             </div>
 
             <!-- Transparency / Full Script Section -->
-            <div class="pt-6 border-t border-slate-700/50">
+            <div class="pt-6 border-t border-slate-700/50 no-print">
                 <details id="sourceDetails" class="group bg-slate-800/40 rounded-xl border border-slate-700 overflow-hidden transition-all duration-300">
                     <summary onclick="fetchSource()" class="flex items-center justify-between p-4 cursor-pointer focus:outline-none focus:ring-2 focus:ring-indigo-500 rounded-xl">
                         <span class="flex items-center gap-3 font-semibold text-slate-300 group-hover:text-white transition-colors">
@@ -239,7 +267,7 @@
         </div>
     </div>
 
-    <footer class="mt-8 text-center text-slate-500 text-sm pb-8">
+    <footer class="mt-8 text-center text-slate-500 text-sm pb-8 no-print">
         Designed for class setup. Works exclusively on Linux/Ubuntu.<br>
         <a href="https://github.com/wtg-codes/agv-easy-install" target="_blank" class="hover:text-indigo-400 transition-colors underline mt-2 inline-block">View full source on GitHub</a>
     </footer>
