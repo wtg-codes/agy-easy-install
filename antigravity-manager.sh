@@ -24,6 +24,16 @@ save_manager_locally() {
     echo "✅ Manager saved! You can now type 'antigravity-manager' in your terminal anytime to manage the app."
 }
 
+remove_manager_script() {
+    echo "🗑️ Removing Antigravity Manager script..."
+    if [ -f "$BIN_DIR/antigravity-manager" ]; then
+        rm -f "$BIN_DIR/antigravity-manager"
+        echo "✅ Manager script removed from your system."
+    else
+        echo "ℹ️ Manager script was not found on your system."
+    fi
+}
+
 detect_distro() {
     if [ -f /etc/os-release ]; then
         . /etc/os-release
@@ -168,7 +178,6 @@ do_remove() {
     # Cleanup standalone files
     rm -rf "$APP_DIR"
     rm -f "$BIN_DIR/antigravity"
-    rm -f "$BIN_DIR/antigravity-manager"
     rm -f "$DESKTOP_FILE_SYS"
     rm -f "$DESKTOP_FILE_USER"
     
@@ -199,13 +208,15 @@ elif [ "$1" == "--install" ] || [ -z "$1" ]; then
     echo "1) Install via Standard Repository (Best for updates, requires sudo)"
     echo "2) Install via Standalone Tarball (Installs to ~/.local, no sudo needed)"
     echo "3) Remove/Uninstall an existing Antigravity setup"
-    echo "4) Cancel"
-    read -p "Select an option [1-4]: " choice < /dev/tty
+    echo "4) Remove the Antigravity Manager script"
+    echo "5) Cancel"
+    read -p "Select an option [1-5]: " choice < /dev/tty
 
     case $choice in
         1) install_repo; save_manager_locally ;;
         2) do_install_tarball; save_manager_locally ;;
         3) do_remove ;;
+        4) remove_manager_script ;;
         *) echo "Cancelled."; exit 0 ;;
     esac
 else
