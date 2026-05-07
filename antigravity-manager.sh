@@ -20,6 +20,30 @@ APPLICATIONS_DIR="$HOME/.local/share/applications"
 DESKTOP_FILE_SYS="$APPLICATIONS_DIR/google-antigravity.desktop"
 DESKTOP_FILE_USER="$DESKTOP_DIR/google-antigravity.desktop"
 
+print_header() {
+    echo "------------------------------------------"
+    echo "   Google Antigravity Manager"
+    echo "------------------------------------------"
+}
+
+check_dependencies() {
+    echo "🔍 Checking dependencies..."
+    # Using sed 1q to avoid "Broken pipe" errors sometimes seen with head -n1
+    GLIBC_VER=$(ldd --version | sed 1q | grep -oE '[0-9]+\.[0-9]+' | sed 1q)
+    echo "   Detected glibc: $GLIBC_VER"
+
+    # Version comparison without bc
+    # Assumes version format X.YY
+    IFS='.' read -ra VER <<< "$GLIBC_VER"
+    MAJOR=${VER[0]}
+    MINOR=${VER[1]}
+
+    if [ "$MAJOR" -lt 2 ] || { [ "$MAJOR" -eq 2 ] && [ "$MINOR" -lt 28 ]; }; then
+        echo "❌ Error: Antigravity requires glibc 2.28 or higher."
+        exit 1
+    fi
+}
+
 print_usage() {
     echo "Usage: antigravity-manager [OPTION]"
     echo "Options:"
@@ -38,6 +62,9 @@ do_remove() {
 }
 
 do_install() {
+    print_header
+    check_dependencies
+
     echo "🚀 Starting Google Antigravity Installation..."
 
     echo "📁 Preparing directories..."
