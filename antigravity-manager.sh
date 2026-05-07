@@ -1,24 +1,28 @@
 #!/usr/bin/env bash
 set -e
 
-COMMAND=$1
+# Default to --install if run without arguments
+COMMAND=${1:---install}
+
 DOWNLOAD_URL="https://edgedl.me.gvt1.com/edgedl/release2/j0qc3/antigravity/stable/1.23.2-4781536860569600/linux-x64/Antigravity.tar.gz"
 
 # Directories
 BIN_DIR="$HOME/.local/bin"
 APP_DIR="$HOME/.local/lib/antigravity"
 WORKSPACE_DIR="$HOME/my-antigravity-work"
-DESKTOP_DIR="$HOME/Desktop"
+
+# Safely locate the Desktop directory
+DESKTOP_DIR=$(xdg-user-dir DESKTOP 2>/dev/null || echo "$HOME/Desktop")
+APPLICATIONS_DIR="$HOME/.local/share/applications"
 
 # Files
-DESKTOP_FILE_SYS="$HOME/.local/share/applications/google-antigravity.desktop"
+DESKTOP_FILE_SYS="$APPLICATIONS_DIR/google-antigravity.desktop"
 DESKTOP_FILE_USER="$DESKTOP_DIR/google-antigravity.desktop"
-ICON_PATH="$APP_DIR/resources/app/out/vs/workbench/contrib/antigravityCustomAppIcon/browser/media/antigravity/antigravity.png"
 
 print_usage() {
     echo "Usage: ./antigravity-manager.sh [OPTION]"
     echo "Options:"
-    echo "  --install   Installs Antigravity, sets up workspace, and creates desktop shortcuts."
+    echo "  --install   Installs Antigravity, sets up workspace, and creates desktop shortcuts. (Default)"
     echo "  --remove    Uninstalls Antigravity and removes shortcuts."
 }
 
@@ -35,11 +39,7 @@ do_install() {
     echo "🚀 Starting Google Antigravity Installation..."
 
     echo "📁 Preparing directories..."
-    mkdir -p "$BIN_DIR"
-    mkdir -p "$APP_DIR"
-    mkdir -p "$WORKSPACE_DIR"
-    mkdir -p "$DESKTOP_DIR"
-    mkdir -p "$(dirname "$DESKTOP_FILE_SYS")"
+    mkdir -p "$BIN_DIR" "$APP_DIR" "$WORKSPACE_DIR" "$DESKTOP_DIR" "$APPLICATIONS_DIR"
 
     TMP_DIR=$(mktemp -d)
 
@@ -53,24 +53,42 @@ do_install() {
     ln -sf "$APP_DIR/antigravity" "$BIN_DIR/antigravity"
 
     echo "🖼️ Registering application icon..."
+    # Fallback logic for icons
+    ICON_PATH="code"
+    if [ -f "$APP_DIR/resources/app/out/vs/workbench/contrib/antigravityCustomAppIcon/browser/media/antigravity/antigravity.png" ]; then
+        ICON_PATH="$APP_DIR/resources/app/out/vs/workbench/contrib/antigravityCustomAppIcon/browser/media/antigravity/antigravity.png"
+    elif [ -f "$APP_DIR/resources/app/resources/linux/code.png" ]; then
+        ICON_PATH="$APP_DIR/resources/app/resources/linux/code.png"
+    elif [ -f "$APP_DIR/antigravity.png" ]; then
+        ICON_PATH="$APP_DIR/antigravity.png"
+    fi
+
     cat << EOF > "$DESKTOP_FILE_SYS"
 [Desktop Entry]
 Version=1.0
 Name=Google Antigravity
 Comment=Secure Agentic Development IDE
-Exec=$BIN_DIR/antigravity
+Exec=$BIN_DIR/antigravity %F
 Icon=$ICON_PATH
 Terminal=false
 Type=Application
 Categories=Development;IDE;
+StartupNotify=true
 EOF
+
+    chmod +x "$DESKTOP_FILE_SYS"
+
+    # Refresh app menu
+    if command -v update-desktop-database &>/dev/null; then
+        update-desktop-database "$APPLICATIONS_DIR" || true
+    fi
 
     echo "🖥️ Adding shortcut to Desktop..."
     cp "$DESKTOP_FILE_SYS" "$DESKTOP_FILE_USER"
     chmod +x "$DESKTOP_FILE_USER"
 
-    # On Ubuntu, desktop icons sometimes need to be marked as trusted
-    if command -v gio &> /dev/null; then
+    # Trust desktop icon if possible
+    if command -v gio &>/dev/null; then
         echo "🛡️ Marking desktop shortcut as trusted..."
         gio set "$DESKTOP_FILE_USER" metadata::trusted true || true
     fi
@@ -99,6 +117,9 @@ case "$COMMAND" in
         ;;
     --remove)
         do_remove
+        ;;
+    --help|-h)
+        print_usage
         ;;
     *)
         print_usage
