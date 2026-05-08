@@ -26,12 +26,33 @@ DESKTOP_FILE_SYS="$HOME/.local/share/applications/google-antigravity.desktop"
 DESKTOP_FILE_USER="$DESKTOP_DIR/google-antigravity.desktop"
 ICON_PATH="$APP_DIR/resources/app/out/vs/workbench/contrib/antigravityCustomAppIcon/browser/media/antigravity/antigravity.png"
 
+verify_path() {
+    echo -e "${C_CYAN}🔍 Verifying PATH...${C_RESET}"
+    if [[ ":$PATH:" != *":$BIN_DIR:"* ]]; then
+        echo -e "${C_YELLOW}⚠️  WARNING: $BIN_DIR is not in your PATH.${C_RESET}"
+        echo -e "Please add the following line to your ~/.bashrc:"
+        echo -e "${C_BOLD}export PATH=\"\$HOME/.local/bin:\$PATH\"${C_RESET}"
+    else
+        echo -e "${C_GREEN}✅ PATH looks good.${C_RESET}"
+    fi
+}
+
 save_manager_locally() {
     echo -e "${C_CYAN}💾 Saving Antigravity Manager to your system...${C_RESET}"
     mkdir -p "$BIN_DIR"
-    curl -sL "$MANAGER_URL" -o "$BIN_DIR/antigravity-manager"
+    
+    # Smart copy: Prevent overwriting local tests with older GitHub versions
+    if [ -f "$0" ] && [[ "$0" != *"bash"* ]]; then
+        cp "$0" "$BIN_DIR/antigravity-manager"
+    else
+        curl -sL "$MANAGER_URL" -o "$BIN_DIR/antigravity-manager"
+    fi
+    
     chmod +x "$BIN_DIR/antigravity-manager"
     echo -e "${C_GREEN}✅ Manager saved!${C_RESET} You can now type '${C_BOLD}antigravity-manager${C_RESET}' in your terminal anytime to manage the app."
+    
+    echo ""
+    verify_path
 }
 
 remove_manager_script() {
@@ -157,13 +178,6 @@ EOF
 
     echo -e "${C_CYAN}🧹 Cleaning up...${C_RESET}"
     rm -rf "$TMP_DIR"
-
-    echo -e "${C_CYAN}🔍 Verifying PATH...${C_RESET}"
-    if [[ ":$PATH:" != *":$BIN_DIR:"* ]]; then
-        echo -e "${C_YELLOW}⚠️  WARNING: $BIN_DIR is not in your PATH.${C_RESET}"
-        echo -e "Please add the following line to your ~/.bashrc:"
-        echo -e "${C_BOLD}export PATH=\"\$HOME/.local/bin:\$PATH\"${C_RESET}"
-    fi
 
     echo -e "${C_GREEN}🎉 Installation Complete!${C_RESET}"
     echo -e "Your workspace is ready at: ${C_BOLD}$WORKSPACE_DIR${C_RESET}"
