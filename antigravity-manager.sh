@@ -230,6 +230,14 @@ elif [ "$1" == "--install" ] || [ -z "$1" ]; then
         3) save_manager_locally ;;
         4) do_remove ;;
         5) remove_manager_script ;;
+        "Google"|"google"|"GOOGLE")
+            echo -e "${C_MAG}🎓 Easter Egg Found! Opening the Course Catalog Lab...${C_RESET}"
+            if command -v xdg-open &> /dev/null; then
+                xdg-open "https://wtg-codes.github.io/course-catalog/" &> /dev/null
+            else
+                echo -e "${C_YELLOW}Please open this link in your browser: https://wtg-codes.github.io/course-catalog/${C_RESET}"
+            fi
+            ;;
         *) echo -e "${C_YELLOW}Cancelled.${C_RESET}"; exit 0 ;;
     esac
 else
