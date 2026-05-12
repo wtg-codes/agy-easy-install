@@ -186,6 +186,59 @@ inject_path() {
     fi
 }
 
+configure_chrome_path() {
+    local SETTINGS_DIR="$HOME/.config/Antigravity/User"
+    if [ "$PLATFORM" = "Darwin" ]; then
+        SETTINGS_DIR="$HOME/Library/Application Support/Antigravity/User"
+    fi
+    local SETTINGS_FILE="$SETTINGS_DIR/settings.json"
+    local chrome_path=""
+
+    log_info "${C_CYAN}🔍 Locating Chrome binary for Antigravity...${C_RESET}"
+
+    # 1. Prioritize raw Flatpak binaries (required to bypass sandbox)
+    local flatpak_sys="/var/lib/flatpak/app/com.google.Chrome/current/active/files/extra/chrome"
+    local flatpak_user="$HOME/.local/share/flatpak/app/com.google.Chrome/current/active/files/extra/chrome"
+
+    if [[ -x "$flatpak_sys" ]]; then
+        chrome_path="$flatpak_sys"
+        log_info "  Found system-wide Flatpak Chrome: $chrome_path"
+    elif [[ -x "$flatpak_user" ]]; then
+        chrome_path="$flatpak_user"
+        log_info "  Found user-level Flatpak Chrome: $chrome_path"
+    else
+        # 2. Fallback to standard system package binaries
+        if [ "$PLATFORM" = "Darwin" ] && [ -x "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" ]; then
+            chrome_path="/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
+            log_info "  Found macOS Chrome: $chrome_path"
+        else
+            for cmd in google-chrome-stable google-chrome chromium chromium-browser; do
+                if command -v "$cmd" >/dev/null 2>&1; then
+                    chrome_path=$(command -v "$cmd")
+                    log_info "  Found standard system Chrome: $chrome_path"
+                    break
+                fi
+            done
+        fi
+    fi
+
+    if [[ -n "$chrome_path" ]]; then
+        mkdir -p "$SETTINGS_DIR"
+        [[ ! -f "$SETTINGS_FILE" ]] && echo '{}' > "$SETTINGS_FILE"
+
+        if command -v jq >/dev/null 2>&1; then
+            jq --arg path "$chrome_path" \
+               '.["antigravity.browser.chromeBinaryPath"] = $path' \
+               "$SETTINGS_FILE" > "${SETTINGS_FILE}.tmp" && mv "${SETTINGS_FILE}.tmp" "$SETTINGS_FILE"
+            log_info "${C_GREEN}✅ Antigravity Chrome path mapped to $chrome_path${C_RESET}"
+        else
+            log_warn "jq is missing. Cannot automatically configure Chrome path. Install jq to enable auto-config."
+        fi
+    else
+        log_warn "Could not locate a valid Chrome or Chromium executable."
+    fi
+}
+
 save_manager_locally() {
     log_info "${C_CYAN}💾 Saving Antigravity Manager to your system...${C_RESET}"
     mkdir -p "$BIN_DIR"
@@ -316,6 +369,7 @@ install_brew() {
             return
         fi
     fi
+    configure_chrome_path
     mkdir -p "$STATE_DIR"
     echo '{"method": "brew", "version": "'"$SCRIPT_VERSION"'"}' > "$STATE_FILE"
 }
@@ -367,6 +421,7 @@ EOL
             return
             ;;
     esac
+    configure_chrome_path
     mkdir -p "$STATE_DIR"
     echo '{"method": "repo", "version": "'"$SCRIPT_VERSION"'"}' > "$STATE_FILE"
 }
@@ -431,6 +486,7 @@ EOF
     log_info "  ${C_CYAN}▸${C_RESET} Launch:    ${C_BOLD}antigravity${C_RESET}"
     log_info "  ${C_CYAN}▸${C_RESET} Workspace: ${C_BOLD}$WORKSPACE_DIR${C_RESET}"
     
+    configure_chrome_path
     mkdir -p "$STATE_DIR"
     echo '{"method": "tarball", "version": "'"$SCRIPT_VERSION"'"}' > "$STATE_FILE"
 }
