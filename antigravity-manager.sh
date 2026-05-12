@@ -40,14 +40,17 @@ JSON_OUT=0
 JSON_STATUS="success"
 JSON_METHOD="none"
 
-cleanup_spinner() {
+cleanup_ui() {
     tput cnorm 2>/dev/null || true
     printf "\r\033[K" 2>/dev/null || true
+    if [ -n "$GUM_DIR" ] && [ -d "$GUM_DIR" ]; then
+        rm -rf "$GUM_DIR"
+    fi
 }
 
 exit_handler() {
     local exit_code=$?
-    cleanup_spinner
+    cleanup_ui
     if [ "$JSON_OUT" -eq 1 ]; then
         if [ $exit_code -ne 0 ]; then
             JSON_STATUS="error"
@@ -87,22 +90,33 @@ log_warn() {
     fi
 }
 
-start_spinner() {
-    if [ "$JSON_OUT" -eq 1 ] || [ "$VERBOSE" -eq 1 ] || [ "$QUIET" -eq 1 ]; then
-        return
+bootstrap_ui() {
+    if command -v gum >/dev/null 2>&1; then
+        return 0
     fi
-    local msg="$1"
-    local pid="$2"
-    local delay=0.1
-    local spinstr='⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏'
-    tput civis 2>/dev/null || true
-    while kill -0 "$pid" 2>/dev/null; do
-        local temp=${spinstr#?}
-        printf "\r${C_CYAN}%c${C_RESET} %s" "$spinstr" "$msg"
-        spinstr=$temp${spinstr%"$temp"}
-        sleep $delay
-    done
-    cleanup_spinner
+    log_info "  ${C_DIM}Bootstrapping UI dependencies...${C_RESET}"
+    GUM_DIR=$(mktemp -d)
+    
+    local GUM_VERSION="0.17.0"
+    local OS="Linux"
+    local ARCH="x86_64"
+    
+    [ "$PLATFORM" = "Darwin" ] && OS="Darwin"
+    if [ "$(uname -m)" = "aarch64" ] || [ "$(uname -m)" = "arm64" ]; then
+        ARCH="arm64"
+    fi
+    
+    local TARBALL="gum_${GUM_VERSION}_${OS}_${ARCH}.tar.gz"
+    
+    if curl -fSsL "https://github.com/charmbracelet/gum/releases/download/v${GUM_VERSION}/${TARBALL}" | tar -xzf - -C "$GUM_DIR" 2>/dev/null; then
+        local GUM_BIN
+        GUM_BIN=$(find "$GUM_DIR" -name "gum" -type f -executable | head -n 1)
+        if [ -n "$GUM_BIN" ]; then
+            local gum_dir_path
+            gum_dir_path=$(dirname "$GUM_BIN")
+            export PATH="$gum_dir_path:$PATH"
+        fi
+    fi
 }
 
 run_cmd() {
@@ -113,17 +127,16 @@ run_cmd() {
     fi
 }
 
-run_cmd_spinner() {
+run_cmd_ui() {
     local msg="$1"
     shift
     if [ "$JSON_OUT" -eq 1 ] || [ "$VERBOSE" -eq 1 ] || [ "$QUIET" -eq 1 ]; then
         run_cmd "$@"
+    elif command -v gum >/dev/null 2>&1; then
+        gum spin --spinner dot --title "$msg" -- "$@"
     else
-        "$@" >> "$LOG_FILE" 2>&1 &
-        local pid=$!
-        start_spinner "$msg" "$pid"
-        wait "$pid"
-        return $?
+        log_info "  $msg"
+        run_cmd "$@"
     fi
 }
 
@@ -373,12 +386,12 @@ install_brew() {
     fi
     
     if [ "$PLATFORM" = "Darwin" ]; then
-        if ! run_cmd_spinner "Brewing Antigravity..." brew install --cask antigravity; then
+        if ! run_cmd_ui "Brewing Antigravity..." brew install --cask antigravity; then
             log_error "Formula not found or installation failed."
             exit 1
         fi
     else
-        if ! run_cmd_spinner "Brewing Antigravity..." brew install antigravity; then
+        if ! run_cmd_ui "Brewing Antigravity..." brew install antigravity; then
             log_error "Formula not found or installation failed."
             log_warn "Falling back to Tarball installation..."
             do_install_tarball
@@ -406,7 +419,7 @@ install_repo() {
             echo "deb [signed-by=/etc/apt/keyrings/antigravity-repo-key.gpg] https://us-central1-apt.pkg.dev/projects/antigravity-auto-updater-dev/ antigravity-debian main" | \
                 sudo tee /etc/apt/sources.list.d/antigravity.list > /dev/null
             
-            if ! run_cmd_spinner "Updating package lists..." sudo apt update || ! run_cmd_spinner "Installing Antigravity..." sudo apt install -y antigravity; then
+            if ! run_cmd_ui "Updating package lists..." sudo apt update || ! run_cmd_ui "Installing Antigravity..." sudo apt install -y antigravity; then
                 log_error "Installation failed! Rolling back repository changes..."
                 run_cmd sudo rm -f /etc/apt/sources.list.d/antigravity.list
                 exit 1
@@ -422,7 +435,7 @@ baseurl=https://us-central1-yum.pkg.dev/projects/antigravity-auto-updater-dev/an
 enabled=1
 gpgcheck=0
 EOL
-            if ! run_cmd_spinner "Updating package cache..." sudo dnf makecache || ! run_cmd_spinner "Installing Antigravity..." sudo dnf install -y antigravity; then
+            if ! run_cmd_ui "Updating package cache..." sudo dnf makecache || ! run_cmd_ui "Installing Antigravity..." sudo dnf install -y antigravity; then
                 log_error "Installation failed! Rolling back repository changes..."
                 run_cmd sudo rm -f /etc/yum.repos.d/antigravity.repo
                 exit 1
@@ -470,7 +483,7 @@ do_install_tarball() {
         exit 1
     fi
 
-    run_cmd_spinner "Extracting archive..." tar -xzf "$TMP_DIR/Antigravity.tar.gz" -C "$APP_DIR" --strip-components=1
+    gum spin --spinner dot --title "Extracting archive..." -- tar -xzf "$TMP_DIR/Antigravity.tar.gz" -C "$APP_DIR" --strip-components=1
 
     log_info "${C_BLUE}🔗 Creating symlink...${C_RESET}"
     ln -sf "$APP_DIR/antigravity" "$BIN_DIR/antigravity"
@@ -498,9 +511,15 @@ EOF
     fi
 
     echo ""
-    log_info "${C_GREEN}${C_BOLD}🎉 Installation Complete!${C_RESET}"
-    log_info "  ${C_CYAN}▸${C_RESET} Launch:    ${C_BOLD}antigravity${C_RESET}"
-    log_info "  ${C_CYAN}▸${C_RESET} Workspace: ${C_BOLD}$WORKSPACE_DIR${C_RESET}"
+    if command -v gum >/dev/null 2>&1; then
+        gum style --border double --border-foreground 46 --padding "1 2" "🎉 Installation Complete!
+Launch: antigravity
+Workspace: $WORKSPACE_DIR"
+    else
+        log_info "${C_GREEN}${C_BOLD}🎉 Installation Complete!${C_RESET}"
+        log_info "  ${C_CYAN}▸${C_RESET} Launch:    ${C_BOLD}antigravity${C_RESET}"
+        log_info "  ${C_CYAN}▸${C_RESET} Workspace: ${C_BOLD}$WORKSPACE_DIR${C_RESET}"
+    fi
     
     configure_chrome_path
     mkdir -p "$STATE_DIR"
@@ -558,73 +577,49 @@ do_remove() {
     log_info "${C_GREEN}✅ Uninstalled successfully.${C_RESET} (Note: Your code in $WORKSPACE_DIR was kept safe)."
 }
 
-render_menu() {
-    local selected=$1
-    echo -e "${C_BOLD}Select an install method${C_RESET} ${C_GREEN}(★ = recommended)${C_RESET}"
+interactive_menu() {
+    bootstrap_ui
+    echo ""
     local options=(
-        "Homebrew      $([ "$RECOMMENDED" = "1" ] && echo -e "${C_GREEN}★  ${C_RESET}")cross-platform, no sudo"
-        "System Repo   $([ "$RECOMMENDED" = "2" ] && echo -e "${C_GREEN}★  ${C_RESET}")APT/DNF, auto-updates, needs sudo"
-        "Tarball       $([ "$RECOMMENDED" = "3" ] && echo -e "${C_GREEN}★  ${C_RESET}")manual, installs to ~/.local"
-        "Save manager  add 'antigravity-manager' command"
-        "Uninstall     remove Antigravity"
-        "Remove mgr    remove this script"
+        "Homebrew (cross-platform, no sudo)"
+        "System Repo (APT/DNF, auto-updates, needs sudo)"
+        "Tarball (manual, installs to ~/.local)"
+        "Save manager (add 'antigravity-manager' command)"
+        "Uninstall (remove Antigravity)"
+        "Remove mgr (remove this script)"
         "Cancel"
     )
-    for i in "${!options[@]}"; do
-        if [ "$i" -eq "$selected" ]; then
-            echo -e "  ${C_CYAN}❯ ${C_BOLD}${options[$i]}${C_RESET}"
-        else
-            echo -e "    ${options[$i]}"
-        fi
-    done
-    echo -e "\n${C_DIM}(Use up/down arrows to move [1-7], Enter to select)${C_RESET}"
+    # Menu has options [1-7]
+    if command -v gum >/dev/null 2>&1; then
+        CHOICE=$(gum choose --cursor="❯ " --selected="${options[$((RECOMMENDED-1))]}" "${options[@]}")
+    else
+        log_warn "UI dependencies failed to load. Falling back to simple menu."
+        for i in "${!options[@]}"; do echo "$((i+1))) ${options[$i]}"; done
+        read -r -p "Select option [1-7]: " num < /dev/tty
+        case "$num" in
+            1) CHOICE="Homebrew" ;;
+            2) CHOICE="System Repo" ;;
+            3) CHOICE="Tarball" ;;
+            4) CHOICE="Save manager" ;;
+            5) CHOICE="Uninstall" ;;
+            6) CHOICE="Remove mgr" ;;
+            7) CHOICE="Cancel" ;;
+            *) CHOICE="Cancel" ;;
+        esac
+    fi
+    
+    case "$CHOICE" in
+        "Homebrew"*) choice=1 ;;
+        "System Repo"*) choice=2 ;;
+        "Tarball"*) choice=3 ;;
+        "Save manager"*) choice=4 ;;
+        "Uninstall"*) choice=5 ;;
+        "Remove mgr"*) choice=6 ;;
+        "Cancel"*) choice=7 ;;
+        *) choice=7 ;;
+    esac
 }
 
-interactive_menu() {
-    local selected=0
-    local num_opts=7
-    
-    tput civis 2>/dev/null || true # hide cursor
-    # Print initial menu
-    render_menu $selected
-    
-    while true; do
-        read -rsn1 key < /dev/tty || true
-        case "$key" in
-            $'\x1b') # ESC
-                read -rsn1 key2 < /dev/tty || true
-                if [[ "$key2" == "[" ]]; then
-                    read -rsn1 key3 < /dev/tty || true
-                    if [[ "$key3" == "A" ]]; then # Up
-                        selected=$((selected - 1))
-                        [ $selected -lt 0 ] && selected=$((num_opts-1))
-                    elif [[ "$key3" == "B" ]]; then # Down
-                        selected=$((selected + 1))
-                        [ $selected -ge $num_opts ] && selected=0
-                    fi
-                fi
-                ;;
-            "k"|"w") # Up fallback
-                selected=$((selected - 1))
-                [ $selected -lt 0 ] && selected=$((num_opts-1))
-                ;;
-            "j"|"s") # Down fallback
-                selected=$((selected + 1))
-                [ $selected -ge $num_opts ] && selected=0
-                ;;
-            "") # Enter
-                break
-                ;;
-        esac
-        # Redraw
-        # Move cursor up num_opts + 2 (header and footer)
-        echo -en "\033[$((num_opts + 3))A"
-        render_menu $selected
-    done
-    tput cnorm 2>/dev/null || true
-    echo "" # breathing room
-    return $((selected + 1))
-}
 
 print_usage() {
     echo -e "${C_BOLD}Antigravity Manager v${SCRIPT_VERSION}${C_RESET}"
@@ -689,7 +684,9 @@ case "$ACTION" in
             log_error "Cannot use --json without specifying an explicit headless install method (e.g. --auto)"
             exit 1
         fi
-        log_info "${C_BLUE}${C_BOLD}========== 🚀 Google Antigravity Setup v${SCRIPT_VERSION} ==========${C_RESET}"
+        
+        echo -e "\n  ${C_BLUE}${C_BOLD}🚀 Google Antigravity Setup v${SCRIPT_VERSION}${C_RESET}"
+        echo -e "  ${C_DIM}──────────────────────────────────────────${C_RESET}"
         print_system_info
         echo ""
         
