@@ -215,16 +215,8 @@ print_system_info() {
 
 print_banner() {
     local mode="$1"
-    echo -e "${C_CYAN}"
-    cat << 'BANNER_EOF'
-     ___        __  _                     _ __       
-    /   |  ____/ /_(_)___ __________ __   (_) /___  __
-   / /| | / __ \ __/ / _ \/ ___/ __ \ /| / / / __ \/ /
-  / ___ |/ / / / /_/ / / / / / / / / / |/ / / /_/ / / 
- /_/  |_/_/ /_/\__/_/\__,_/_/ /_/ /_/|___/_/\____/_/  
-BANNER_EOF
-    echo -e "${C_RESET}"
-    echo -e "  ${C_BLUE}${C_BOLD}Google Antigravity Setup v${SCRIPT_VERSION}${C_RESET} ${mode}"
-    echo -e "  ${C_DIM}────────────────────────────────────────────────────────${C_RESET}"
+    echo -e "
+  🚀 ${C_BLUE}${C_BOLD}A${C_RED}n${C_YELLOW}t${C_BLUE}i${C_GREEN}G${C_RED}r${C_BLUE}a${C_RED}v${C_YELLOW}i${C_BLUE}t${C_GREEN}y${C_RESET} ${C_BOLD}Setup v${SCRIPT_VERSION}${C_RESET} ${mode}"
+    echo -e "  ${C_DIM}──────────────────────────────────────────────────${C_RESET}"
 }
 
