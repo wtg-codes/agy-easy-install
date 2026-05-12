@@ -7,11 +7,21 @@ Format follows [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+### Added
+- **Headless Mode:** Added `--auto`, `--install-brew`, `--install-repo`, and `--install-tarball` flags for non-interactive automation.
+- **Logging System:** Added robust logging to `/tmp/antigravity-install.log` with `--verbose` and `--quiet` flags.
+- **State Management:** Added an `install.json` state file to track the install method for perfectly clean uninstalls.
+- **Dependency Checks:** Script now fails fast if `curl`, `tar`, `awk`, or `grep` are missing.
+
+### Changed
+- **Rollbacks:** The system repository installer now gracefully cleans up broken repository keys and list files if `apt/dnf install` fails.
+
 ### Fixed
 - Bootstrapped `KNOWN_SHA256` to the real tarball checksum — standalone installs no longer fail out of the box.
 - Removed macOS tarball fallbacks (the standalone tarball is `linux-x64` only).
 
 ### Docs
+- Documented new headless CLI flags in `README.md`.
 - Clarified in README and landing page that the tarball path is Linux-only.
 - Added `CHANGELOG.md`.
 

@@ -32,6 +32,24 @@ brew install --cask antigravity   # macOS
 brew install antigravity           # Linux
 ```
 
+**Option D — Advanced (Headless / Automation)**
+
+The script supports non-interactive execution for CI/CD and provisioning tools:
+```bash
+# Auto-detect and install without prompts
+curl -fSsL "https://raw.githubusercontent.com/wtg-codes/agv-easy-install/main/antigravity-manager.sh" | bash -s -- --auto
+
+# Or force a specific method
+bash antigravity-manager.sh --install-brew
+bash antigravity-manager.sh --install-repo
+bash antigravity-manager.sh --install-tarball
+
+# Additional options
+bash antigravity-manager.sh --verbose  # Print detailed logs
+bash antigravity-manager.sh --quiet    # Suppress non-error output
+bash antigravity-manager.sh --remove   # Uninstall
+```
+
 ---
 
 ## 🏗️ Architecture
