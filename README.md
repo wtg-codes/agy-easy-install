@@ -15,7 +15,7 @@ curl -fSsL "https://raw.githubusercontent.com/wtg-codes/agv-easy-install/main/an
 ```
 
 ### Homebrew Users (macOS/Linux)
-If you prefer Homebrew, you can just run the script and select Option 2, or install directly if the formula is available:
+If you prefer Homebrew, you can just run the script and select Option 1, or install directly if the formula is available:
 ```bash
 brew install --cask antigravity
 ```
@@ -25,8 +25,8 @@ brew install --cask antigravity
 ```mermaid
 graph LR
     A[User Terminal] -->|curl| B(antigravity-manager.sh)
-    B -->|Option 1| C{Linux System Repo}
-    B -->|Option 2| D{Homebrew}
+    B -->|Option 1| C{Homebrew}
+    B -->|Option 2| D{Linux System Repo}
     B -->|Option 3| E{Standalone Tarball}
 ```
 

@@ -11,6 +11,10 @@ permissions:
 jobs:
   update-url:
     runs-on: ubuntu-latest
+    env:
+      LATEST_URL: ''
+      NEW_SHA: ''
+      OLD_URL: ''
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -21,52 +25,53 @@ jobs:
           python-version: '3.x'
 
       - name: Install dependencies
-        run: pip install -r requirements.txt
+        run: |
+          pip install -r requirements.txt
+          sudo apt-get update -qq && sudo apt-get install -y -qq shellcheck
 
       - name: Scrape latest URL
         id: scrape
         run: |
           LATEST_URL=$(python scrape_latest.py)
-          echo "LATEST_URL=$LATEST_URL" >> $GITHUB_ENV
-          echo "url=$LATEST_URL" >> $GITHUB_OUTPUT
+          echo "LATEST_URL=$LATEST_URL" >> "$GITHUB_ENV"
+          echo "url=$LATEST_URL" >> "$GITHUB_OUTPUT"
 
       - name: Validate URL and Compute SHA-256
-        if: env.LATEST_URL != ''
+        if: "env.LATEST_URL != ''"
         run: |
-          # 3.4 Validate URL
-          curl -fSsL --head "${{ env.LATEST_URL }}"
-          
-          # 3.7 Download and compute SHA-256
+          # Validate URL is reachable
+          curl -fSsL --head "$LATEST_URL"
+
+          # Download and compute SHA-256
           TMP_TAR=$(mktemp)
-          curl -fSsL "${{ env.LATEST_URL }}" -o "$TMP_TAR"
+          curl -fSsL "$LATEST_URL" -o "$TMP_TAR"
           NEW_SHA=$(sha256sum "$TMP_TAR" | awk '{print $1}')
           rm -f "$TMP_TAR"
-          echo "NEW_SHA=$NEW_SHA" >> $GITHUB_ENV
+          echo "NEW_SHA=$NEW_SHA" >> "$GITHUB_ENV"
 
       - name: Update antigravity-manager.sh
-        if: env.LATEST_URL != ''
+        if: "env.LATEST_URL != ''"
         run: |
           OLD_URL=$(grep -oP '^DOWNLOAD_URL="\K[^"]+' antigravity-manager.sh)
-          echo "OLD_URL=$OLD_URL" >> $GITHUB_ENV
-          # 3.5 Use # as sed delimiter
-          sed -i "s#^DOWNLOAD_URL=.*#DOWNLOAD_URL=\"${{ env.LATEST_URL }}\"#" antigravity-manager.sh
-          sed -i "s#^KNOWN_SHA256=.*#KNOWN_SHA256=\"${{ env.NEW_SHA }}\"#" antigravity-manager.sh
+          echo "OLD_URL=$OLD_URL" >> "$GITHUB_ENV"
+          # Use # as sed delimiter to avoid injection from URLs containing / or |
+          sed -i "s#^DOWNLOAD_URL=.*#DOWNLOAD_URL=\"$LATEST_URL\"#" antigravity-manager.sh
+          sed -i "s#^KNOWN_SHA256=.*#KNOWN_SHA256=\"$NEW_SHA\"#" antigravity-manager.sh
 
       - name: Lint script
-        if: env.LATEST_URL != ''
+        if: "env.LATEST_URL != ''"
         run: shellcheck -e SC1091,SC2162 antigravity-manager.sh
 
       - name: Commit and push changes
-        if: env.LATEST_URL != ''
+        if: "env.LATEST_URL != ''"
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
           git add antigravity-manager.sh
           if ! git diff --cached --quiet; then
-            # 3.8 Improve commit message
             git commit -m "chore: nightly update of Antigravity download URL
-            
-            From: ${{ env.OLD_URL }}
-            To:   ${{ env.LATEST_URL }}"
+
+          From: $OLD_URL
+          To:   $LATEST_URL"
             git push
           fi
