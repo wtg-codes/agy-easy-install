@@ -223,19 +223,35 @@ configure_chrome_path() {
     fi
 
     if [[ -n "$chrome_path" ]]; then
-        mkdir -p "$SETTINGS_DIR"
-        [[ ! -f "$SETTINGS_FILE" ]] && echo '{}' > "$SETTINGS_FILE"
-
-        if command -v jq >/dev/null 2>&1; then
-            jq --arg path "$chrome_path" \
-               '.["antigravity.browser.chromeBinaryPath"] = $path' \
-               "$SETTINGS_FILE" > "${SETTINGS_FILE}.tmp" && mv "${SETTINGS_FILE}.tmp" "$SETTINGS_FILE"
-            log_info "${C_GREEN}✅ Antigravity Chrome path mapped to $chrome_path${C_RESET}"
+        local do_inject=0
+        if [ "$AUTO" -eq 1 ] || [ "$JSON_OUT" -eq 1 ]; then
+            do_inject=1
         else
-            log_warn "jq is missing. Cannot automatically configure Chrome path. Install jq to enable auto-config."
+            log_warn "Antigravity occasionally fails to find Chrome when installed via Brew or Tarball."
+            log_info "We found a valid Chrome binary at: ${C_BOLD}$chrome_path${C_RESET}"
+            echo -ne "${C_YELLOW}Would you like to automatically configure Antigravity to use this browser? [Y/n]: ${C_RESET}"
+            read -r set_chrome < /dev/tty
+            case "$set_chrome" in
+                [nN]*) log_info "Skipping Chrome configuration." ;;
+                *) do_inject=1 ;;
+            esac
+        fi
+
+        if [ "$do_inject" -eq 1 ]; then
+            mkdir -p "$SETTINGS_DIR"
+            [[ ! -f "$SETTINGS_FILE" ]] && echo '{}' > "$SETTINGS_FILE"
+
+            if command -v jq >/dev/null 2>&1; then
+                jq --arg path "$chrome_path" \
+                   '.["antigravity.browser.chromeBinaryPath"] = $path' \
+                   "$SETTINGS_FILE" > "${SETTINGS_FILE}.tmp" && mv "${SETTINGS_FILE}.tmp" "$SETTINGS_FILE"
+                log_info "${C_GREEN}✅ Antigravity Chrome path mapped to $chrome_path${C_RESET}"
+            else
+                log_warn "jq is missing. Cannot automatically configure Chrome path. Install jq to enable auto-config."
+            fi
         fi
     else
-        log_warn "Could not locate a valid Chrome or Chromium executable."
+        log_warn "Could not locate a valid Chrome or Chromium executable. Antigravity may complain it is not installed."
     fi
 }
 
