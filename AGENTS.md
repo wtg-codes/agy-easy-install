@@ -51,6 +51,7 @@
 7. **macOS awareness:** The script must work on macOS. Skip `.desktop` file creation on macOS. Use `open` instead of `xdg-open` when `uname -s` is `Darwin`.
 8. **Cleanup:** Any function that creates temp files must use `trap ... EXIT` to clean up on failure.
 9. **Interactive menu:** When modifying menu options, update the prompt range (e.g., `[1-7]`), the case statement, AND the landing page's menu explanation section in `docs/index.html`.
+10. **Ephemeral UI Pattern:** The script uses `gum` for its modern UI elements. To preserve the zero-dependency philosophy, `gum` must ONLY be downloaded ephemerally via `bootstrap_ui()` into a temp directory and cleaned up via `trap`. Do not permanently install it via APT/DNF or alter host package managers.
 
 ### Landing Page (`docs/index.html`)
 

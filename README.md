@@ -41,6 +41,7 @@ bash antigravity-manager.sh --install-tarball
 bash antigravity-manager.sh --verbose  # Print detailed logs
 bash antigravity-manager.sh --quiet    # Suppress non-error output
 bash antigravity-manager.sh --remove   # Uninstall
+bash antigravity-manager.sh --json     # Output single JSON object on completion
 ```
 
 ---
