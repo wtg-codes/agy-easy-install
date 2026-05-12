@@ -9,10 +9,11 @@ C_BLUE='\033[0;34m'
 C_CYAN='\033[0;36m'
 C_MAG='\033[0;35m'
 C_BOLD='\033[1m'
+C_DIM='\033[2m'
 C_RESET='\033[0m'
 
 # Configuration
-SCRIPT_VERSION="1.1.0"
+SCRIPT_VERSION="1.2.0"
 KNOWN_SHA256="0000000000000000000000000000000000000000000000000000000000000000"
 DOWNLOAD_URL="https://edgedl.me.gvt1.com/edgedl/release2/j0qc3/antigravity/stable/1.23.2-4781536860569600/linux-x64/Antigravity.tar.gz"
 MANAGER_URL="https://raw.githubusercontent.com/wtg-codes/agv-easy-install/main/antigravity-manager.sh"
@@ -29,13 +30,13 @@ DESKTOP_FILE_USER="$DESKTOP_DIR/google-antigravity.desktop"
 ICON_PATH="$APP_DIR/resources/app/out/vs/workbench/contrib/antigravityCustomAppIcon/browser/media/antigravity/antigravity.png"
 
 verify_path() {
-    echo -e "${C_CYAN}🔍 Verifying PATH...${C_RESET}"
     if [[ ":$PATH:" != *":$BIN_DIR:"* ]]; then
-        echo -e "${C_YELLOW}⚠️  WARNING: $BIN_DIR is not in your PATH.${C_RESET}"
-        echo -e "Please add the following line to your ~/.bashrc:"
-        echo -e "${C_BOLD}export PATH=\"\$HOME/.local/bin:\$PATH\"${C_RESET}"
-    else
-        echo -e "${C_GREEN}✅ PATH looks good.${C_RESET}"
+        echo -e "${C_YELLOW}⚠ $BIN_DIR is not in your PATH.${C_RESET}"
+        if [ "$PLATFORM" = "Darwin" ] || [ -f "$HOME/.zshrc" ]; then
+            echo -e "  Add to ~/.zshrc:  ${C_BOLD}export PATH=\"\$HOME/.local/bin:\$PATH\"${C_RESET}"
+        else
+            echo -e "  Add to ~/.bashrc: ${C_BOLD}export PATH=\"\$HOME/.local/bin:\$PATH\"${C_RESET}"
+        fi
     fi
 }
 
@@ -51,9 +52,7 @@ save_manager_locally() {
     fi
     
     chmod +x "$BIN_DIR/antigravity-manager"
-    echo -e "${C_GREEN}✅ Manager saved!${C_RESET} You can now type '${C_BOLD}antigravity-manager${C_RESET}' in your terminal anytime to manage the app."
-    
-    echo ""
+    echo -e "${C_GREEN}✅ Manager saved.${C_RESET} Run ${C_BOLD}antigravity-manager${C_RESET} anytime to manage the app."
     verify_path
 }
 
@@ -139,9 +138,15 @@ print_system_info() {
     [ "$HAS_BREW" = "yes" ] && PKGS="${PKGS}brew "
     [ "$HAS_APT" = "yes" ]  && PKGS="${PKGS}apt "
     [ "$HAS_DNF" = "yes" ]  && PKGS="${PKGS}dnf "
-    [ -z "$PKGS" ] && PKGS="none "
 
-    echo -e "  ${C_CYAN}▸${C_RESET} ${C_BOLD}${DISTRO_PRETTY}${C_RESET} (${ARCH})$([ -n "$GLIBC_VERSION" ] && echo " · glibc ${GLIBC_VERSION}") · pkg: ${C_GREEN}${PKGS}${C_RESET}"
+    local PKG_DISPLAY
+    if [ -z "$PKGS" ]; then
+        PKG_DISPLAY="${C_YELLOW}none${C_RESET}"
+    else
+        PKG_DISPLAY="${C_GREEN}${PKGS}${C_RESET}"
+    fi
+
+    echo -e "  ${C_CYAN}▸${C_RESET} ${C_BOLD}${DISTRO_PRETTY}${C_RESET} (${ARCH})$([ -n "$GLIBC_VERSION" ] && echo " · glibc ${GLIBC_VERSION}") · pkg: ${PKG_DISPLAY}"
 
     # glibc warning (only if problematic)
     if [ -n "$GLIBC_VERSION" ]; then
@@ -179,6 +184,7 @@ install_brew() {
 }
 
 install_repo() {
+    echo -e "${C_YELLOW}⚠ This method requires sudo — you may be prompted for your password.${C_RESET}"
     detect_distro
     case "$DISTRO" in
         ubuntu|debian|kali|linuxmint)
@@ -197,7 +203,7 @@ install_repo() {
             echo -e "${C_MAG}🚀 Installing Antigravity...${C_RESET}"
             sudo apt install -y antigravity
             
-            echo -e "${C_GREEN}✅ Installation complete!${C_RESET} You can now launch '${C_BOLD}antigravity${C_RESET}' from your terminal or app menu."
+            echo -e "${C_GREEN}✅ Installation complete!${C_RESET} Launch with: ${C_BOLD}antigravity${C_RESET}"
             ;;
         fedora|rhel|centos|amzn)
             echo -e "${C_BLUE}📦 Setting up RPM repository...${C_RESET}"
@@ -211,6 +217,7 @@ gpgcheck=0
 EOL
             sudo dnf makecache
             sudo dnf install -y antigravity
+            echo -e "${C_GREEN}✅ Installation complete!${C_RESET} Launch with: ${C_BOLD}antigravity${C_RESET}"
             ;;
         *)
             echo -e "${C_RED}❌ Distribution $DISTRO not explicitly supported for repo install.${C_RESET}"
@@ -229,8 +236,8 @@ do_install_tarball() {
     TMP_DIR=$(mktemp -d)
     trap 'rm -rf "$TMP_DIR"' EXIT
 
-    echo -e "${C_BLUE}⬇️  Downloading Antigravity...${C_RESET}"
-    curl -fSsL "$DOWNLOAD_URL" -o "$TMP_DIR/Antigravity.tar.gz"
+    echo -e "${C_BLUE}⬇️  Downloading Antigravity (~218 MB)...${C_RESET}"
+    curl -fSL --progress-bar "$DOWNLOAD_URL" -o "$TMP_DIR/Antigravity.tar.gz"
 
     echo -e "${C_BLUE}🔐 Verifying checksum...${C_RESET}"
     if ! echo "$KNOWN_SHA256  $TMP_DIR/Antigravity.tar.gz" | sha256sum -c -; then
@@ -279,13 +286,20 @@ EOF
         fi
     fi
 
-    echo -e "${C_CYAN}🧹 Cleaning up...${C_RESET}"
-
-    echo -e "${C_GREEN}🎉 Installation Complete!${C_RESET}"
-    echo -e "Your workspace is ready at: ${C_BOLD}$WORKSPACE_DIR${C_RESET}"
+    echo ""
+    echo -e "${C_GREEN}${C_BOLD}🎉 Installation Complete!${C_RESET}"
+    echo -e "  ${C_CYAN}▸${C_RESET} Launch:    ${C_BOLD}antigravity${C_RESET}"
+    echo -e "  ${C_CYAN}▸${C_RESET} Workspace: ${C_BOLD}$WORKSPACE_DIR${C_RESET}"
+    echo -e "  ${C_CYAN}▸${C_RESET} Manager:   ${C_BOLD}antigravity-manager${C_RESET}"
 }
 
 do_remove() {
+    echo -ne "${C_RED}⚠ Are you sure you want to uninstall Antigravity? [y/N]: ${C_RESET}"
+    read confirm < /dev/tty
+    case "$confirm" in
+        [yY]|[yY][eE][sS]) ;;
+        *) echo -e "${C_YELLOW}Cancelled.${C_RESET}"; return ;;
+    esac
     echo -e "${C_RED}🧹 Removing Google Antigravity...${C_RESET}"
     # Try removing repo package if exists
     detect_distro
@@ -317,12 +331,12 @@ do_remove() {
 }
 
 print_usage() {
-    echo -e "${C_BOLD}Usage:${C_RESET} $0 [OPTION]"
-    echo "Options:"
-    echo "  --install   Run the interactive installation wizard."
-    echo "  --remove    Uninstall Antigravity."
-    echo "  --version   Show version information."
-    echo "  --help      Show this help message."
+    echo -e "${C_BOLD}Antigravity Manager v${SCRIPT_VERSION}${C_RESET}"
+    echo -e "${C_DIM}Usage:${C_RESET} $0 [OPTION]"
+    echo "  --install   Interactive installation wizard (default)"
+    echo "  --remove    Uninstall Antigravity"
+    echo "  --version   Show version"
+    echo "  --help      Show this help"
 }
 
 if [ "$1" = "--remove" ]; then
@@ -336,7 +350,7 @@ elif [ "$1" = "--help" ]; then
     print_usage
     exit 0
 elif [ "$1" = "--install" ] || [ -z "$1" ]; then
-    echo -e "${C_BLUE}${C_BOLD}========== 🚀 Google Antigravity Setup ==========${C_RESET}"
+    echo -e "${C_BLUE}${C_BOLD}========== 🚀 Google Antigravity Setup v${SCRIPT_VERSION} ==========${C_RESET}"
     detect_platform
     print_system_info
     echo ""

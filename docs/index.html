@@ -137,7 +137,7 @@
                     <!-- Code Block UI -->
                     <div class="relative bg-slate-950 rounded-xl border border-slate-700 p-4 shadow-inner group">
                         <code class="block font-mono text-sm sm:text-base text-emerald-400 break-all pr-12">
-                            curl -sL "https://raw.githubusercontent.com/wtg-codes/agv-easy-install/main/antigravity-manager.sh" | bash
+                            curl -fSsL "https://raw.githubusercontent.com/wtg-codes/agv-easy-install/main/antigravity-manager.sh" | bash
                         </code>
 
                         <!-- Copy Button -->
@@ -164,22 +164,22 @@
                     
                     <div class="bg-slate-900/80 border border-slate-700 p-5 rounded-xl text-sm mt-4">
                         <h3 class="font-bold text-white mb-2">Menu Options Explained:</h3>
-                        <p class="text-emerald-400/90 mb-4 text-xs">💡 Always try Option 1 first! If that errors out, just run the command again and choose Option 2 instead.</p>
+                        <p class="text-emerald-400/90 mb-4 text-xs">💡 The script auto-detects your system and recommends the best option. Try Option 1 (Homebrew) if you have it!</p>
                         
                         <p class="text-slate-400 text-xs mt-2 mb-2">Options [1-7] mapped as follows:</p>
                         <ul class="space-y-3">
                             <li class="flex items-start gap-3">
                                 <span class="flex-shrink-0 flex items-center justify-center w-6 h-6 bg-emerald-500/20 text-emerald-400 font-mono rounded text-xs border border-emerald-500/30">1</span>
                                 <div>
-                                    <strong class="text-slate-200">Standard Repository (Linux Only)</strong>
-                                    <p class="text-slate-400 text-xs mt-0.5">Installs via APT/DNF so it stays updated automatically (requires sudo).</p>
+                                    <strong class="text-slate-200">Homebrew (Recommended)</strong>
+                                    <p class="text-slate-400 text-xs mt-0.5">Cross-platform, no sudo. Works on macOS and Linux with Homebrew.</p>
                                 </div>
                             </li>
                             <li class="flex items-start gap-3">
                                 <span class="flex-shrink-0 flex items-center justify-center w-6 h-6 bg-blue-500/20 text-blue-400 font-mono rounded text-xs border border-blue-500/30">2</span>
                                 <div>
-                                    <strong class="text-slate-200">Homebrew (macOS/Linux)</strong>
-                                    <p class="text-slate-400 text-xs mt-0.5">Uses Homebrew to install the app cleanly. Great for macOS users.</p>
+                                    <strong class="text-slate-200">System Repository (APT/DNF)</strong>
+                                    <p class="text-slate-400 text-xs mt-0.5">Linux only. Auto-updates via your package manager (requires sudo).</p>
                                 </div>
                             </li>
                             <li class="flex items-start gap-3">
@@ -230,7 +230,7 @@
                         Launch Antigravity
                     </h2>
                     <p class="text-slate-400 leading-relaxed">
-                        You're all set! You can now launch <strong>Google Antigravity</strong> directly from your Ubuntu Application Menu, or double-click the shortcut it placed on your Desktop.
+                        You're all set! You can now launch <strong>Google Antigravity</strong> from your application menu, desktop shortcut, or by typing <code class="text-slate-300 bg-slate-900 px-1 py-0.5 rounded font-mono">antigravity</code> in your terminal.
                     </p>
 
                     <div class="mt-4 p-4 bg-slate-800/80 rounded-xl border border-slate-700 text-sm">
@@ -245,8 +245,9 @@
                         <p class="text-slate-400 leading-relaxed pt-2 border-t border-slate-700/50">
                             <strong class="text-slate-300 block mb-1">Where are my files?</strong>
                             &bull; <strong>Workspace:</strong> <code class="text-slate-300 bg-slate-900 px-1 py-0.5 rounded font-mono">~/my-antigravity-work</code><br>
-                            &bull; <strong>If you chose Option 1 (Standard):</strong> Installed system-wide via APT/DNF.<br>
-                            &bull; <strong>If you chose Option 2 (Tarball):</strong> Installed to <code class="text-slate-300 bg-slate-900 px-1 py-0.5 rounded font-mono">~/.local/lib/antigravity</code>.
+                            &bull; <strong>If you chose Option 1 (Homebrew):</strong> Managed by <code class="text-slate-300 bg-slate-900 px-1 py-0.5 rounded font-mono">brew</code>.<br>
+                            &bull; <strong>If you chose Option 2 (System Repo):</strong> Installed system-wide via APT/DNF.<br>
+                            &bull; <strong>If you chose Option 3 (Tarball):</strong> Installed to <code class="text-slate-300 bg-slate-900 px-1 py-0.5 rounded font-mono">~/.local/lib/antigravity</code>.
                         </p>
                     </div>
                 </div>
@@ -296,7 +297,7 @@
     </div>
 
     <footer class="mt-8 text-center text-slate-500 text-sm pb-8 no-print">
-        Designed for class setup. Works exclusively on Linux/Ubuntu.<br>
+        Designed for class setup. Works on Linux and macOS.<br>
         <a href="https://github.com/wtg-codes/agv-easy-install" target="_blank" class="hover:text-indigo-400 transition-colors underline mt-2 inline-block">View full source on GitHub</a>
     </footer>
 
@@ -305,7 +306,7 @@
         lucide.createIcons();
 
         // The command to copy (Updated to match the actual repo)
-        const commandToCopy = 'curl -sL "https://raw.githubusercontent.com/wtg-codes/agv-easy-install/main/antigravity-manager.sh" | bash';
+        const commandToCopy = 'curl -fSsL "https://raw.githubusercontent.com/wtg-codes/agv-easy-install/main/antigravity-manager.sh" | bash';
 
         function copyCommand() {
             const copyBtn = document.getElementById('copyBtn');
