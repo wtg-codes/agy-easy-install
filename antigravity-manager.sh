@@ -18,11 +18,16 @@ KNOWN_SHA256="5232a4048ff4fa15685d9a981ba4fba573e297f3efc9b76f638e794baf775725"
 DOWNLOAD_URL="https://edgedl.me.gvt1.com/edgedl/release2/j0qc3/antigravity/stable/1.23.2-4781536860569600/linux-x64/Antigravity.tar.gz"
 MANAGER_URL="https://raw.githubusercontent.com/wtg-codes/agv-easy-install/main/antigravity-manager.sh"
 
-# Directories (for Tarball install)
+# Directories
 BIN_DIR="$HOME/.local/bin"
 APP_DIR="$HOME/.local/lib/antigravity"
 WORKSPACE_DIR="$HOME/my-antigravity-work"
 DESKTOP_DIR="$HOME/Desktop"
+
+# Files
+DESKTOP_FILE_SYS="$HOME/.local/share/applications/google-antigravity.desktop"
+DESKTOP_FILE_USER="$DESKTOP_DIR/google-antigravity.desktop"
+ICON_PATH="$APP_DIR/resources/app/out/vs/workbench/contrib/antigravityCustomAppIcon/browser/media/antigravity/antigravity.png"
 
 # State & Logging
 STATE_DIR="$HOME/.config/antigravity"
@@ -31,23 +36,73 @@ LOG_FILE="/tmp/antigravity-install.log"
 VERBOSE=0
 QUIET=0
 AUTO=0
+JSON_OUT=0
+JSON_STATUS="success"
+JSON_METHOD="none"
+
+cleanup_spinner() {
+    tput cnorm 2>/dev/null || true
+    printf "\r\033[K" 2>/dev/null || true
+}
+
+exit_handler() {
+    local exit_code=$?
+    cleanup_spinner
+    if [ "$JSON_OUT" -eq 1 ]; then
+        if [ $exit_code -ne 0 ]; then
+            JSON_STATUS="error"
+        fi
+        cat <<EOF
+{
+  "status": "$JSON_STATUS",
+  "method": "$JSON_METHOD",
+  "path": "$BIN_DIR"
+}
+EOF
+    fi
+}
+trap exit_handler EXIT INT TERM
 
 log_info() {
-    [ "$QUIET" -eq 1 ] && return
-    echo -e "$1"
-    # sed -E is supported on both macOS and Linux for extended regex
-    echo "$(date '+%Y-%m-%d %H:%M:%S') INFO: $(echo "$1" | sed -E 's/\x1B\[[0-9;]*[mK]//g')" >> "$LOG_FILE"
+    local msg="$1"
+    echo "$(date '+%Y-%m-%d %H:%M:%S') INFO: $(echo "$msg" | sed -E 's/\x1B\[[0-9;]*[mK]//g')" >> "$LOG_FILE"
+    if [ "$JSON_OUT" -eq 0 ] && [ "$QUIET" -eq 0 ]; then
+        echo -e "$msg"
+    fi
 }
 
 log_error() {
-    echo -e "${C_RED}❌ $1${C_RESET}"
-    echo "$(date '+%Y-%m-%d %H:%M:%S') ERROR: $(echo "$1" | sed -E 's/\x1B\[[0-9;]*[mK]//g')" >> "$LOG_FILE"
+    local msg="$1"
+    echo "$(date '+%Y-%m-%d %H:%M:%S') ERROR: $(echo "$msg" | sed -E 's/\x1B\[[0-9;]*[mK]//g')" >> "$LOG_FILE"
+    if [ "$JSON_OUT" -eq 0 ]; then
+        echo -e "${C_RED}❌ $msg${C_RESET}"
+    fi
 }
 
 log_warn() {
-    [ "$QUIET" -eq 1 ] && return
-    echo -e "${C_YELLOW}⚠ $1${C_RESET}"
-    echo "$(date '+%Y-%m-%d %H:%M:%S') WARN: $(echo "$1" | sed -E 's/\x1B\[[0-9;]*[mK]//g')" >> "$LOG_FILE"
+    local msg="$1"
+    echo "$(date '+%Y-%m-%d %H:%M:%S') WARN: $(echo "$msg" | sed -E 's/\x1B\[[0-9;]*[mK]//g')" >> "$LOG_FILE"
+    if [ "$JSON_OUT" -eq 0 ] && [ "$QUIET" -eq 0 ]; then
+        echo -e "${C_YELLOW}⚠ $msg${C_RESET}"
+    fi
+}
+
+start_spinner() {
+    if [ "$JSON_OUT" -eq 1 ] || [ "$VERBOSE" -eq 1 ] || [ "$QUIET" -eq 1 ]; then
+        return
+    fi
+    local msg="$1"
+    local pid="$2"
+    local delay=0.1
+    local spinstr='⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏'
+    tput civis 2>/dev/null || true
+    while kill -0 "$pid" 2>/dev/null; do
+        local temp=${spinstr#?}
+        printf "\r${C_CYAN}%c${C_RESET} %s" "$spinstr" "$msg"
+        spinstr=$temp${spinstr%"$temp"}
+        sleep $delay
+    done
+    cleanup_spinner
 }
 
 run_cmd() {
@@ -58,36 +113,76 @@ run_cmd() {
     fi
 }
 
+run_cmd_spinner() {
+    local msg="$1"
+    shift
+    if [ "$JSON_OUT" -eq 1 ] || [ "$VERBOSE" -eq 1 ] || [ "$QUIET" -eq 1 ]; then
+        run_cmd "$@"
+    else
+        "$@" >> "$LOG_FILE" 2>&1 &
+        local pid=$!
+        start_spinner "$msg" "$pid"
+        wait "$pid"
+        return $?
+    fi
+}
+
 check_dependencies() {
     local deps=("curl" "tar" "awk" "grep")
     local missing=0
     for dep in "${deps[@]}"; do
         if ! command -v "$dep" >/dev/null 2>&1; then
-            echo -e "${C_RED}❌ Missing required dependency: $dep${C_RESET}"
+            log_error "Missing required dependency: $dep"
             missing=1
         fi
     done
     if [ "$missing" -eq 1 ]; then
-        echo -e "${C_RED}❌ Please install missing dependencies and try again.${C_RESET}"
+        log_error "Please install missing dependencies and try again."
         exit 1
     fi
-    # Only touch log file if we pass basic checks
     touch "$LOG_FILE" || true
 }
 
-# Files
-DESKTOP_FILE_SYS="$HOME/.local/share/applications/google-antigravity.desktop"
-DESKTOP_FILE_USER="$DESKTOP_DIR/google-antigravity.desktop"
-ICON_PATH="$APP_DIR/resources/app/out/vs/workbench/contrib/antigravityCustomAppIcon/browser/media/antigravity/antigravity.png"
+inject_path() {
+    if [[ ":$PATH:" == *":$BIN_DIR:"* ]]; then
+        return
+    fi
 
-verify_path() {
-    if [[ ":$PATH:" != *":$BIN_DIR:"* ]]; then
+    local shell_rc=""
+    if [ "$PLATFORM" = "Darwin" ]; then
+        shell_rc="$HOME/.zshrc"
+    elif [[ "$SHELL" == *"zsh"* ]]; then
+        shell_rc="$HOME/.zshrc"
+    elif [[ "$SHELL" == *"fish"* ]]; then
+        shell_rc="$HOME/.config/fish/config.fish"
+    else
+        shell_rc="$HOME/.bashrc"
+    fi
+
+    local export_line="export PATH=\"\$HOME/.local/bin:\$PATH\""
+    if [[ "$shell_rc" == *"fish"* ]]; then
+        export_line="fish_add_path \$HOME/.local/bin"
+    fi
+
+    if grep -q "\$HOME/.local/bin" "$shell_rc" 2>/dev/null; then
+        return
+    fi
+
+    if [ "$AUTO" -eq 1 ] || [ "$JSON_OUT" -eq 1 ]; then
+        echo "$export_line" >> "$shell_rc"
+        log_info "✅ Added ~/.local/bin to $shell_rc automatically."
+    else
         log_warn "$BIN_DIR is not in your PATH."
-        if [ "$PLATFORM" = "Darwin" ] || [ -f "$HOME/.zshrc" ]; then
-            log_info "  Add to ~/.zshrc:  ${C_BOLD}export PATH=\"\$HOME/.local/bin:\$PATH\"${C_RESET}"
-        else
-            log_info "  Add to ~/.bashrc: ${C_BOLD}export PATH=\"\$HOME/.local/bin:\$PATH\"${C_RESET}"
-        fi
+        echo -ne "${C_YELLOW}Would you like to automatically add it to $shell_rc? [Y/n]: ${C_RESET}"
+        read -r add_path < /dev/tty
+        case "$add_path" in
+            [nN]*) log_info "Skipping PATH injection. Please add it manually." ;;
+            *)
+                echo "$export_line" >> "$shell_rc"
+                log_info "✅ Added ~/.local/bin to $shell_rc."
+                log_info "   Please run 'source $shell_rc' or restart your terminal later."
+                ;;
+        esac
     fi
 }
 
@@ -95,7 +190,6 @@ save_manager_locally() {
     log_info "${C_CYAN}💾 Saving Antigravity Manager to your system...${C_RESET}"
     mkdir -p "$BIN_DIR"
     
-    # Smart copy: Prevent overwriting local tests with older GitHub versions
     if [ -f "$0" ] && [ -r "$0" ]; then
         cp "$0" "$BIN_DIR/antigravity-manager"
     else
@@ -103,8 +197,8 @@ save_manager_locally() {
     fi
     
     chmod +x "$BIN_DIR/antigravity-manager"
-    log_info "${C_GREEN}✅ Manager saved.${C_RESET} Run ${C_BOLD}antigravity-manager${C_RESET} anytime to manage the app."
-    verify_path
+    log_info "${C_GREEN}✅ Manager saved.${C_RESET} Run ${C_BOLD}antigravity-manager${C_RESET} anytime."
+    inject_path
 }
 
 remove_manager_script() {
@@ -148,34 +242,21 @@ detect_platform() {
 
     if [ "$PLATFORM" = "Darwin" ]; then
         DISTRO_PRETTY="macOS $(sw_vers -productVersion 2>/dev/null || echo '')"
-        if [ "$HAS_BREW" = "yes" ]; then
-            RECOMMENDED="1"
-        else
-            RECOMMENDED="3"
-        fi
+        if [ "$HAS_BREW" = "yes" ]; then RECOMMENDED="1"; else RECOMMENDED="3"; fi
     else
         detect_distro
         if [ -f /etc/os-release ]; then
             # shellcheck disable=SC1091
             DISTRO_PRETTY=$(. /etc/os-release && echo "${PRETTY_NAME:-$ID}")
         fi
-
-        if command -v apt >/dev/null 2>&1; then
-            HAS_APT="yes"
-        fi
-        if command -v dnf >/dev/null 2>&1; then
-            HAS_DNF="yes"
-        fi
+        if command -v apt >/dev/null 2>&1; then HAS_APT="yes"; fi
+        if command -v dnf >/dev/null 2>&1; then HAS_DNF="yes"; fi
 
         GLIBC_VERSION=$(ldd --version 2>/dev/null | awk 'NR==1 {print $NF}' || true)
 
-        if [ "$HAS_BREW" = "yes" ]; then
-            RECOMMENDED="1"
-        elif [ "$HAS_APT" = "yes" ] || [ "$HAS_DNF" = "yes" ]; then
-            RECOMMENDED="2"
-        else
-            RECOMMENDED="3"
-        fi
+        if [ "$HAS_BREW" = "yes" ]; then RECOMMENDED="1"
+        elif [ "$HAS_APT" = "yes" ] || [ "$HAS_DNF" = "yes" ]; then RECOMMENDED="2"
+        else RECOMMENDED="3"; fi
     fi
 }
 
@@ -184,13 +265,8 @@ print_system_info() {
     [ "$HAS_BREW" = "yes" ] && PKGS="${PKGS}brew "
     [ "$HAS_APT" = "yes" ]  && PKGS="${PKGS}apt "
     [ "$HAS_DNF" = "yes" ]  && PKGS="${PKGS}dnf "
-
     local PKG_DISPLAY
-    if [ -z "$PKGS" ]; then
-        PKG_DISPLAY="${C_YELLOW}none${C_RESET}"
-    else
-        PKG_DISPLAY="${C_GREEN}${PKGS}${C_RESET}"
-    fi
+    if [ -z "$PKGS" ]; then PKG_DISPLAY="${C_YELLOW}none${C_RESET}"; else PKG_DISPLAY="${C_GREEN}${PKGS}${C_RESET}"; fi
 
     log_info "  ${C_CYAN}▸${C_RESET} ${C_BOLD}${DISTRO_PRETTY}${C_RESET} (${ARCH})$([ -n "$GLIBC_VERSION" ] && echo " · glibc ${GLIBC_VERSION}") · pkg: ${PKG_DISPLAY}"
 
@@ -205,6 +281,7 @@ print_system_info() {
 }
 
 install_brew() {
+    JSON_METHOD="brew"
     log_info "${C_MAG}🚀 Installing Antigravity via Homebrew...${C_RESET}"
     if ! check_brew; then
         log_error "Homebrew is not installed."
@@ -219,13 +296,12 @@ install_brew() {
     fi
     
     if [ "$PLATFORM" = "Darwin" ]; then
-        if ! run_cmd brew install --cask antigravity; then
+        if ! run_cmd_spinner "Brewing Antigravity..." brew install --cask antigravity; then
             log_error "Formula not found or installation failed."
-            log_error "Tarball fallback is not supported on macOS. Exiting."
             exit 1
         fi
     else
-        if ! run_cmd brew install antigravity; then
+        if ! run_cmd_spinner "Brewing Antigravity..." brew install antigravity; then
             log_error "Formula not found or installation failed."
             log_warn "Falling back to Tarball installation..."
             do_install_tarball
@@ -237,7 +313,9 @@ install_brew() {
 }
 
 install_repo() {
+    JSON_METHOD="repo"
     log_warn "This method requires sudo — you may be prompted for your password."
+    sudo -v || { log_error "Sudo access required."; exit 1; }
     detect_distro
     case "$DISTRO" in
         ubuntu|debian|kali|linuxmint)
@@ -250,13 +328,11 @@ install_repo() {
             echo "deb [signed-by=/etc/apt/keyrings/antigravity-repo-key.gpg] https://us-central1-apt.pkg.dev/projects/antigravity-auto-updater-dev/ antigravity-debian main" | \
                 sudo tee /etc/apt/sources.list.d/antigravity.list > /dev/null
             
-            log_info "${C_BLUE}🔄 Updating package lists...${C_RESET}"
-            if ! run_cmd sudo apt update || ! run_cmd sudo apt install -y antigravity; then
+            if ! run_cmd_spinner "Updating package lists..." sudo apt update || ! run_cmd_spinner "Installing Antigravity..." sudo apt install -y antigravity; then
                 log_error "Installation failed! Rolling back repository changes..."
                 run_cmd sudo rm -f /etc/apt/sources.list.d/antigravity.list
                 exit 1
             fi
-            
             log_info "${C_GREEN}✅ Installation complete!${C_RESET} Launch with: ${C_BOLD}antigravity${C_RESET}"
             ;;
         fedora|rhel|centos|amzn)
@@ -266,10 +342,9 @@ install_repo() {
 name=Antigravity RPM Repository
 baseurl=https://us-central1-yum.pkg.dev/projects/antigravity-auto-updater-dev/antigravity-rpm
 enabled=1
-# Set gpgcheck=0 because Artifact Registry doesn't support RPM upstream signing yet
 gpgcheck=0
 EOL
-            if ! run_cmd sudo dnf makecache || ! run_cmd sudo dnf install -y antigravity; then
+            if ! run_cmd_spinner "Updating package cache..." sudo dnf makecache || ! run_cmd_spinner "Installing Antigravity..." sudo dnf install -y antigravity; then
                 log_error "Installation failed! Rolling back repository changes..."
                 run_cmd sudo rm -f /etc/yum.repos.d/antigravity.repo
                 exit 1
@@ -278,14 +353,10 @@ EOL
             ;;
         *)
             log_error "Distribution $DISTRO not explicitly supported for repo install."
-            if [ "$PLATFORM" = "Darwin" ]; then
-                log_error "Tarball fallback is not supported on macOS. Exiting."
-                exit 1
-            else
-                log_warn "Falling back to Tarball installation..."
-                do_install_tarball
-                return
-            fi
+            if [ "$PLATFORM" = "Darwin" ]; then exit 1; fi
+            log_warn "Falling back to Tarball installation..."
+            do_install_tarball
+            return
             ;;
     esac
     mkdir -p "$STATE_DIR"
@@ -293,23 +364,24 @@ EOL
 }
 
 do_install_tarball() {
+    JSON_METHOD="tarball"
     if ! command -v sha256sum >/dev/null 2>&1; then
         log_error "sha256sum is required for tarball install but was not found."
         exit 1
     fi
 
     log_info "${C_MAG}🚀 Starting Google Antigravity Standalone (Tarball) Installation...${C_RESET}"
-
     log_info "${C_CYAN}📁 Preparing directories...${C_RESET}"
     mkdir -p "$BIN_DIR" "$APP_DIR" "$WORKSPACE_DIR" "$DESKTOP_DIR" "$(dirname "$DESKTOP_FILE_SYS")"
 
     TMP_DIR=$(mktemp -d)
-    trap 'rm -rf "$TMP_DIR"' EXIT
+    # We still have our main EXIT trap, so we need to clean this specifically or append to trap
+    trap 'rm -rf "$TMP_DIR"; exit_handler' EXIT INT TERM
 
-    log_info "${C_BLUE}⬇️  Downloading Antigravity (~218 MB)...${C_RESET}"
-    if [ "$VERBOSE" -eq 1 ]; then
-        curl -fSL "$DOWNLOAD_URL" -o "$TMP_DIR/Antigravity.tar.gz" 2>&1 | tee -a "$LOG_FILE"
+    if [ "$JSON_OUT" -eq 1 ] || [ "$QUIET" -eq 1 ]; then
+        run_cmd curl -fSL "$DOWNLOAD_URL" -o "$TMP_DIR/Antigravity.tar.gz"
     else
+        log_info "${C_BLUE}⬇️  Downloading Antigravity (~218 MB)...${C_RESET}"
         curl -fSL --progress-bar "$DOWNLOAD_URL" -o "$TMP_DIR/Antigravity.tar.gz"
     fi
 
@@ -319,13 +391,11 @@ do_install_tarball() {
         exit 1
     fi
 
-    log_info "${C_BLUE}📦 Extracting archive...${C_RESET}"
-    run_cmd tar -xzf "$TMP_DIR/Antigravity.tar.gz" -C "$APP_DIR" --strip-components=1
+    run_cmd_spinner "Extracting archive..." tar -xzf "$TMP_DIR/Antigravity.tar.gz" -C "$APP_DIR" --strip-components=1
 
     log_info "${C_BLUE}🔗 Creating symlink...${C_RESET}"
     ln -sf "$APP_DIR/antigravity" "$BIN_DIR/antigravity"
 
-    log_info "${C_BLUE}🖼️  Registering application icon...${C_RESET}"
     cat << EOF > "$DESKTOP_FILE_SYS"
 [Desktop Entry]
 Version=1.0
@@ -340,37 +410,26 @@ EOF
 
     if [ "$PLATFORM" != "Darwin" ]; then
         log_info "${C_CYAN}🖥️  Adding shortcut to Desktop...${C_RESET}"
-        if command -v xdg-user-dir &> /dev/null; then
-            DESKTOP_DIR=$(xdg-user-dir DESKTOP)
-        else
-            DESKTOP_DIR="$HOME/Desktop"
-        fi
+        if command -v xdg-user-dir &> /dev/null; then DESKTOP_DIR=$(xdg-user-dir DESKTOP); else DESKTOP_DIR="$HOME/Desktop"; fi
         DESKTOP_FILE_USER="$DESKTOP_DIR/google-antigravity.desktop"
         cp "$DESKTOP_FILE_SYS" "$DESKTOP_FILE_USER"
         chmod +x "$DESKTOP_FILE_USER"
-        
-        if command -v gio &> /dev/null; then
-            run_cmd gio set "$DESKTOP_FILE_USER" metadata::trusted true || true
-        fi
-
-        # Refresh app menu
-        if command -v update-desktop-database &> /dev/null; then
-            run_cmd update-desktop-database "$HOME/.local/share/applications" || true
-        fi
+        if command -v gio &> /dev/null; then run_cmd gio set "$DESKTOP_FILE_USER" metadata::trusted true || true; fi
+        if command -v update-desktop-database &> /dev/null; then run_cmd update-desktop-database "$HOME/.local/share/applications" || true; fi
     fi
 
     echo ""
     log_info "${C_GREEN}${C_BOLD}🎉 Installation Complete!${C_RESET}"
     log_info "  ${C_CYAN}▸${C_RESET} Launch:    ${C_BOLD}antigravity${C_RESET}"
     log_info "  ${C_CYAN}▸${C_RESET} Workspace: ${C_BOLD}$WORKSPACE_DIR${C_RESET}"
-    log_info "  ${C_CYAN}▸${C_RESET} Manager:   ${C_BOLD}antigravity-manager${C_RESET}"
     
     mkdir -p "$STATE_DIR"
     echo '{"method": "tarball", "version": "'"$SCRIPT_VERSION"'"}' > "$STATE_FILE"
 }
 
 do_remove() {
-    if [ "$AUTO" -ne 1 ]; then
+    JSON_METHOD="remove"
+    if [ "$AUTO" -ne 1 ] && [ "$JSON_OUT" -ne 1 ]; then
         echo -ne "${C_RED}⚠ Are you sure you want to uninstall Antigravity? [y/N]: ${C_RESET}"
         read confirm < /dev/tty
         case "$confirm" in
@@ -380,7 +439,6 @@ do_remove() {
     fi
     log_info "${C_RED}🧹 Removing Google Antigravity...${C_RESET}"
     
-    # Deterministic uninstall using STATE_FILE
     if [ -f "$STATE_FILE" ]; then
         local method
         method=$(grep -o '"method": "[^"]*' "$STATE_FILE" | grep -o '[^"]*$')
@@ -388,12 +446,8 @@ do_remove() {
         
         case "$method" in
             "brew")
-                if [ "$PLATFORM" = "Darwin" ]; then
-                    run_cmd brew uninstall --cask antigravity || true
-                else
-                    run_cmd brew uninstall antigravity || true
-                fi
-                ;;
+                if [ "$PLATFORM" = "Darwin" ]; then run_cmd brew uninstall --cask antigravity || true
+                else run_cmd brew uninstall antigravity || true; fi ;;
             "repo")
                 detect_distro
                 if command -v apt &> /dev/null && [ -f /etc/apt/sources.list.d/antigravity.list ]; then
@@ -402,55 +456,107 @@ do_remove() {
                 elif command -v dnf &> /dev/null && [ -f /etc/yum.repos.d/antigravity.repo ]; then
                     run_cmd sudo dnf remove -y antigravity || true
                     sudo rm -f /etc/yum.repos.d/antigravity.repo
-                fi
-                ;;
-            "tarball")
-                # Tarball cleanup happens for all as fallback below
-                ;;
+                fi ;;
+            "tarball") ;;
         esac
         rm -f "$STATE_FILE"
     else
         log_warn "No state file found. Using heuristic removal..."
-        # Heuristic fallback
         detect_distro
         if command -v apt &> /dev/null && [ -f /etc/apt/sources.list.d/antigravity.list ]; then
-            run_cmd sudo apt remove -y antigravity || true
-            sudo rm -f /etc/apt/sources.list.d/antigravity.list
+            run_cmd sudo apt remove -y antigravity || true; sudo rm -f /etc/apt/sources.list.d/antigravity.list
         elif command -v dnf &> /dev/null && [ -f /etc/yum.repos.d/antigravity.repo ]; then
-            run_cmd sudo dnf remove -y antigravity || true
-            sudo rm -f /etc/yum.repos.d/antigravity.repo
+            run_cmd sudo dnf remove -y antigravity || true; sudo rm -f /etc/yum.repos.d/antigravity.repo
         elif check_brew; then
-            if [ "$PLATFORM" = "Darwin" ]; then
-                run_cmd brew uninstall --cask antigravity || true
-            else
-                run_cmd brew uninstall antigravity || true
-            fi
+            if [ "$PLATFORM" = "Darwin" ]; then run_cmd brew uninstall --cask antigravity || true
+            else run_cmd brew uninstall antigravity || true; fi
         fi
     fi
 
-    # Cleanup standalone files (always run to be safe)
-    rm -rf "$APP_DIR"
-    rm -f "$BIN_DIR/antigravity"
-    rm -f "$DESKTOP_FILE_SYS"
-    rm -f "$DESKTOP_FILE_USER"
-    
-    if command -v update-desktop-database &> /dev/null; then
-        run_cmd update-desktop-database "$HOME/.local/share/applications" || true
-    fi
-    
+    rm -rf "$APP_DIR" "$BIN_DIR/antigravity" "$DESKTOP_FILE_SYS" "$DESKTOP_FILE_USER"
+    if command -v update-desktop-database &> /dev/null; then run_cmd update-desktop-database "$HOME/.local/share/applications" || true; fi
     log_info "${C_GREEN}✅ Uninstalled successfully.${C_RESET} (Note: Your code in $WORKSPACE_DIR was kept safe)."
+}
+
+render_menu() {
+    local selected=$1
+    echo -e "${C_BOLD}Select an install method${C_RESET} ${C_GREEN}(★ = recommended)${C_RESET}"
+    local options=(
+        "Homebrew      $([ "$RECOMMENDED" = "1" ] && echo -e "${C_GREEN}★  ${C_RESET}")cross-platform, no sudo"
+        "System Repo   $([ "$RECOMMENDED" = "2" ] && echo -e "${C_GREEN}★  ${C_RESET}")APT/DNF, auto-updates, needs sudo"
+        "Tarball       $([ "$RECOMMENDED" = "3" ] && echo -e "${C_GREEN}★  ${C_RESET}")manual, installs to ~/.local"
+        "Save manager  add 'antigravity-manager' command"
+        "Uninstall     remove Antigravity"
+        "Remove mgr    remove this script"
+        "Cancel"
+    )
+    for i in "${!options[@]}"; do
+        if [ "$i" -eq "$selected" ]; then
+            echo -e "  ${C_CYAN}❯ ${C_BOLD}${options[$i]}${C_RESET}"
+        else
+            echo -e "    ${options[$i]}"
+        fi
+    done
+    echo -e "\n${C_DIM}(Use up/down arrows to move [1-7], Enter to select)${C_RESET}"
+}
+
+interactive_menu() {
+    local selected=0
+    local num_opts=7
+    
+    tput civis 2>/dev/null || true # hide cursor
+    # Print initial menu
+    render_menu $selected
+    
+    while true; do
+        read -rsn1 key < /dev/tty
+        case "$key" in
+            $'\x1b') # ESC
+                read -rsn1 key2 < /dev/tty
+                if [[ "$key2" == "[" ]]; then
+                    read -rsn1 key3 < /dev/tty
+                    if [[ "$key3" == "A" ]]; then # Up
+                        ((selected--))
+                        [ $selected -lt 0 ] && selected=$((num_opts-1))
+                    elif [[ "$key3" == "B" ]]; then # Down
+                        ((selected++))
+                        [ $selected -ge $num_opts ] && selected=0
+                    fi
+                fi
+                ;;
+            "k"|"w") # Up fallback
+                ((selected--))
+                [ $selected -lt 0 ] && selected=$((num_opts-1))
+                ;;
+            "j"|"s") # Down fallback
+                ((selected++))
+                [ $selected -ge $num_opts ] && selected=0
+                ;;
+            "") # Enter
+                break
+                ;;
+        esac
+        # Redraw
+        # Move cursor up num_opts + 2 (header and footer)
+        echo -en "\033[$((num_opts + 3))A"
+        render_menu $selected
+    done
+    tput cnorm 2>/dev/null || true
+    echo "" # breathing room
+    return $((selected + 1))
 }
 
 print_usage() {
     echo -e "${C_BOLD}Antigravity Manager v${SCRIPT_VERSION}${C_RESET}"
     echo -e "${C_DIM}Usage:${C_RESET} $0 [OPTION]"
     echo "  --install         Interactive installation wizard (default)"
-    echo "  --auto            Headless auto-install (picks recommended method)"
+    echo "  --auto            Headless auto-install"
     echo "  --install-brew    Headless Homebrew install"
     echo "  --install-repo    Headless System Repo install"
     echo "  --install-tarball Headless Tarball install"
     echo "  --remove          Uninstall Antigravity"
-    echo "  --verbose         Enable verbose logging (outputs to terminal and $LOG_FILE)"
+    echo "  --json            Output machine-readable JSON at end (disables prompts)"
+    echo "  --verbose         Enable verbose logging"
     echo "  --quiet           Suppress non-error output"
     echo "  --version         Show version"
     echo "  --help            Show this help"
@@ -466,6 +572,7 @@ for arg in "$@"; do
         --install-repo) ACTION="repo"; AUTO=1 ;;
         --install-tarball) ACTION="tarball"; AUTO=1 ;;
         --remove) ACTION="remove" ;;
+        --json) JSON_OUT=1; QUIET=1 ;;
         --verbose) VERBOSE=1 ;;
         --quiet) QUIET=1 ;;
         --version) ACTION="version" ;;
@@ -475,76 +582,48 @@ done
 
 if [ "$ACTION" = "version" ]; then
     echo "Antigravity Manager v$SCRIPT_VERSION"
+    trap - EXIT INT TERM # skip json output
     exit 0
 elif [ "$ACTION" = "help" ]; then
     print_usage
+    trap - EXIT INT TERM
     exit 0
 fi
 
-# We only check dependencies for commands that do work
 check_dependencies
 detect_platform
 
 case "$ACTION" in
-    remove)
-        do_remove
-        exit 0
-        ;;
+    remove) do_remove ;;
     auto)
         log_info "${C_MAG}🚀 Starting headless auto-install...${C_RESET}"
         if [ "$RECOMMENDED" = "1" ]; then install_brew; save_manager_locally
         elif [ "$RECOMMENDED" = "2" ]; then install_repo; save_manager_locally
         else do_install_tarball; save_manager_locally
-        fi
-        exit 0
-        ;;
-    brew)
-        install_brew; save_manager_locally
-        exit 0
-        ;;
-    repo)
-        install_repo; save_manager_locally
-        exit 0
-        ;;
-    tarball)
-        do_install_tarball; save_manager_locally
-        exit 0
-        ;;
+        fi ;;
+    brew) install_brew; save_manager_locally ;;
+    repo) install_repo; save_manager_locally ;;
+    tarball) do_install_tarball; save_manager_locally ;;
     install|"")
+        if [ "$JSON_OUT" -eq 1 ]; then
+            log_error "Cannot use --json without specifying an explicit headless install method (e.g. --auto)"
+            exit 1
+        fi
         log_info "${C_BLUE}${C_BOLD}========== 🚀 Google Antigravity Setup v${SCRIPT_VERSION} ==========${C_RESET}"
         print_system_info
         echo ""
-        echo -e "${C_BOLD}Select an install method${C_RESET} ${C_GREEN}(★ = recommended)${C_RESET}"
-        echo -e "  ${C_CYAN}1)${C_RESET} Homebrew      $([ "$RECOMMENDED" = "1" ] && echo -e "${C_GREEN}★${C_RESET}  ") ${C_GREEN}cross-platform, no sudo${C_RESET}"
-        echo -e "  ${C_CYAN}2)${C_RESET} System Repo   $([ "$RECOMMENDED" = "2" ] && echo -e "${C_GREEN}★${C_RESET}  ") ${C_GREEN}APT/DNF, auto-updates, needs sudo${C_RESET}"
-        echo -e "  ${C_CYAN}3)${C_RESET} Tarball       $([ "$RECOMMENDED" = "3" ] && echo -e "${C_GREEN}★${C_RESET}  ") ${C_YELLOW}manual, installs to ~/.local${C_RESET}"
-        echo -e "  ${C_CYAN}4)${C_RESET} Save manager  ${C_CYAN}add 'antigravity-manager' command${C_RESET}"
-        echo -e "  ${C_CYAN}5)${C_RESET} Uninstall     ${C_RED}remove Antigravity${C_RESET}"
-        echo -e "  ${C_CYAN}6)${C_RESET} Remove manager"
-        echo -e "  ${C_CYAN}7)${C_RESET} Cancel"
-        echo -ne "${C_BOLD}Pick [1-7]: ${C_RESET}"
-        read choice < /dev/tty
-    
-        echo "" # Add a blank line for breathing room
+        
+        interactive_menu
+        choice=$?
     
         case "$choice" in
-            1) install_brew; echo ""; save_manager_locally ;;
-            2) install_repo; echo ""; save_manager_locally ;;
-            3) do_install_tarball; echo ""; save_manager_locally ;;
+            1) install_brew; save_manager_locally ;;
+            2) install_repo; save_manager_locally ;;
+            3) do_install_tarball; save_manager_locally ;;
             4) save_manager_locally ;;
             5) do_remove ;;
             6) remove_manager_script ;;
-            "Google"|"google"|"GOOGLE")
-                log_info "${C_MAG}🎓 Easter Egg Found! Opening the Course Catalog Lab...${C_RESET}"
-                if [ "$PLATFORM" = "Darwin" ]; then
-                    open "https://wtg-codes.github.io/course-catalog/" >/dev/null 2>&1 || log_warn "Please open this link in your browser: https://wtg-codes.github.io/course-catalog/"
-                elif command -v xdg-open >/dev/null 2>&1; then
-                    xdg-open "https://wtg-codes.github.io/course-catalog/" >/dev/null 2>&1 || log_warn "Please open this link in your browser: https://wtg-codes.github.io/course-catalog/"
-                else
-                    log_warn "Please open this link in your browser: https://wtg-codes.github.io/course-catalog/"
-                fi
-                ;;
-            *) log_warn "Cancelled."; exit 0 ;;
+            7) log_warn "Cancelled."; trap - EXIT INT TERM; exit 0 ;;
         esac
         ;;
 esac

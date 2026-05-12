@@ -8,6 +8,10 @@ Format follows [Keep a Changelog](https://keepachangelog.com/).
 ## [Unreleased]
 
 ### Added
+- **Interactive TUI Menu:** The interactive installer now uses a sleek arrow-key menu instead of raw text prompts.
+- **Async Loading Spinners:** Long-running operations like `tar` and `apt` now feature non-blocking visual spinners.
+- **Auto PATH Injection:** The installer can now automatically inject `~/.local/bin` into `~/.bashrc`, `~/.zshrc`, or `config.fish`.
+- **JSON Output Mode:** Added `--json` flag to emit a single machine-readable status object instead of colored logs.
 - **Headless Mode:** Added `--auto`, `--install-brew`, `--install-repo`, and `--install-tarball` flags for non-interactive automation.
 - **Logging System:** Added robust logging to `/tmp/antigravity-install.log` with `--verbose` and `--quiet` flags.
 - **State Management:** Added an `install.json` state file to track the install method for perfectly clean uninstalls.
