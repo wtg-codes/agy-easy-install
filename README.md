@@ -25,14 +25,7 @@ Paste the command, pick an option, and you're up and running.
 curl -fSsL "https://raw.githubusercontent.com/wtg-codes/agv-easy-install/main/antigravity-manager.sh" | bash
 ```
 
-**Option C — Homebrew** *(macOS & Linux)*
-
-```bash
-brew install --cask antigravity   # macOS
-brew install antigravity           # Linux
-```
-
-**Option D — Advanced (Headless / Automation)**
+**Option C — Advanced (Headless / Automation)**
 
 The script supports non-interactive execution for CI/CD and provisioning tools:
 ```bash
