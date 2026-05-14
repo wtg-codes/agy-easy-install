@@ -128,7 +128,7 @@ curl -fSsL "https://edgedl.me.gvt1.com/edgedl/release2/j0qc3/antigravity/stable/
 
 ## 🛠️ Troubleshooting & Architecture
 
-Having issues? Curious how the installer works under the hood?
+Having issues? Curious how the installer works under the hood or what's on the roadmap?
 
 - **[Implementation Plan & Architecture](docs/architecture/implementation_plan.md)**
 - **[Homebrew Install Details](docs/architecture/install-homebrew.md)**
