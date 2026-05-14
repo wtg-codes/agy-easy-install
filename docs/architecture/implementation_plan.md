@@ -165,7 +165,10 @@ python3 docs/images/capture.py
 
 | Platform | Doc | Status |
 |---|---|---|
-| Linux (primary) | [platform-linux.md](platform-linux.md) | ✅ Tested |
+| Linux (umbrella) | [platform-linux.md](platform-linux.md) | ✅ Tested |
+| ↳ Debian/Ubuntu (APT) | [platform-linux-apt.md](platform-linux-apt.md) | ✅ Tested |
+| ↳ Fedora/RHEL (DNF) | [platform-linux-dnf.md](platform-linux-dnf.md) | ✅ Tested |
+| ↳ Atomic/Immutable | [platform-linux-atomic.md](platform-linux-atomic.md) | ✅ Tested |
 | macOS | [platform-macos.md](platform-macos.md) | ⚠️ Beta |
 | Crostini (ChromeOS) | [platform-crostini.md](platform-crostini.md) | 📋 Planned |
 | Windows (WSL2 + Git Bash) | [platform-windows.md](platform-windows.md) | 📋 Planned |

@@ -7,7 +7,13 @@
 
 ## Overview
 
-Linux is the primary and fully-tested platform. All three install methods work, and the UI has been validated on multiple distributions.
+Linux is the primary and fully-tested platform. All three install methods work. This is the umbrella doc; see the sub-platform docs for distro-specific details:
+
+| Sub-Platform | Doc | Package Manager | Status |
+|---|---|---|---|
+| Debian/Ubuntu family | [platform-linux-apt.md](platform-linux-apt.md) | APT | ✅ Tested |
+| Fedora/RHEL family | [platform-linux-dnf.md](platform-linux-dnf.md) | DNF | ✅ Tested |
+| Atomic/Immutable | [platform-linux-atomic.md](platform-linux-atomic.md) | Homebrew / Tarball | ✅ Tested |
 
 ---
 
@@ -19,96 +25,68 @@ PLATFORM=$(uname -s)  # Returns "Linux"
 
 ### Distribution Detection (`detect_distro`)
 
-The script reads `/etc/os-release` to identify the distribution:
+Reads `/etc/os-release` to identify the distribution:
 
 ```bash
-DISTRO=$(grep -w ID /etc/os-release 2>/dev/null | cut -d= -f2 | tr -d '"')
+# Source the file and grab $ID
+. /etc/os-release
+DISTRO="$ID"
 ```
 
-Currently supported values and their install paths:
+### Recommendation Logic (`detect_platform`)
 
-| `$DISTRO` | Install Method | Package Manager |
-|---|---|---|
-| `ubuntu` | APT repo | `apt` |
-| `debian` | APT repo | `apt` |
-| `kali` | APT repo | `apt` |
-| `linuxmint` | APT repo | `apt` |
-| `fedora` | DNF repo | `dnf` |
-| `rhel` | DNF repo | `dnf` |
-| `centos` | DNF repo | `dnf` |
-| `amzn` | DNF repo | `dnf` |
-| Any (with Homebrew) | Homebrew | `brew` |
-| Any | Tarball | Manual |
+The script auto-recommends the best install method:
 
-### Atomic/Immutable Linux (Bluefin, Silverblue, etc.)
-
-These distributions use `rpm-ostree` or `ujust` and have read-only `/usr`. Key considerations:
-
-- **APT/DNF is NOT available** (or is layered and discouraged)
-- **Homebrew works** — it installs to `$HOME/.linuxbrew/`
-- **Tarball works** — it installs to `~/.local/lib/`
-- Detection: `rpm-ostree status` succeeds, or `/etc/os-release` contains `VARIANT_ID=*atomic*`
-
-**Current status:** Works via Homebrew and Tarball. No special detection code yet — shows as the base distro (e.g., "Fedora").
+```
+Is Atomic?
+├── YES → Homebrew (if available), else Tarball
+└── NO
+    ├── Has Homebrew? → Homebrew
+    ├── Has APT or DNF? → System Repo
+    └── Default → Tarball
+```
 
 ---
 
-## Architecture Details
+## Shared Linux Behavior
 
-### Chrome Detection
+### Chrome Detection Priority
 
-Priority order (see `src/20_platform.sh:52-95`):
-1. **Flatpak Chrome** (system-wide) → `/var/lib/flatpak/app/com.google.Chrome/.../chrome`
+1. **Flatpak Chrome** (system) → `/var/lib/flatpak/app/com.google.Chrome/.../chrome`
 2. **Flatpak Chrome** (user) → `~/.local/share/flatpak/app/com.google.Chrome/.../chrome`
-3. **System package Chrome** → `google-chrome-stable`, `google-chrome`, `chromium`, `chromium-browser`
+3. **System package** → `google-chrome-stable`, `google-chrome`, `chromium`, `chromium-browser`
 
 ### PATH Setup
 
-Shell detection logic (`src/20_platform.sh:1-49`):
-- Zsh → writes to `~/.zshrc`
-- Fish → writes to `~/.config/fish/config.fish`
-- Bash (default) → writes to `~/.bashrc`
-- Idempotent — checks if `$HOME/.local/bin` is already in the file before writing
+Shell detection (`src/20_platform.sh:1-49`):
+- Zsh → `~/.zshrc`
+- Fish → `~/.config/fish/config.fish`
+- Bash (default) → `~/.bashrc`
+- Idempotent — checks before writing
 
 ### `.desktop` File
 
-Created at two locations:
-- **System apps:** `~/.local/share/applications/google-antigravity.desktop`
-- **Desktop shortcut:** `$(xdg-user-dir DESKTOP)/google-antigravity.desktop` (with fallback to `$HOME/Desktop`)
+Created at:
+- `~/.local/share/applications/google-antigravity.desktop` (system apps)
+- `$(xdg-user-dir DESKTOP)/google-antigravity.desktop` (desktop shortcut)
 
-Post-install:
-- `chmod +x` on the desktop shortcut
-- `gio set metadata::trusted true` if `gio` is available (GNOME trust)
-- `update-desktop-database` if available
+Post-install trust: `chmod +x`, `gio set metadata::trusted true`, `update-desktop-database`.
 
 ### `gum` Bootstrap
 
-Downloads from GitHub releases:
 - `Linux_x86_64` for Intel/AMD
-- `Linux_arm64` for ARM (e.g., ARM Chromebooks, Raspberry Pi)
+- `Linux_arm64` for ARM
 
-### SHA-256 Verification
+### SHA-256
 
-Uses `sha256sum` from GNU Coreutils (always available on Linux).
-
----
-
-## Tested Distributions
-
-| Distribution | Version | Status |
-|---|---|---|
-| Bluefin (Fedora Atomic) | 43 | ✅ Tested (Homebrew + Tarball) |
-| Ubuntu | 22.04, 24.04 | ✅ Tested (APT + Tarball) |
-| Fedora | 40+ | ✅ Tested (DNF) |
-| Debian | 12 | ✅ Expected to work (same as Ubuntu APT path) |
+Uses `sha256sum` from GNU Coreutils (always available).
 
 ---
 
-## Known Quirks
+## Known Quirks (All Linux)
 
 | Quirk | Detail |
 |---|---|
-| **Flatpak Chrome sandboxing** | Antigravity can't launch Flatpak Chrome directly via `flatpak run`. Must use the raw binary path inside the Flatpak installation. |
-| **Wayland** | Some Electron apps need `--ozone-platform-hint=auto`. Not currently set by our installer. |
-| **SELinux (Fedora/RHEL)** | Tarball binaries in `~/.local` may need context labels. Not yet handled. |
-| **Immutable distros** | `rpm-ostree` layering is slow and discouraged. Homebrew or Tarball is preferred. |
+| **Flatpak Chrome sandboxing** | Must use raw binary path, not `flatpak run` |
+| **Wayland** | Some Electron apps need `--ozone-platform-hint=auto` |
+| **SELinux (Fedora/RHEL)** | Tarball binaries in `~/.local` may need context labels |

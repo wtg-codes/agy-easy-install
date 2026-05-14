@@ -84,6 +84,7 @@
    - `README.md` — platform table, roadmap, troubleshooting
    - `docs/index.html` — if menus or UI changed
    - `docs/images/render.html` + `capture.py` — if menu text changed
+   - `docs/architecture/` — if platform support, install methods, or architecture changed
    - `CHANGELOG.md` — for user-facing changes
 
 ---
@@ -143,6 +144,9 @@ Before submitting any PR, the relevant phase gate(s) must pass.
 │   └── architecture/
 │       ├── implementation_plan.md     ← Living architecture doc
 │       ├── platform-linux.md          ← Linux support notes (primary)
+│       ├── platform-linux-apt.md      ← Debian/Ubuntu APT specifics
+│       ├── platform-linux-dnf.md      ← Fedora/RHEL DNF specifics
+│       ├── platform-linux-atomic.md   ← Bluefin/Silverblue immutable
 │       ├── platform-macos.md          ← macOS support notes (beta)
 │       ├── platform-crostini.md       ← ChromeOS/Crostini support notes
 │       ├── platform-windows.md        ← WSL2/Git Bash support notes
