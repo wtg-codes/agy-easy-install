@@ -1,119 +1,91 @@
-# Install Method: Homebrew — Architecture Notes
+# Install Method: Homebrew
 
+> **Status:** ✅ Tested
 > **Last updated:** 2026-05-13
-> **Source:** `src/30_installers.sh:1-32` (`install_brew`)
+> **Parent:** [implementation_plan.md](implementation_plan.md)
 
 ---
 
 ## Overview
 
-Homebrew is the **recommended** install method. It provides cross-platform support (Linux + macOS), automatic updates, and no-sudo installation. Our script recommends it via the `★` star rating in the install sub-menu.
+Homebrew is the officially recommended installation method for macOS and Atomic Linux distributions (like Bluefin). It provides a clean, user-space installation path that avoids modifying root filesystems or relying on `sudo`.
+
+Antigravity is distributed via a **Custom Tap** (a third-party repository) rather than the `homebrew/core` repository.
+
+### Formula vs Cask Architecture
+
+Homebrew uses a Ruby Domain Specific Language (DSL).
+- **Formula (`.rb`):** A procedural recipe used for compiling software from source or installing pre-compiled CLI binaries. Installed into the `Cellar`.
+- **Cask (`.rb`):** A declarative definition used for installing pre-compiled GUI applications (`.app`, `.dmg`) directly into `/Applications`.
+
+**Antigravity Architecture:** 
+Because Antigravity relies heavily on a terminal CLI experience but requires Google Chrome (a GUI browser) to function, we distribute the CLI component as a **Formula** and use the `depends_on cask: "google-chrome"` stanza to ensure the browser is present.
 
 ---
 
-## How It Works
-
-### Flow
-
-```
-install_brew()
-├── check_brew()               # Is `brew` in PATH?
-│   ├── YES → continue
-│   └── NO  → macOS: exit with error
-│             Linux: fall back to tarball
-├── Platform check
-│   ├── macOS: brew install --cask antigravity
-│   └── Linux: brew install antigravity
-├── configure_chrome_path()    # Find and set Chrome binary
-└── Write state file           # {"method": "brew", ...}
-```
-
-### Key Code
+## Installation Flow
 
 ```bash
-# macOS: GUI app → uses --cask
-brew install --cask antigravity
+# 1. Tap the custom repository
+brew tap wtg-codes/homebrew-antigravity
 
-# Linux: CLI/desktop app → uses formula
+# 2. Install the formula
 brew install antigravity
 ```
 
-### Fallback Behavior
+**Source:** `src/30_installers.sh:23-38`
 
-If Homebrew is not installed:
-- **macOS:** Fatal error — tarball is not supported on macOS.
-- **Linux:** Automatically falls back to `do_install_tarball()`.
-
-If the formula is not found:
-- **macOS:** Fatal error (no fallback).
-- **Linux:** Falls back to `do_install_tarball()`.
+### Why a Custom Tap?
+We use a custom tap (`wtg-codes/homebrew-antigravity`) instead of submitting to `homebrew-core` because:
+1. `homebrew-core` has strict popularity metrics that new projects cannot meet.
+2. We retain full control over the release cadence.
+3. We can mandate Cask dependencies (like Chrome), which `homebrew-core` often rejects for standard CLI tools.
 
 ---
 
-## Homebrew Concepts
+## Security: The Homebrew Sandbox
 
-### Formula vs Cask
+Homebrew employs a sandboxing mechanism during installation to prevent packages from maliciously or accidentally writing outside of the designated Homebrew prefix (`/opt/homebrew` on Apple Silicon, `/usr/local` on Intel).
 
-| Type | `brew install <name>` | `brew install --cask <name>` |
-|---|---|---|
-| **For** | CLI tools, libraries | GUI apps (.app bundles) |
-| **Install location** | `$(brew --prefix)/bin/` | `/Applications/` (macOS) |
-| **Typical format** | Source or pre-built binary | `.dmg`, `.pkg`, `.zip` |
-
-We use:
-- **Formula** on Linux (installs to `~/.linuxbrew/bin/`)
-- **Cask** on macOS (installs to `/Applications/`)
-
-### Taps (Custom Repositories)
-
-Since Antigravity is proprietary, it won't be in `homebrew/core`. It needs a custom Tap:
-
-```bash
-# Users would run:
-brew tap wtg-codes/antigravity
-brew install antigravity
-```
-
-**To create the tap:**
-1. Create GitHub repo: `wtg-codes/homebrew-antigravity`
-2. Add formula file: `Formula/antigravity.rb`
-3. Formula downloads the tarball, verifies SHA-256, and installs
-
-**Status:** 📋 The tap does not exist yet. This is required before Homebrew install actually works.
+> [!WARNING]
+> **macOS vs Linux Architecture:**
+> - **macOS:** Homebrew uses the native `sandbox-exec` utility. Formulae cannot write to arbitrary system paths during installation.
+> - **Linux:** **Homebrew on Linux does not have a sandbox.** Installation scripts run with the permissions of the user invoking `brew install`. While our formula is safe, be aware that Linuxbrew lacks this strict macOS security layer.
 
 ---
 
-## Removal
+## Continuous Integration & Release Automation
+
+To ensure `brew install antigravity` always pulls the latest version, the custom tap repository (`wtg-codes/homebrew-antigravity`) must be kept in sync with the main project releases.
+
+**Best Practice Automation:**
+We utilize GitHub Actions (e.g., `mislav/bump-homebrew-formula-action`) in the main repository to automate this:
+1. A new release is tagged in the main repo.
+2. A GitHub Action builds the tarball and calculates the SHA-256 hash.
+3. The Action uses a scoped Personal Access Token (PAT) to commit the new version string and SHA-256 hash directly into the `antigravity.rb` formula file living in the tap repository.
+
+---
+
+## Uninstall & Rollback
 
 ```bash
-# State file says method=brew
-# macOS:
-brew uninstall --cask antigravity
-
-# Linux:
+# Remove the package
 brew uninstall antigravity
+
+# Optional: Remove the tap to stop receiving updates
+brew untap wtg-codes/homebrew-antigravity
 ```
 
-Also removes: `$APP_DIR`, `$BIN_DIR/antigravity`, `.desktop` files.
+**Source:** `src/30_installers.sh:177-179`
+
+### Fallback Logic
+If `brew install antigravity` fails inside the installation script, the script catches the non-zero exit code and cleanly falls through to the **Tarball** installation method. This ensures the user still gets a working installation without seeing a hard failure.
 
 ---
 
-## Platform Compatibility
+## Essential Homebrew Skills
 
-| Platform | Command | Status |
-|---|---|---|
-| Linux (Ubuntu, Fedora, etc.) | `brew install antigravity` | ✅ Code ready (needs tap) |
-| Linux (Atomic/Immutable) | `brew install antigravity` | ✅ Best option for these distros |
-| macOS (Apple Silicon) | `brew install --cask antigravity` | ⚠️ Code ready, needs validation |
-| macOS (Intel) | `brew install --cask antigravity` | ⚠️ Code ready, needs validation |
-| WSL2 | `brew install antigravity` | 📋 Should work (untested) |
-| Crostini | `brew install antigravity` | 📋 Should work (untested) |
-
----
-
-## Open Issues
-
-1. **No Homebrew tap exists yet** — `brew install antigravity` will fail with "formula not found"
-2. **Cask formula not created** — needed for macOS `.app` bundle install
-3. **Auto-update:** Homebrew handles updates, but the user must run `brew upgrade`
-4. **Homebrew install itself** — if user doesn't have Homebrew, our script doesn't install it (intentional — we don't modify the host package manager)
+1. **`brew info antigravity`**: Display detailed information about the formula, including dependencies and caveats.
+2. **`brew audit --strict antigravity`**: Run this command locally when developing the formula to ensure it meets Homebrew's stylistic and structural guidelines.
+3. **`brew install --build-from-source antigravity`**: Force compilation rather than using a pre-compiled bottle (useful for debugging architecture-specific issues).
+4. **`brew doctor`**: The first step in troubleshooting any Homebrew environment issues.

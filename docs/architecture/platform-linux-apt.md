@@ -22,7 +22,7 @@
 
 ---
 
-## Install Flow
+## Install Flow & Best Practices
 
 ```bash
 # 1. Create keyring directory
@@ -45,17 +45,52 @@ sudo apt install -y antigravity
 
 **Source:** `src/30_installers.sh:40-55`
 
+### Security: GPG Keyrings
+
+- **`apt-key` is Deprecated:** Modern Debian/Ubuntu removes `apt-key` due to its global trust model (a key added there could authorize packages from *any* repo).
+- **`signed-by` Scoping:** We explicitly bind our repository to its GPG key using `signed-by=/etc/apt/keyrings/antigravity-repo-key.gpg`. This prevents "key confusion" attacks.
+- **`gpg --dearmor`:** APT requires keys in a binary format. If the upstream key is ASCII-armored (starts with `-----BEGIN PGP PUBLIC KEY BLOCK-----`), it must be piped through `gpg --dearmor`.
+
+*📚 Reference:* [Debian Repository Format](https://wiki.debian.org/DebianRepository/Format)
+
 ---
 
-## Security
+## APT Pinning & Priority (`apt-cache policy`)
 
-- **`signed-by` is used** — GPG key scoped to this repo only (modern best practice)
-- **Key stored in `/etc/apt/keyrings/`** — not the deprecated global `apt-key` store
-- **`gpg --dearmor`** — converts ASCII-armored key to binary format
+If a user has multiple repositories providing the `antigravity` package, APT uses a priority system (pinning) to decide which one to install. By default, installed packages have a priority of 100, and available uninstalled packages have 500.
+
+You can inspect exactly how APT evaluates the Antigravity package:
+```bash
+apt-cache policy antigravity
+```
+*Output will show the candidate version and which repository it belongs to.*
+
+Advanced users can create custom pinning rules in `/etc/apt/preferences.d/` if they need to force installations from specific channels.
+
+*📚 Reference:* [AptPreferences(5) Manual](https://manpages.ubuntu.com/manpages/focal/man5/apt_preferences.5.html)
 
 ---
 
-## Removal
+## Ubuntu 24.04+ DEB822 Format (`.sources`)
+
+Ubuntu 24.04 (Noble Numbat) and later prefer the new **DEB822** format over the traditional one-line `.list` format. DEB822 uses a stanza-based structure. 
+
+While our current `.list` script **still works** on 24.04, it is considered legacy.
+
+**Future Architecture Improvement:**
+Instead of a `.list` file, the installer should create `/etc/apt/sources.list.d/antigravity.sources`:
+```text
+Types: deb
+URIs: https://us-central1-apt.pkg.dev/projects/antigravity-auto-updater-dev/
+Suites: antigravity-debian
+Components: main
+Signed-By: /etc/apt/keyrings/antigravity-repo-key.gpg
+```
+*Note: Tools like `apt modernize-sources` can automatically migrate older files.*
+
+---
+
+## Removal & Cleanup
 
 ```bash
 sudo apt remove -y antigravity
@@ -65,42 +100,21 @@ sudo rm -f /etc/apt/sources.list.d/antigravity.list
 
 **Source:** `src/30_installers.sh:180-182`
 
-> [!NOTE]
-> The GPG key (`antigravity-repo-key.gpg`) is NOT removed during uninstall. This is harmless but leaves a stale key. Consider adding cleanup in a future update.
+> [!WARNING]
+> **Stale Key Issue:** The GPG key (`antigravity-repo-key.gpg`) is NOT currently removed during uninstall. This is harmless but leaves an orphaned key. A future update should add key cleanup to the removal script.
 
----
+### Rollback on Failure
 
-## Rollback on Failure
-
-If `apt install` fails, the `.list` file is removed to prevent broken `apt update` on future runs:
-
+If `apt install` fails mid-flight, the `.list` file is intentionally deleted to prevent broken `apt update` commands on future runs:
 ```bash
 sudo rm -f /etc/apt/sources.list.d/antigravity.list
 ```
 
 ---
 
-## Ubuntu 24.04+ Note (DEB822 Format)
+## Essential APT Skills & Tools
 
-Ubuntu 24.04 and later prefer the new DEB822 `.sources` format over the one-line `.list` format. Our current `.list` file **still works** on 24.04, but generates a deprecation warning during `apt update`.
-
-**Future improvement:** Detect Ubuntu version and use `.sources` format:
-
-```
-# /etc/apt/sources.list.d/antigravity.sources
-Types: deb
-URIs: https://us-central1-apt.pkg.dev/projects/antigravity-auto-updater-dev/
-Suites: antigravity-debian
-Components: main
-Signed-By: /etc/apt/keyrings/antigravity-repo-key.gpg
-```
-
----
-
-## Available Install Methods
-
-| Method | Status | Notes |
-|---|---|---|
-| **System Repo (APT)** | ✅ Recommended | Auto-updates via `apt upgrade` |
-| **Homebrew** | ✅ Works | If brew is installed |
-| **Tarball** | ✅ Works | Universal fallback |
+1. **`apt-cache policy`**: Check package priorities and repository sources.
+2. **`apt-mark hold antigravity`**: Prevent a package from being automatically upgraded (useful if a bad update breaks functionality).
+3. **`dpkg -L antigravity`**: List all files installed by the `antigravity` deb package to verify installation locations.
+4. **`gpg --show-keys`**: Inspect the contents and expiration date of the downloaded `.gpg` keyring file.

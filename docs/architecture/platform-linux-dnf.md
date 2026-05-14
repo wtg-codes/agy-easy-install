@@ -44,24 +44,60 @@ sudo dnf install -y antigravity
 
 ---
 
-## Security
+## Security & Package Integrity
 
 > [!WARNING]
-> **`gpgcheck=0` is set.** RPM packages are NOT cryptographically verified. This is because the upstream Google Artifact Registry does not provide GPG-signed RPMs.
+> **`gpgcheck=0` is set.** RPM packages are NOT cryptographically verified. This is because the upstream Google Artifact Registry does not currently provide GPG-signed RPMs.
 
-**What this means:** A compromised mirror or man-in-the-middle could serve a tampered package without detection.
+**What this means:** A compromised mirror or man-in-the-middle could serve a tampered package without DNF detecting it.
 
-**When this can be fixed:** When the upstream Artifact Registry starts signing RPMs. Then:
+**Future Architecture Improvement:**
+When the upstream Artifact Registry starts signing RPMs and repository metadata, the script must be updated to establish a secure chain of trust:
+
 ```ini
-gpgcheck=1
+gpgcheck=1       # Verify individual package signatures
+repo_gpgcheck=1  # Verify repomd.xml metadata signature
 gpgkey=https://us-central1-yum.pkg.dev/projects/antigravity-auto-updater-dev/RPM-GPG-KEY
 ```
 
-**Code comment:** There is an explanatory comment in the script per AGENTS.md rule 2.7.
+---
+
+## DNF5 vs DNF4 Architecture
+
+Fedora 41+ ships **DNF5** as the default package manager. DNF5 is a complete C++ rewrite of the older Python-based DNF4, utilizing the unified `libdnf5` library for faster metadata processing and reduced memory footprint.
+
+**Compatibility:**
+Our installer is immune to the CLI syntax changes between DNF4 and DNF5 because we write the `.repo` configuration file directly to `/etc/yum.repos.d/antigravity.repo`. 
+- **DNF4 method:** `dnf config-manager --add-repo`
+- **DNF5 method:** `dnf config-manager addrepo`
+- **Our method:** Direct file write (Works seamlessly across both).
+
+*📚 Reference:* [DNF5 Project Documentation](https://dnf5.readthedocs.io/en/latest/)
 
 ---
 
-## Removal
+## SELinux Considerations
+
+Fedora and RHEL have SELinux enabled by default in enforcing mode.
+
+- **System Repo (DNF):** Packages installed via DNF automatically receive the correct SELinux file contexts defined in the RPM spec. This is the safest approach.
+- **Tarball (`~/.local/bin/`):** Binaries installed manually may lack proper contexts, causing SELinux to block execution (e.g., if Chrome tries to execute a shell script). 
+
+**Fixing Tarball SELinux Issues:**
+If a user installs via Tarball and faces "Permission Denied" errors despite having `+x` permissions, they should restore the context:
+
+```bash
+# Set the binary context
+sudo semanage fcontext -a -t bin_t "$HOME/.local/bin/antigravity(/.*)?"
+sudo restorecon -v "$HOME/.local/bin/antigravity"
+```
+
+> [!CAUTION]
+> Do not use `chcon` to fix SELinux issues. `chcon` changes are temporary and will be wiped out during a system relabel or if `restorecon` is run on the home directory. Always use `semanage fcontext` for permanent rules.
+
+---
+
+## Removal & Cleanup
 
 ```bash
 sudo dnf remove -y antigravity
@@ -70,11 +106,9 @@ sudo rm -f /etc/yum.repos.d/antigravity.repo
 
 **Source:** `src/30_installers.sh:183-185`
 
----
+### Rollback on Failure
 
-## Rollback on Failure
-
-If `dnf install` fails, the `.repo` file is removed:
+If `dnf install` fails, the `.repo` file is immediately removed to prevent dependency resolution errors on future `dnf upgrade` commands:
 
 ```bash
 sudo rm -f /etc/yum.repos.d/antigravity.repo
@@ -82,36 +116,9 @@ sudo rm -f /etc/yum.repos.d/antigravity.repo
 
 ---
 
-## DNF5 vs DNF4
+## Essential DNF Skills & Tools
 
-Fedora 41+ ships **DNF5** as the default package manager. Key differences:
-
-| Feature | DNF4 | DNF5 |
-|---|---|---|
-| **Config format** | `.repo` files in `/etc/yum.repos.d/` | Same (compatible) |
-| **Add repo command** | `dnf config-manager --add-repo` | `dnf config-manager addrepo` |
-| **Our method** | Direct file write to `/etc/yum.repos.d/` | ✅ Works on both |
-
-Our script writes the `.repo` file directly rather than using `config-manager`, which avoids the DNF4/DNF5 syntax differences entirely.
-
----
-
-## SELinux Considerations
-
-Fedora and RHEL have SELinux enabled by default in enforcing mode:
-
-- **System packages** installed via DNF get correct SELinux contexts automatically
-- **Tarball binaries** in `~/.local/bin/` may need context labels if SELinux blocks execution
-- **Homebrew binaries** in `~/.linuxbrew/` are typically not affected (user context)
-
-Currently, our installer does **not** set SELinux contexts on tarball installs. This could cause issues on strict RHEL systems.
-
----
-
-## Available Install Methods
-
-| Method | Status | Notes |
-|---|---|---|
-| **System Repo (DNF)** | ✅ Recommended | Auto-updates via `dnf upgrade` |
-| **Homebrew** | ✅ Works | Popular on Fedora Workstation |
-| **Tarball** | ✅ Works | Universal fallback; SELinux may interfere |
+1. **`dnf history`**: View past transactions. Use `dnf history undo <id>` to rollback a bad installation.
+2. **`dnf repoquery -l antigravity`**: List all files provided by the installed RPM package.
+3. **`ausearch -m AVC,USER_AVC -ts recent`**: Search recent SELinux denial logs if Antigravity fails to launch or execute a command.
+4. **`audit2allow`**: Generates SELinux policy allow rules from logs (advanced troubleshooting tool).

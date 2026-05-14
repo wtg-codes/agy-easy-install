@@ -1,191 +1,82 @@
-# Windows Support — Architecture Notes
+# Windows (WSL2 & Git Bash) — Architecture Notes
 
 > **Status:** 📋 Planned
 > **Last updated:** 2026-05-13
+> **Parent:** [implementation_plan.md](implementation_plan.md)
 
 ---
 
-## Two Possible Paths
+## Overview
 
-Windows users can run bash scripts through two environments. They have very different characteristics:
+Windows support for Antigravity relies on its Unix-compatibility layers. There are two primary environments where a user might attempt to run the Antigravity installer on Windows: **WSL2** (Windows Subsystem for Linux) and **Git Bash** (MSYS2).
 
-| Environment | Kernel | Effort | Compatibility |
-|---|---|---|---|
-| **WSL2** | Real Linux kernel (VM) | Low | Near-native Linux |
-| **Git Bash** | Windows kernel (MSYS2 emulation) | High | Partial compatibility |
-
-**Recommendation:** Target WSL2 first. Git Bash is a stretch goal with significant limitations.
+Our architectural strategy handles these two environments very differently:
+1. **WSL2:** Treat as native Linux.
+2. **Git Bash:** Redirect the user to WSL2.
 
 ---
 
-## WSL2 (Windows Subsystem for Linux)
+## 1. WSL2 Architecture (Supported)
 
-### Detection
+WSL2 runs a true Linux kernel inside a lightweight Hyper-V virtual machine. From Antigravity's perspective, this is a standard Linux installation.
 
-Multiple reliable methods:
+### Detection Mechanism
 
+The `detect_platform` script identifies WSL by checking the kernel release string:
 ```bash
-# Method 1: Kernel version (most common)
-if uname -r | grep -qi microsoft; then
-    IS_WSL=true
-fi
-
-# Method 2: Environment variable (cleanest)
-if [ -n "$WSL_DISTRO_NAME" ]; then
-    IS_WSL=true
-    WSL_DISTRO="$WSL_DISTRO_NAME"  # e.g., "Ubuntu"
-fi
-
-# Method 3: Interop file
-if [ -f /proc/sys/fs/binfmt_misc/WSLInterop ]; then
-    IS_WSL=true
+if grep -q "microsoft" /proc/version 2>/dev/null; then
+    IS_WSL="yes"
 fi
 ```
 
-**Recommended:** Use method 2 first (`$WSL_DISTRO_NAME`), fall back to method 1.
+### Installation Flow
+If a user runs the installer inside an Ubuntu WSL2 instance, the script detects `ubuntu` and automatically defaults to the **System Repo (APT)** method, just like native Linux.
 
-### Integration with `detect_platform()`
+### The 9P Protocol Bottleneck
+WSL2 uses the **9P Protocol** to share files across the OS boundary (between NTFS and EXT4). This protocol introduces massive latency for heavy I/O operations (like `npm install` or executing agentic searches over large repos).
 
+> [!IMPORTANT]
+> **Best Practice:** Antigravity users on Windows *must* clone their repositories and run the agent inside the WSL filesystem (`/home/user/project`), **not** on the Windows mount (`/mnt/c/Users/...`). Running Antigravity against a project in `/mnt/c/` will result in severe performance degradation.
+
+### Interoperability & `.exe` Execution
+Antigravity can leverage WSL2's built-in interoperability. If the agent needs to open a file or URL on the host Windows machine, it can directly invoke Windows executables from the Linux shell:
 ```bash
-# Inside detect_platform(), after Linux distro detection:
-if [ -n "$WSL_DISTRO_NAME" ]; then
-    DISTRO_VARIANT="WSL"
-fi
+# Antigravity can open a URL in the native Windows browser
+explorer.exe "https://example.com"
 ```
-
-System info should show:
-```
-OS:   Ubuntu 24.04 (WSL) (x86_64)
-Best: ★ System Repo (APT)
-```
-
-### What Works in WSL2
-
-| Feature | Status | Notes |
-|---|---|---|
-| **APT install** | ✅ Works | If running Ubuntu/Debian WSL distro |
-| **DNF install** | ✅ Works | If running Fedora WSL distro |
-| **Tarball install** | ✅ Works | Standard Linux filesystem |
-| **`gum` bootstrap** | ✅ Works | Standard Linux binary |
-| **`sha256sum`** | ✅ Works | GNU Coreutils |
-| **`~/.bashrc` PATH** | ✅ Works | Default shell is Bash in most WSL distros |
-| **`.desktop` files** | ⚠️ Limited | No desktop environment by default |
-| **Browser opening** | ⚠️ Special | See below |
-
-### WSL-Specific Quirks
-
-#### 1. Browser Opening
-
-WSL has no native GUI browser. To open URLs, you can invoke Windows executables from WSL:
-
-```bash
-# Open URL in Windows default browser from WSL
-if [ "$IS_WSL" = true ]; then
-    cmd.exe /c start "$url" 2>/dev/null
-    # OR
-    wslview "$url"  # if wslu is installed
-fi
-```
-
-**`wslu`** is a collection of utilities for WSL that includes `wslview` (opens files/URLs in Windows). It's available via `apt install wslu` on Ubuntu WSL.
-
-#### 2. File System Performance
-
-WSL2 has poor performance when accessing Windows files (`/mnt/c/`). The installation should go to the Linux filesystem (`~/.local/lib/`), which is fast. Our default paths already do this.
-
-#### 3. `.desktop` Files
-
-WSL2 doesn't have a desktop environment by default, so `.desktop` files are useless. **Skip `.desktop` creation when WSL is detected:**
-
-```bash
-if [ "$DISTRO_VARIANT" != "WSL" ] && [ "$PLATFORM" != "Darwin" ]; then
-    # Create .desktop file
-fi
-```
-
-#### 4. `uname -s` is Still "Linux"
-
-WSL2 reports `uname -s` as `Linux` (because it IS Linux). Detection must use the kernel version string or environment variables, not the OS name.
+Tools like `wslview` (from `wslutilities`) can also be used as a wrapper to trigger default Windows applications.
 
 ---
 
-## Git Bash (MSYS2)
+## 2. Git Bash / MSYS2 (Not Supported)
 
-### Detection
+Git Bash is a collection of GNU utilities ported to Windows via the **MSYS2** compatibility layer (based on Cygwin).
 
+### Why Git Bash is Blocked
+While Git Bash looks like Linux, it is fundamentally different:
+- **No Native Linux Kernel:** It uses POSIX emulation. Unmodified Linux binaries (ELF format) will not run.
+- **Faux Filesystem:** Its filesystem root (`/`) maps to a hidden directory inside `C:\Program Files\Git`, which lacks standard Linux structures (`/etc/os-release`, systemd, package managers).
+- **Process Spawning:** Node.js or Python agents attempting to spawn child processes often fail or hang due to how MSYS2 handles POSIX `fork()` emulation.
+
+### The Redirect Strategy
+Rather than attempting to hack Antigravity to run natively on Windows via MSYS2, our architecture intercepts Git Bash executions and **hard-stops** the user, directing them to install WSL2.
+
+**Planned Detection Logic:**
 ```bash
-if [ "$OSTYPE" = "msys" ] || [ "$OSTYPE" = "cygwin" ]; then
-    IS_GITBASH=true
+if [ "$(uname -o 2>/dev/null)" = "Msys" ] || [ "$(uname -s 2>/dev/null | cut -c 1-5)" = "MINGW" ]; then
+    echo "ERROR: Git Bash / MSYS2 is not supported."
+    echo "Please install WSL2 (wsl --install) and run this script from an Ubuntu terminal."
+    exit 1
 fi
 ```
 
-Or:
-```bash
-if uname -s | grep -qi MINGW; then
-    IS_GITBASH=true
-fi
-```
-
-### Tool Availability
-
-| Tool | Available? | Notes |
-|---|---|---|
-| `curl` | ✅ Yes | Bundled with Git for Windows + Windows native |
-| `tar` | ✅ Yes | Bundled with Git for Windows + Windows native |
-| `sha256sum` | ✅ Yes | Part of GNU Coreutils bundle |
-| `bash` | ✅ Yes | MSYS2 bash |
-| `gum` | ❓ Unknown | Charm releases include `Windows_x86_64.zip` — needs testing |
-| `mktemp` | ✅ Yes | Works |
-| `chmod +x` | ⚠️ No-op | Windows doesn't track Unix permissions |
-
-### Major Limitations
-
-1. **No package manager:** No `apt`, `dnf`, or `brew` (Homebrew doesn't support Git Bash). Only tarball install path is viable.
-
-2. **No Linux binary compatibility:** Antigravity (the IDE) is a Linux application. It cannot run natively in Git Bash. The user would need to download the Windows version separately.
-
-3. **Path differences:** Git Bash uses `/c/Users/...` paths. The install location would need to be Windows-friendly.
-
-4. **Line ending issues:** CRLF vs LF can break scripts. `core.autocrlf` Git setting affects this.
-
-5. **No `xdg-open`:** Use `start` command or `cmd.exe /c start`:
-   ```bash
-   start "https://example.com"
-   ```
-
-### Feasibility Assessment
-
-> [!WARNING]
-> **Git Bash support has very limited value.** If a user can install Git Bash, they can install WSL2, which provides a much better experience. Git Bash should only be a detection + redirect:
-
-```bash
-if [ "$IS_GITBASH" = true ]; then
-    echo "⚠️  Git Bash detected. For the best experience, use WSL2."
-    echo "   Install WSL: https://learn.microsoft.com/en-us/windows/wsl/install"
-    echo ""
-    echo "   If you already have WSL, open it and run this command there."
-    exit 0
-fi
-```
+This drastically reduces the project's maintenance surface area while pushing Windows users toward the Microsoft-recommended, performant development environment (WSL2).
 
 ---
 
-## Testing Checklists
+## Essential Windows/WSL Skills
 
-### WSL2
-
-- [ ] Detection works (`$WSL_DISTRO_NAME` method)
-- [ ] `--help` and `--version` work
-- [ ] `--demo-ui` sandbox works
-- [ ] APT install works (Ubuntu WSL)
-- [ ] Tarball install works
-- [ ] `gum` downloads and runs
-- [ ] `.desktop` file is NOT created
-- [ ] Browser opening works via `wslview` or `cmd.exe /c start`
-- [ ] System info shows "Ubuntu 24.04 (WSL)"
-
-### Git Bash
-
-- [ ] Detection works (`$OSTYPE` method)
-- [ ] Script shows WSL redirect message and exits gracefully
-- [ ] No crashes or syntax errors
+1. **`wsl --install`**: The single command required to provision a full Ubuntu environment on Windows.
+2. **`wslpath`**: Convert paths between Windows format (`C:\`) and WSL format (`/mnt/c/`).
+   * *Example:* `wslpath -w /home/user/file.txt`
+3. **`explorer.exe .`**: Opens the current WSL Linux directory in the native Windows File Explorer via the `\\wsl.localhost\` network share.

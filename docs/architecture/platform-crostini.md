@@ -1,122 +1,74 @@
-# Crostini (ChromeOS) Support — Architecture Notes
+# ChromeOS (Crostini) — Architecture Notes
 
-> **Status:** 📋 Planned
+> **Status:** 📋 Planned (Beta support exists via Tarball fallback)
 > **Last updated:** 2026-05-13
+> **Parent:** [implementation_plan.md](implementation_plan.md)
 
 ---
 
-## What is Crostini?
+## Overview
 
-Crostini is ChromeOS's built-in Linux container support. It runs a Debian-based Linux container (default name: `penguin`) inside a VM managed by ChromeOS. Users get a full Linux terminal with `apt`, `bash`, and standard GNU tools.
+Crostini is the official framework that allows ChromeOS to run Linux applications. 
+It uses a highly secure, nested architecture: ChromeOS runs a custom KVM monitor (`crosvm`), which boots a minimal, read-only Linux VM (`Termina`), which in turn runs an LXC container (usually named `penguin`, running Debian).
 
-**Key insight:** From our script's perspective, Crostini looks like a standard Debian Linux system. The tarball and APT install paths should work with minimal changes.
+Antigravity installs inside the `penguin` LXC container but integrates with the ChromeOS host via Crostini's bridge daemons.
 
 ---
 
-## Detection
-
-### Recommended Method
+## Detection Mechanism
 
 ```bash
+# src/20_platform.sh (Planned detection)
 if [ -f /dev/.cros_milestone ]; then
-    IS_CROSTINI=true
-    CROS_MILESTONE=$(cat /dev/.cros_milestone)
+    PLATFORM="Crostini"
 fi
 ```
-
-The file `/dev/.cros_milestone` is placed by ChromeOS integration tools and contains the ChromeOS version number.
-
-### Alternative Checks
-
-| Method | Command | Reliability |
-|---|---|---|
-| **`/dev/.cros_milestone`** | `test -f /dev/.cros_milestone` | ✅ Best — ChromeOS-specific |
-| **Hostname** | `hostname` returns `penguin` | ⚠️ Can be changed by user |
-| **`$BROWSER` variable** | `echo $BROWSER` → `/usr/bin/garcon-url-handler` | ⚠️ Only if set by ChromeOS |
-
-### Integration with `detect_platform()`
-
-Add to `src/20_platform.sh`:
-```bash
-# Inside detect_platform(), after Linux distro detection:
-if [ -f /dev/.cros_milestone ]; then
-    DISTRO_VARIANT="Crostini"
-    CROS_MILESTONE=$(cat /dev/.cros_milestone)
-fi
-```
-
-This should appear in the system info dashboard as:
-```
-OS:   Debian 12 (Crostini, ChromeOS M130) (x86_64)
-```
+The existence of `/dev/.cros_milestone` inside the Linux container is the canonical, officially documented way to detect if a script is running inside a ChromeOS Crostini environment.
 
 ---
 
-## What Works
+## Architecture: The Crostini Bridge
 
-| Feature | Expected Behavior | Notes |
-|---|---|---|
-| **APT install** | ✅ Works | Standard Debian — `apt` is available |
-| **Tarball install** | ✅ Works | Standard Linux filesystem |
-| **`gum` bootstrap** | ✅ Works | `Linux_x86_64` binary; ARM Chromebooks need `Linux_arm64` |
-| **`sha256sum`** | ✅ Works | GNU Coreutils installed by default |
-| **`~/.bashrc` PATH setup** | ✅ Works | Default shell is Bash on Debian |
-| **`.desktop` file** | ⚠️ Partial | File can be created, but ChromeOS app launcher integration varies |
+Because the Antigravity CLI runs inside an isolated LXC container, it cannot directly draw windows on the ChromeOS screen or open URLs in the ChromeOS browser without help from bridge daemons.
 
----
+### 1. Sommelier (The Wayland Proxy)
+When Antigravity launches Google Chrome or an Electron app, the GUI must escape the container.
+- **Sommelier** is a Wayland proxy compositor running *inside* the container.
+- It intercepts the Wayland (or X11 via XWayland) draw commands from the app.
+- It forwards these commands over a high-performance `virtio-gpu` channel to **Exo** (the Wayland compositor running on the ChromeOS host).
+- *Result:* The Linux app appears as a native window on the ChromeOS desktop.
 
-## Known Quirks
+### 2. Garcon (The Integration Daemon)
+Garcon is the daemon responsible for `.desktop` file synchronization and URL handling.
 
-### 1. Browser Opening
-
-Crostini uses `garcon-url-handler` to bridge URLs from the Linux container to the ChromeOS browser. This means:
-
-- `xdg-open` works if the ChromeOS integration sets `BROWSER=/usr/bin/garcon-url-handler`
-- **The easter egg (if implemented) should work** — `xdg-open` will route through garcon
-- **Antigravity itself** may need a browser path configured. Chrome is NOT installed inside the container — it runs on the ChromeOS host.
-
-**Recommendation:** When Chrome is not found inside the container, check for `garcon-url-handler`:
-```bash
-if [ -f /dev/.cros_milestone ] && [ -x /usr/bin/garcon-url-handler ]; then
-    log_info "Crostini detected — ChromeOS browser will be used via garcon."
-    # Skip Chrome detection; the IDE should use garcon-url-handler or the user's host Chrome
-fi
-```
-
-### 2. ARM Chromebooks
-
-Many Chromebooks use ARM processors (MediaTek, Qualcomm). The `gum` bootstrap already handles `arm64` via `uname -m`, but this should be tested on an actual ARM Chromebook.
-
-### 3. Storage
-
-Crostini has limited storage by default. The tarball install (~500MB) may be significant on a 32GB Chromebook. Consider warning the user about disk usage.
-
-### 4. `.desktop` Files
-
-ChromeOS can integrate Linux `.desktop` files into its app launcher, but the behavior is inconsistent:
-- Files in `~/.local/share/applications/` are sometimes picked up
-- Icon rendering depends on ChromeOS version
-- **Recommendation:** Still create the `.desktop` file (same as standard Debian), but don't guarantee it appears in the ChromeOS launcher
+- **Desktop Shortcuts:** When Antigravity creates `google-antigravity.desktop` in `~/.local/share/applications/`, Garcon detects the file change. It parses the file and sends the icon and execution command to the ChromeOS host, making it appear in the ChromeOS App Launcher.
+- **URL Handling:** If Antigravity runs `xdg-open "https://example.com"`, Garcon intercepts the request and forwards it to the host. ChromeOS then opens the URL in the native, host-side Chrome browser (not a browser inside the container).
 
 ---
 
-## Testing Checklist
+## ARM vs x86_64 Considerations
 
-- [ ] `bash antigravity-manager.sh --help` — no errors
-- [ ] `bash antigravity-manager.sh --version` — prints version
-- [ ] `bash antigravity-manager.sh --demo-ui` — sandbox works
-- [ ] `detect_platform()` identifies Crostini + shows ChromeOS milestone
-- [ ] APT install works (if apt repo is available)
-- [ ] Tarball install works
-- [ ] `gum` downloads correct binary (x86_64 or arm64 depending on Chromebook)
-- [ ] `xdg-open` routes through `garcon-url-handler`
-- [ ] Antigravity launches and can connect to a browser
+Many popular Chromebooks use ARM processors (e.g., MediaTek, Qualcomm) rather than Intel/AMD (x86_64).
+
+*   **Tarball Architecture:** The `detect_platform` script successfully detects `aarch64` and downloads the correct ARM-compiled `gum` UI binary.
+*   **Homebrew Constraints:** While Homebrew works on ARM Linux, many third-party tools do not provide pre-compiled "bottles" for ARM Linux, leading to massive, slow compilations from source on low-power Chromebook CPUs.
+*   **Recommendation:** On ARM Chromebooks, the **System Repo (APT)** or **Tarball** methods are strongly preferred over Homebrew to save battery and time.
 
 ---
 
-## Implementation Priority
+## Chrome Detection Quirks
 
-**Low effort, medium value.** Since Crostini is Debian, most code already works. The main work is:
-1. Add detection in `detect_platform()`
-2. Handle Chrome-not-found gracefully (suggest garcon)
-3. Test on a real Chromebook
+ChromeOS does not typically install a Linux version of Google Chrome inside the Crostini container, because the host OS *is* Chrome.
+
+However, Antigravity requires a Chromium-based browser to run its agentic automation. 
+*   **Current State:** A user on Crostini must manually install the Linux version of Chrome or Chromium inside the container (`sudo apt install chromium`) for Antigravity to work.
+*   **Future Fix:** We may need to investigate if Crostini allows driving the host's Chrome browser via a forwarded debugging port, though this is likely blocked by ChromeOS security policies.
+
+---
+
+## Essential Crostini Skills & Tools
+
+1. **`vmc` and `vsh` (Host Side):** Access the `crosh` terminal (Ctrl+Alt+T) to manage the VM. Use `vmc start termina` to manage the VM directly.
+2. **`sommelier -X`**: Force an application to run via XWayland instead of native Wayland (useful for debugging blurry Electron apps).
+3. **`journalctl -u garcon`**: Check the Garcon logs inside the container if a `.desktop` shortcut fails to appear in the ChromeOS launcher.
+4. **`update-alternatives --config x-www-browser`**: Ensure Garcon is set as the default browser handler inside the container so URLs open on the host.

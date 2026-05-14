@@ -7,7 +7,9 @@
 
 ## Overview
 
-Linux is the primary and fully-tested platform. All three install methods work. This is the umbrella doc; see the sub-platform docs for distro-specific details:
+Linux is the primary and fully-tested platform for Antigravity. All three install methods (Homebrew, APT/DNF, Tarball) are supported. This is the umbrella documentation detailing the common behaviors across all Linux variants. 
+
+See the sub-platform docs for distribution-specific details:
 
 | Sub-Platform | Doc | Package Manager | Status |
 |---|---|---|---|
@@ -17,7 +19,7 @@ Linux is the primary and fully-tested platform. All three install methods work. 
 
 ---
 
-## Detection
+## Detection Mechanism
 
 ```bash
 PLATFORM=$(uname -s)  # Returns "Linux"
@@ -25,68 +27,105 @@ PLATFORM=$(uname -s)  # Returns "Linux"
 
 ### Distribution Detection (`detect_distro`)
 
-Reads `/etc/os-release` to identify the distribution:
+The installer reads `/etc/os-release` (a standard systemd file) to accurately identify the distribution without relying on legacy tools like `lsb_release`.
 
 ```bash
-# Source the file and grab $ID
+# Sourcing the file safely grabs variables like $ID
 . /etc/os-release
 DISTRO="$ID"
 ```
+*📚 Reference:* [os-release(5) — Linux manual page](https://www.freedesktop.org/software/systemd/man/latest/os-release.html)
 
 ### Recommendation Logic (`detect_platform`)
 
-The script auto-recommends the best install method:
+The script dynamically recommends the safest install method:
 
-```
-Is Atomic?
-├── YES → Homebrew (if available), else Tarball
-└── NO
-    ├── Has Homebrew? → Homebrew
-    ├── Has APT or DNF? → System Repo
-    └── Default → Tarball
+```mermaid
+graph TD
+    A[Is it Atomic/Immutable?] -->|YES| B{Has Homebrew?}
+    A -->|NO| C{Has Homebrew?}
+    
+    B -->|YES| D[★ Homebrew]
+    B -->|NO| E[★ Tarball]
+    
+    C -->|YES| F[★ Homebrew]
+    C -->|NO| G{Has APT or DNF?}
+    
+    G -->|YES| H[★ System Repo]
+    G -->|NO| I[★ Tarball]
 ```
 
 ---
 
-## Shared Linux Behavior
+## XDG Base Directory Specification
 
-### Chrome Detection Priority
+Antigravity aggressively adheres to the **XDG Base Directory Specification** to prevent "dotfile pollution" in the user's home directory. 
 
-1. **Flatpak Chrome** (system) → `/var/lib/flatpak/app/com.google.Chrome/.../chrome`
-2. **Flatpak Chrome** (user) → `~/.local/share/flatpak/app/com.google.Chrome/.../chrome`
-3. **System package** → `google-chrome-stable`, `google-chrome`, `chromium`, `chromium-browser`
+*📚 Reference:* [XDG Base Directory Spec](https://specifications.freedesktop.org/basedir-spec/basedir-spec-latest.html)
 
-### PATH Setup
+| Directory | Variable | Path Used by Installer | Purpose |
+|---|---|---|---|
+| Configuration | `$XDG_CONFIG_HOME` | `~/.config/Antigravity` | Settings, Chrome path maps. |
+| User Data | `$XDG_DATA_HOME` | `~/.local/share/` | `.desktop` application launchers. |
+| Executables | (Custom FHS) | `~/.local/bin/` | Symlinks to the binary (tarball). |
+| Application | (Custom FHS) | `~/.local/lib/` | Application libraries (tarball). |
 
-Shell detection (`src/20_platform.sh:1-49`):
-- Zsh → `~/.zshrc`
-- Fish → `~/.config/fish/config.fish`
-- Bash (default) → `~/.bashrc`
-- Idempotent — checks before writing
+### Desktop Shortcuts (`.desktop` Files)
 
-### `.desktop` File
+`.desktop` files are created using `xdg-user-dir DESKTOP` (falling back to `~/Desktop`). 
+Post-install trust is crucial to prevent "Untrusted Application Launcher" warnings in modern GNOME/KDE:
 
-Created at:
-- `~/.local/share/applications/google-antigravity.desktop` (system apps)
-- `$(xdg-user-dir DESKTOP)/google-antigravity.desktop` (desktop shortcut)
-
-Post-install trust: `chmod +x`, `gio set metadata::trusted true`, `update-desktop-database`.
-
-### `gum` Bootstrap
-
-- `Linux_x86_64` for Intel/AMD
-- `Linux_arm64` for ARM
-
-### SHA-256
-
-Uses `sha256sum` from GNU Coreutils (always available).
+```bash
+# Make executable
+chmod +x ~/Desktop/google-antigravity.desktop
+# Set GNOME trusted metadata
+gio set ~/Desktop/google-antigravity.desktop metadata::trusted true
+# Update system application database
+update-desktop-database ~/.local/share/applications
+```
 
 ---
 
-## Known Quirks (All Linux)
+## Flatpak Sandboxing Quirks (Bubblewrap)
 
-| Quirk | Detail |
-|---|---|
-| **Flatpak Chrome sandboxing** | Must use raw binary path, not `flatpak run` |
-| **Wayland** | Some Electron apps need `--ozone-platform-hint=auto` |
-| **SELinux (Fedora/RHEL)** | Tarball binaries in `~/.local` may need context labels |
+Many modern Linux distributions (like Linux Mint or Fedora) install Google Chrome via Flatpak by default. 
+
+Flatpak uses **Bubblewrap (`bwrap`)** to run applications in isolated namespaces. By default, applications have no access to the host filesystem or host processes.
+
+If Antigravity attempts to launch Chrome using the `flatpak run com.google.Chrome` command, the sandbox will intercept the execution and prevent child-process communication (which Antigravity relies on for agentic control).
+
+**The Bypass:** The installer prioritizes finding the **raw Chrome binary** inside the Flatpak directory hierarchy, bypassing the Bubblewrap sandbox execution entirely:
+1. ` /var/lib/flatpak/app/com.google.Chrome/.../chrome` (System-wide Flatpak)
+2. `~/.local/share/flatpak/app/com.google.Chrome/.../chrome` (User-local Flatpak)
+
+*📚 Reference:* [Flatpak Under the Hood (Bubblewrap)](https://docs.flatpak.org/en/latest/under-the-hood.html)
+
+---
+
+## Wayland vs X11 (Electron)
+
+Modern distributions (Ubuntu 22.04+, Fedora 34+) default to the **Wayland** display server protocol.
+Historically, Electron applications running on Wayland defaulted to XWayland (an X11 compatibility layer), resulting in blurry fonts on fractional scaling setups.
+
+**2024 Status:** Electron 38+ automatically detects Wayland and switches to native Wayland rendering. 
+If an older version of Antigravity is packaged, you may need to manually pass the ozone flags to prevent blurriness:
+
+```bash
+antigravity --ozone-platform-hint=auto
+# Or via environment variable:
+ELECTRON_OZONE_PLATFORM_HINT=auto antigravity
+```
+
+---
+
+## Essential Linux Skills & Tools
+
+To effectively debug Antigravity installations on Linux, familiarize yourself with these tools:
+
+1. **`ldd`**: Print shared object dependencies. Useful if the tarball binary fails to launch with a "missing shared library" error.
+   * `ldd ~/.local/lib/antigravity/antigravity`
+2. **`strace`**: Trace system calls and signals. Crucial for debugging "permission denied" errors when Antigravity tries to spawn Chrome.
+   * `strace -e trace=file antigravity`
+3. **`gio`**: GNOME Input/Output tool. Used to manage `.desktop` file trust metadata.
+   * `gio info ~/Desktop/google-antigravity.desktop`
+4. **`update-desktop-database`**: Rebuilds the MIME type cache for `.desktop` files in `~/.local/share/applications`.
