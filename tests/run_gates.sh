@@ -90,7 +90,7 @@ gate_2() {
     # Safety features
     check "2.G9  trap cleanup exists"          "grep -q 'trap.*EXIT' $SCRIPT"
     check "2.G10 SHA-256 verification"         "grep -q 'sha256sum' $SCRIPT"
-    check "2.G11 KNOWN_SHA256 constant"        "grep -q 'KNOWN_SHA256' $SCRIPT"
+    check "2.G11 LINUX_X64_SHA256 constant"    "grep -q 'LINUX_X64_SHA256' $SCRIPT"
 
     # Old patterns removed
     check "2.G12 Old \$0 bash detection gone"  "! grep -q '\"bash\"' $SCRIPT"
@@ -114,15 +114,15 @@ gate_3() {
 
     # Pipeline features
     check "3.G3  requirements.txt used"        "grep -q 'requirements.txt' $NIGHTLY"
-    check "3.G4  URL validation step"          "grep -qE 'curl.*(--head|-I)' $NIGHTLY"
+    check "3.G4  URL validation step"          "grep -q 'raise_for_status' scrape_latest.py"
     check "3.G5  shellcheck lint step"         "grep -q 'shellcheck' $NIGHTLY"
     check "3.G6  sed safe delimiter"           "grep 'sed' $NIGHTLY | grep -q '#'"
-    check "3.G7  SHA-256 sync step"            "grep -q 'KNOWN_SHA256' $NIGHTLY"
+    check "3.G7  Config update script"         "grep -q 'update_config.py' $NIGHTLY"
 
     # Scraper
     check "3.G8  scraper compiles"             "python3 -m py_compile scrape_latest.py"
     check "3.G9  scraper has docstring"        "python3 -c \"import ast; m=ast.parse(open('scrape_latest.py').read()); assert ast.get_docstring(m)\""
-    check "3.G10 scraper has type hints"       "grep -q 'def scrape_url.*->.*:' scrape_latest.py"
+    check "3.G10 scraper has type hints"       "grep -qE 'def scrape_url.*->.*:' scrape_latest.py"
     check "3.G11 errors to stderr"             "grep -q 'stderr' scrape_latest.py"
 }
 
