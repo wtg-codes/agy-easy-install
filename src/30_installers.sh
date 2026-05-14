@@ -297,7 +297,14 @@ do_remove() {
                     run_cmd sudo dnf remove -y antigravity || true
                     sudo rm -f /etc/yum.repos.d/antigravity.repo
                 fi ;;
-            "binary"|"tarball") ;;
+            "binary"|"tarball")
+                rm -rf "$APP_DIR" "$BIN_DIR/antigravity" "$DESKTOP_FILE_SYS" "$DESKTOP_FILE_USER"
+                if [ "$PLATFORM" = "Darwin" ]; then
+                    rm -rf "/Applications/Google Antigravity.app"
+                    rm -rf "/Applications/Antigravity.app"
+                fi
+                if command -v update-desktop-database &> /dev/null; then run_cmd update-desktop-database "$HOME/.local/share/applications" || true; fi
+                ;;
         esac
         rm -f "$STATE_FILE"
     else
@@ -311,14 +318,16 @@ do_remove() {
             if [ "$PLATFORM" = "Darwin" ]; then run_cmd brew uninstall --cask antigravity || true
             else run_cmd brew uninstall antigravity || true; fi
         fi
+        
+        # Heuristic binary removal
+        rm -rf "$APP_DIR" "$BIN_DIR/antigravity" "$DESKTOP_FILE_SYS" "$DESKTOP_FILE_USER"
+        if [ "$PLATFORM" = "Darwin" ]; then
+            rm -rf "/Applications/Google Antigravity.app"
+            rm -rf "/Applications/Antigravity.app"
+        fi
+        if command -v update-desktop-database &> /dev/null; then run_cmd update-desktop-database "$HOME/.local/share/applications" || true; fi
     fi
 
-    rm -rf "$APP_DIR" "$BIN_DIR/antigravity" "$DESKTOP_FILE_SYS" "$DESKTOP_FILE_USER"
-    if [ "$PLATFORM" = "Darwin" ]; then
-        rm -rf "/Applications/Google Antigravity.app"
-        rm -rf "/Applications/Antigravity.app"
-    fi
-    if command -v update-desktop-database &> /dev/null; then run_cmd update-desktop-database "$HOME/.local/share/applications" || true; fi
     log_info "${C_GREEN}✅ Uninstalled successfully.${C_RESET} (Note: Your code in $WORKSPACE_DIR was kept safe)."
 }
 
