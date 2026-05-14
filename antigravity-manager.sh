@@ -659,8 +659,14 @@ Workspace: $WORKSPACE_DIR"
         run_cmd hdiutil attach "$dl_target" -mountpoint /Volumes/Antigravity -nobrowse -quiet
         log_info "${C_BLUE}📦 Copying to /Applications...${C_RESET}"
         
-        # Dynamically find the .app bundle inside the DMG
-        APP_NAME=$(ls -1 /Volumes/Antigravity 2>>"$LOG_FILE" | grep '\.app$' | head -n 1 || true)
+        # Dynamically find the .app bundle inside the DMG safely
+        APP_NAME=""
+        for app_dir in /Volumes/Antigravity/*.app; do
+            if [ -d "$app_dir" ]; then
+                APP_NAME="$(basename "$app_dir")"
+                break
+            fi
+        done
         
         if [ -z "$APP_NAME" ]; then
             log_error "Could not find any .app bundle inside the mounted DMG!"
