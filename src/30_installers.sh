@@ -210,7 +210,15 @@ Workspace: $WORKSPACE_DIR"
         log_info "run this command to clear the quarantine flag:"
         log_info "  ${C_BOLD}xattr -rd com.apple.quarantine '/Applications/Google Antigravity.app'${C_RESET}"
 
-        log_info "${C_GREEN}${C_BOLD}🎉 Installation Complete!${C_RESET} Launch from Applications folder."
+        # Create CLI shim for terminal launch
+        mkdir -p "$BIN_DIR"
+        if [ -f "/Applications/Google Antigravity.app/Contents/MacOS/Antigravity" ]; then
+            run_cmd ln -sf "/Applications/Google Antigravity.app/Contents/MacOS/Antigravity" "$BIN_DIR/antigravity"
+        elif [ -f "/Applications/Antigravity.app/Contents/MacOS/Antigravity" ]; then
+            run_cmd ln -sf "/Applications/Antigravity.app/Contents/MacOS/Antigravity" "$BIN_DIR/antigravity"
+        fi
+
+        log_info "${C_GREEN}${C_BOLD}🎉 Installation Complete!${C_RESET} Launch from Applications folder or type 'antigravity' in terminal."
 
     elif [ "$install_type" = "exe" ]; then
         log_info "${C_CYAN}🚀 Launching Windows Installer...${C_RESET}"
