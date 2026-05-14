@@ -79,8 +79,8 @@ gate_2() {
 
     # UX flags
     check "2.G3  --version works"              "bash $SCRIPT --version 2>&1 | grep -qE '[0-9]+\.[0-9]+\.[0-9]+'"
-    check "2.G4  --help lists --version"       "bash $SCRIPT --help 2>&1 | grep -q -- '--version'"
-    check "2.G5  --help lists --remove"        "bash $SCRIPT --help 2>&1 | grep -q -- '--remove'"
+    check "2.G4  --help lists --version"       "bash $SCRIPT --help 2>&1 | grep -- '--version' >/dev/null"
+    check "2.G5  --help lists --remove"        "bash $SCRIPT --help 2>&1 | grep -- '--remove' >/dev/null"
 
     # Functions exist
     check "2.G6  detect_platform() exists"     "grep -q 'detect_platform' $SCRIPT"
@@ -116,7 +116,7 @@ gate_3() {
     check "3.G3  requirements.txt used"        "grep -q 'requirements.txt' $NIGHTLY"
     check "3.G4  URL validation step"          "grep -q 'raise_for_status' scrape_latest.py"
     check "3.G5  shellcheck lint step"         "grep -q 'shellcheck' $NIGHTLY"
-    check "3.G6  sed safe delimiter"           "grep 'sed' $NIGHTLY | grep -q '#'"
+    check "3.G6  sed safe delimiter"           "grep 'sed' $NIGHTLY | grep '#' >/dev/null"
     check "3.G7  Config update script"         "grep -q 'update_config.py' $NIGHTLY"
 
     # Scraper
