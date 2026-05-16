@@ -151,35 +151,37 @@ start_sandbox_mode() {
 
 # ── Interactive flow (normal mode) ──────────────────────────────
 run_interactive() {
-    clear || true
-    print_banner ""
-    print_system_info
-    main_menu
+    while true; do
+        clear || true
+        print_banner ""
+        print_system_info
+        main_menu
 
-    case "$choice" in
-        cancel) log_warn "Cancelled."; trap - EXIT INT TERM; exit 0 ;;
-        save) save_manager_locally ;;
-        remove_mgr) remove_manager_script ;;
-        install)
-            install_submenu
-            case "$choice" in
-                brew) install_brew; save_manager_locally ;;
-                repo) install_repo; save_manager_locally ;;
-                binary) do_install_binary; save_manager_locally ;;
-                back) log_warn "Cancelled."; trap - EXIT INT TERM; exit 0 ;;
-            esac
-            ;;
-        cleanup)
-            cleanup_submenu
-            case "$choice" in
-                remove) do_remove ;;
-                save) save_manager_locally ;;
-                remove_mgr) remove_manager_script ;;
-                demo) start_sandbox_mode ;;
-                back) log_warn "Cancelled."; trap - EXIT INT TERM; exit 0 ;;
-            esac
-            ;;
-    esac
+        case "$choice" in
+            cancel) log_warn "Cancelled."; trap - EXIT INT TERM; exit 0 ;;
+            save) save_manager_locally; break ;;
+            remove_mgr) remove_manager_script; break ;;
+            install)
+                install_submenu
+                case "$choice" in
+                    brew) install_brew; save_manager_locally; break ;;
+                    repo) install_repo; save_manager_locally; break ;;
+                    binary) do_install_binary; save_manager_locally; break ;;
+                    back) continue ;; # return to main menu
+                esac
+                ;;
+            cleanup)
+                cleanup_submenu
+                case "$choice" in
+                    remove) do_remove; break ;;
+                    save) save_manager_locally; break ;;
+                    remove_mgr) remove_manager_script; break ;;
+                    demo) start_sandbox_mode; break ;;
+                    back) continue ;; # return to main menu
+                esac
+                ;;
+        esac
+    done
 }
 
 # ── Dispatch ────────────────────────────────────────────────────
