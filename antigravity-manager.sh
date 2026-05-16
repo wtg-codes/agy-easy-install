@@ -18,7 +18,7 @@ C_DIM='\033[2m'
 C_RESET='\033[0m'
 
 # Configuration
-SCRIPT_VERSION="0.2.4"
+SCRIPT_VERSION="0.2.5"
 LINUX_X64_SHA256="5232a4048ff4fa15685d9a981ba4fba573e297f3efc9b76f638e794baf775725"
 LINUX_X64_URL="https://edgedl.me.gvt1.com/edgedl/release2/j0qc3/antigravity/stable/1.23.2-4781536860569600/linux-x64/Antigravity.tar.gz"
 
@@ -816,8 +816,10 @@ main_menu() {
         "$mgr_opt"
     )
     # Main menu has 4 options [1-4]
+    # --height is sized exactly to the option count so gum filter doesn't
+    # expand to fill the terminal and scroll the banner off screen.
     if command -v gum >/dev/null 2>&1; then
-        CHOICE=$(gum filter --no-limit --no-strict --indicator="❯ " --placeholder="Select an option or type a secret..." "${options[@]}") || CHOICE="Cancel"
+        CHOICE=$(gum filter --height=$(( ${#options[@]} + 2 )) --no-limit --no-strict --indicator="❯ " --placeholder="Select an option or type a secret..." "${options[@]}") || CHOICE="Cancel"
     else
         log_warn "UI dependencies failed to load. Falling back to simple menu."
         for i in "${!options[@]}"; do echo "$((i+1))) ${options[$i]}"; done
@@ -1199,35 +1201,37 @@ start_sandbox_mode() {
 
 # ── Interactive flow (normal mode) ──────────────────────────────
 run_interactive() {
-    clear || true
-    print_banner ""
-    print_system_info
-    main_menu
+    while true; do
+        clear || true
+        print_banner ""
+        print_system_info
+        main_menu
 
-    case "$choice" in
-        cancel) log_warn "Cancelled."; trap - EXIT INT TERM; exit 0 ;;
-        save) save_manager_locally ;;
-        remove_mgr) remove_manager_script ;;
-        install)
-            install_submenu
-            case "$choice" in
-                brew) install_brew; save_manager_locally ;;
-                repo) install_repo; save_manager_locally ;;
-                binary) do_install_binary; save_manager_locally ;;
-                back) log_warn "Cancelled."; trap - EXIT INT TERM; exit 0 ;;
-            esac
-            ;;
-        cleanup)
-            cleanup_submenu
-            case "$choice" in
-                remove) do_remove ;;
-                save) save_manager_locally ;;
-                remove_mgr) remove_manager_script ;;
-                demo) start_sandbox_mode ;;
-                back) log_warn "Cancelled."; trap - EXIT INT TERM; exit 0 ;;
-            esac
-            ;;
-    esac
+        case "$choice" in
+            cancel) log_warn "Cancelled."; trap - EXIT INT TERM; exit 0 ;;
+            save) save_manager_locally; break ;;
+            remove_mgr) remove_manager_script; break ;;
+            install)
+                install_submenu
+                case "$choice" in
+                    brew) install_brew; save_manager_locally; break ;;
+                    repo) install_repo; save_manager_locally; break ;;
+                    binary) do_install_binary; save_manager_locally; break ;;
+                    back) continue ;; # return to main menu
+                esac
+                ;;
+            cleanup)
+                cleanup_submenu
+                case "$choice" in
+                    remove) do_remove; break ;;
+                    save) save_manager_locally; break ;;
+                    remove_mgr) remove_manager_script; break ;;
+                    demo) start_sandbox_mode; break ;;
+                    back) continue ;; # return to main menu
+                esac
+                ;;
+        esac
+    done
 }
 
 # ── Dispatch ────────────────────────────────────────────────────
