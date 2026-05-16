@@ -459,6 +459,96 @@ def test_easter_egg() -> tuple[bool, list[str]]:
     return passed, failures + session.log
 
 
+def test_banner_visible_on_main_menu() -> tuple[bool, list[str]]:
+    """
+    Assert the ASCII banner and version line are visible BEFORE the
+    gum filter menu renders. Without a --height constraint, gum filter
+    expands to fill the full terminal and scrolls the banner off-screen.
+    This test catches that regression.
+    """
+    failures = []
+    print("\n▶  test_banner_visible_on_main_menu")
+    session = TerminalSession(["bash", SCRIPT, "--demo-ui"])
+
+    try:
+        if not session.wait_for("navigate", timeout=20):
+            return False, ["[banner] Timed out waiting for menu"]
+
+        session.snapshot_label("main menu with banner")
+        display = session.display()
+
+        for marker in ["AGV Easy Install", "github.com/wtg-codes", "OS:"]:
+            if marker not in display:
+                failures.append(
+                    f"[banner] '{marker}' not visible — banner may have been "
+                    "scrolled off by gum filter expanding to full terminal height"
+                )
+            else:
+                print(f"   '{marker}' visible ✅")
+
+    finally:
+        session.close()
+
+    passed = len(failures) == 0
+    result = "✅ PASS" if passed else "❌ FAIL"
+    print(f"   {result}  ({len(failures)} failure(s))")
+    return passed, failures + session.log
+
+
+def test_back_returns_to_main_menu() -> tuple[bool, list[str]]:
+    """
+    In sandbox mode, selecting Back from either submenu must return to
+    the main menu (show the banner + navigate hint again), not exit the script.
+    """
+    failures = []
+    print("\n▶  test_back_returns_to_main_menu")
+
+    for submenu_label, down_presses, wait_text in [
+        ("install submenu", 1, "Homebrew"),
+        ("cleanup submenu", 2, "Uninstall"),
+    ]:
+        session = TerminalSession(["bash", SCRIPT, "--demo-ui"])
+        try:
+            if not session.wait_for("navigate", timeout=20):
+                failures.append(f"[back/{submenu_label}] Timed out on main menu")
+                continue
+
+            for _ in range(down_presses):
+                session.send(KEY_DOWN, settle=0.3)
+            session.send(KEY_ENTER, settle=1.5)
+
+            if not session.wait_for(wait_text, timeout=10):
+                failures.append(f"[back/{submenu_label}] Timed out waiting for submenu")
+                continue
+
+            session.snapshot_label(f"{submenu_label} — before Back")
+
+            # Back is always the first option in gum choose submenus
+            session.send(KEY_ENTER, settle=1.5)
+
+            if not session.wait_for("navigate", timeout=10):
+                failures.append(
+                    f"[back/{submenu_label}] Main menu did not reappear after Back "
+                    "— script may have exited instead of looping"
+                )
+            else:
+                if "AGV Easy Install" not in session.display():
+                    failures.append(
+                        f"[back/{submenu_label}] Returned to menu but banner missing"
+                    )
+                else:
+                    print(f"   {submenu_label}: Back → main menu ✅")
+
+            session.snapshot_label(f"{submenu_label} — after Back")
+        finally:
+            session.close()
+
+    passed = len(failures) == 0
+    result = "✅ PASS" if passed else "❌ FAIL"
+    print(f"   {result}  ({len(failures)} failure(s))")
+    return passed, failures
+
+
 # ── Runner ───────────────────────────────────────────────────────────────────
 
 def main():
@@ -474,6 +564,8 @@ def main():
         test_cleanup_submenu,
         test_cancel_exits_cleanly,
         test_easter_egg,
+        test_banner_visible_on_main_menu,
+        test_back_returns_to_main_menu,
     ]
 
     results = []

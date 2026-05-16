@@ -15,8 +15,10 @@ main_menu() {
         "$mgr_opt"
     )
     # Main menu has 4 options [1-4]
+    # --height is sized exactly to the option count so gum filter doesn't
+    # expand to fill the terminal and scroll the banner off screen.
     if command -v gum >/dev/null 2>&1; then
-        CHOICE=$(gum filter --no-limit --no-strict --indicator="❯ " --placeholder="Select an option or type a secret..." "${options[@]}") || CHOICE="Cancel"
+        CHOICE=$(gum filter --height=$(( ${#options[@]} + 2 )) --no-limit --no-strict --indicator="❯ " --placeholder="Select an option or type a secret..." "${options[@]}") || CHOICE="Cancel"
     else
         log_warn "UI dependencies failed to load. Falling back to simple menu."
         for i in "${!options[@]}"; do echo "$((i+1))) ${options[$i]}"; done
