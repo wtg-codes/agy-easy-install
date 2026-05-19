@@ -18,7 +18,12 @@ C_DIM='\033[2m'
 C_RESET='\033[0m'
 
 # Configuration
-SCRIPT_VERSION="0.2.9"
+SCRIPT_VERSION="0.2.10"
+DEFAULT_IDE_VERSION="2.0.0"
+DEFAULT_CLI_VERSION="1.0.0"
+DEFAULT_SDK_VERSION="0.1.0"
+VERSIONS_JSON_URL="https://raw.githubusercontent.com/wtg-codes/agv-easy-install/main/versions.json"
+
 LINUX_X64_SHA256="14bc9cb480a5be8fb3b7dc3e2b0cebfa66d370ad58cc1e0fa01140d1204d4297"
 LINUX_X64_URL="https://storage.googleapis.com/antigravity-public/antigravity-hub/2.0.0-6324554176528384/linux-x64/Antigravity.tar.gz"
 
@@ -172,6 +177,31 @@ check_dependencies() {
         exit 1
     fi
     touch "$LOG_FILE" || true
+}
+
+fetch_versions_json() {
+    if [ -f "/tmp/versions.json" ]; then
+        return 0
+    fi
+    local local_json=""
+    if [ -f "versions.json" ]; then
+        local_json="versions.json"
+    elif [ -f "../versions.json" ]; then
+        local_json="../versions.json"
+    elif [ -f "$(dirname "$0")/versions.json" ]; then
+        local_json="$(dirname "$0")/versions.json"
+    fi
+    
+    if [ -n "$local_json" ]; then
+        cp "$local_json" /tmp/versions.json
+        return 0
+    fi
+    
+    if curl -fSsL --connect-timeout 5 "$VERSIONS_JSON_URL" -o /tmp/versions.json 2>/dev/null; then
+        return 0
+    else
+        return 1
+    fi
 }
 
 inject_path() {
@@ -413,18 +443,92 @@ detect_platform() {
     fi
 }
 
+get_installed_ide_version() {
+    # Check binary install directory (Linux/WSL)
+    if [ -f "$APP_DIR/resources/app/package.json" ]; then
+        awk -F'"' '/"version":/ {print $4}' "$APP_DIR/resources/app/package.json"
+        return
+    fi
+    if [ -f "$APP_DIR/resources/app/product.json" ]; then
+        awk -F'"' '/"version":/ {print $4}' "$APP_DIR/resources/app/product.json"
+        return
+    fi
+    # Check macOS bundle
+    if [ -f "/Applications/Google Antigravity.app/Contents/Resources/app/package.json" ]; then
+        awk -F'"' '/"version":/ {print $4}' "/Applications/Google Antigravity.app/Contents/Resources/app/package.json"
+        return
+    fi
+    if [ -f "/Applications/Google Antigravity.app/Contents/Resources/app/product.json" ]; then
+        awk -F'"' '/"version":/ {print $4}' "/Applications/Google Antigravity.app/Contents/Resources/app/product.json"
+        return
+    fi
+    # Check package managers
+    if command -v dpkg-query >/dev/null 2>&1; then
+        local v
+        v=$(dpkg-query -W -f='${Version}' antigravity 2>/dev/null || true)
+        if [ -n "$v" ]; then echo "$v"; return; fi
+    fi
+    if command -v rpm >/dev/null 2>&1; then
+        local v
+        v=$(rpm -q --qf "%{VERSION}" antigravity 2>/dev/null || true)
+        if [ -n "$v" ]; then echo "$v"; return; fi
+    fi
+    if command -v brew >/dev/null 2>&1; then
+        local v
+        v=$(brew info --cask antigravity 2>/dev/null | awk 'NR==1 {print $2}' || true)
+        if [ -n "$v" ] && [ "$v" != "Error:" ]; then echo "$v"; return; fi
+    fi
+    echo ""
+}
+
+get_installed_cli_version() {
+    if command -v agy >/dev/null 2>&1; then
+        agy --version 2>/dev/null | awk '{print $NF}' || echo "Installed"
+    elif [ -f "$BIN_DIR/agy" ]; then
+        "$BIN_DIR/agy" --version 2>/dev/null | awk '{print $NF}' || echo "Installed"
+    else
+        echo ""
+    fi
+}
+
+get_installed_sdk_version() {
+    if command -v python3 >/dev/null 2>&1; then
+        python3 -c "import google_antigravity; print(google_antigravity.__version__)" 2>/dev/null || \
+        python3 -m pip show google-antigravity 2>/dev/null | awk -F': ' '/Version:/ {print $2}' || \
+        echo ""
+    else
+        echo ""
+    fi
+}
+
 print_system_info() {
-    # --- Detect AGV installation status ---
-    local AGV_STATUS="${C_YELLOW}Not Installed${C_RESET}"
-    if command -v antigravity >/dev/null 2>&1; then
-        local p
-        p=$(command -v antigravity)
-        if [[ "$p" == *".local/bin"* ]] || [[ "$p" == *"/Applications/"* ]]; then AGV_STATUS="${C_GREEN}✓ Installed${C_RESET} ${C_DIM}(Binary)${C_RESET}"
-        elif [[ "$p" == *"brew"* ]]; then AGV_STATUS="${C_GREEN}✓ Installed${C_RESET} ${C_DIM}(Homebrew)${C_RESET}"
-        elif [[ "$p" == "/usr/bin/"* ]]; then AGV_STATUS="${C_GREEN}✓ Installed${C_RESET} ${C_DIM}(System Repo)${C_RESET}"
-        else AGV_STATUS="${C_GREEN}✓ Installed${C_RESET} ${C_DIM}($p)${C_RESET}"; fi
-    elif [ -f "$HOME/.local/bin/antigravity" ]; then
-        AGV_STATUS="${C_YELLOW}⚠ Installed but not in PATH${C_RESET}"
+    # --- Detect dynamic current versions ---
+    local inst_ide
+    inst_ide=$(get_installed_ide_version)
+    local inst_cli
+    inst_cli=$(get_installed_cli_version)
+    local inst_sdk
+    inst_sdk=$(get_installed_sdk_version)
+
+    local ide_status
+    if [ -n "$inst_ide" ]; then
+        ide_status="${C_GREEN}✓ $inst_ide${C_RESET}"
+    else
+        ide_status="${C_YELLOW}Not Installed${C_RESET}"
+    fi
+
+    local cli_status
+    if [ -n "$inst_cli" ]; then
+        cli_status="${C_GREEN}✓ $inst_cli${C_RESET}"
+    else
+        cli_status="${C_YELLOW}Not Installed${C_RESET}"
+    fi
+
+    local sdk_status
+    if [ -n "$inst_sdk" ]; then
+        sdk_status="${C_GREEN}✓ $inst_sdk${C_RESET}"
+    else
+        sdk_status="${C_YELLOW}Not Installed${C_RESET}"
     fi
 
     # --- Build recommendation label ---
@@ -436,9 +540,12 @@ print_system_info() {
     esac
 
     # --- Print dashboard ---
-    log_info "  ${C_CYAN}OS:${C_RESET}   ${C_BOLD}${DISTRO_PRETTY}${C_RESET} ${C_DIM}(${ARCH})${C_RESET}"
-    log_info "  ${C_CYAN}AGV:${C_RESET}  ${AGV_STATUS}"
-    log_info "  ${C_CYAN}Best:${C_RESET} ${REC_LABEL}"
+    log_info "  ${C_CYAN}OS:${C_RESET}                 ${C_BOLD}${DISTRO_PRETTY}${C_RESET} ${C_DIM}(${ARCH})${C_RESET}"
+    log_info "  ${C_CYAN}Installed Products:${C_RESET}"
+    log_info "    ${C_BOLD}Google Antigravity IDE:${C_RESET}  ${ide_status} ${C_DIM}[Latest: $DEFAULT_IDE_VERSION]${C_RESET}"
+    log_info "    ${C_BOLD}Antigravity CLI (agy):${C_RESET}   ${cli_status} ${C_DIM}[Latest: $DEFAULT_CLI_VERSION]${C_RESET}"
+    log_info "    ${C_BOLD}Antigravity SDK (Python):${C_RESET} ${sdk_status} ${C_DIM}[Latest: $DEFAULT_SDK_VERSION]${C_RESET}"
+    log_info "  ${C_CYAN}Best Install Method:${C_RESET}        ${REC_LABEL}"
 
     # --- Warnings (only shown when relevant) ---
     if [ -n "$GLIBC_VERSION" ]; then
@@ -549,42 +656,101 @@ EOL
     echo '{"method": "repo", "version": "'"$SCRIPT_VERSION"'"}' > "$STATE_FILE"
 }
 
+get_ide_release_info() {
+    local version="$1"
+    local platform_key="$2"
+    local json_file="/tmp/versions.json"
+    
+    if [ ! -f "$json_file" ]; then
+        if [ "$version" = "$DEFAULT_IDE_VERSION" ]; then
+            case "$platform_key" in
+                LINUX_X64) echo "$LINUX_X64_URL|$LINUX_X64_SHA256" ;;
+                MAC_X64) echo "$MAC_X64_URL|$MAC_X64_SHA256" ;;
+                MAC_ARM64) echo "$MAC_ARM64_URL|$MAC_ARM64_SHA256" ;;
+                WIN_X64) echo "$WIN_X64_URL|$WIN_X64_SHA256" ;;
+                WIN_ARM64) echo "$WIN_ARM64_URL|$WIN_ARM64_SHA256" ;;
+            esac
+            return
+        fi
+        echo "|"
+        return
+    fi
+    
+    local info
+    info=$(awk -v ver="$version" -v plat="$platform_key" '
+      BEGIN { in_ide=0; in_ver=0; in_plat=0 }
+      $0 ~ "\"ide\"" { in_ide=1; next }
+      in_ide && $0 ~ "}" && $0 !~ "," && in_ver==0 { in_ide=0 }
+      in_ide && $0 ~ "\"" ver "\"" { in_ver=1; next }
+      in_ver && $0 ~ "}" && $0 !~ "," { if (in_plat) in_plat=0; else in_ver=0 }
+      in_ver && $0 ~ "\"" plat "\"" { in_plat=1; next }
+      in_plat && $0 ~ "}" { in_plat=0 }
+      in_plat && $0 ~ "\"url\"" { split($0, a, "\""); url=a[4] }
+      in_plat && $0 ~ "\"sha256\"" { split($0, a, "\""); sha=a[4] }
+      END { if (url != "" && sha != "") print url "|" sha }
+    ' "$json_file" 2>/dev/null || true)
+    
+    if [ -n "$info" ]; then
+        echo "$info"
+    else
+        if [ "$version" = "$DEFAULT_IDE_VERSION" ]; then
+            case "$platform_key" in
+                LINUX_X64) echo "$LINUX_X64_URL|$LINUX_X64_SHA256" ;;
+                MAC_X64) echo "$MAC_X64_URL|$MAC_X64_SHA256" ;;
+                MAC_ARM64) echo "$MAC_ARM64_URL|$MAC_ARM64_SHA256" ;;
+                WIN_X64) echo "$WIN_X64_URL|$WIN_X64_SHA256" ;;
+                WIN_ARM64) echo "$WIN_ARM64_URL|$WIN_ARM64_SHA256" ;;
+            esac
+        else
+            echo "|"
+        fi
+    fi
+}
+
 do_install_binary() {
+    local target_version="${1:-$DEFAULT_IDE_VERSION}"
     JSON_METHOD="binary"
     local target_url=""
     local target_sha=""
     local install_type=""
     local file_ext=""
+    local platform_key=""
 
     # Determine target based on platform and architecture
     if [ "$PLATFORM" = "Darwin" ]; then
         install_type="dmg"
         file_ext="dmg"
         if [ "$ARCH" = "arm64" ]; then
-            target_url="$MAC_ARM64_URL"
-            target_sha="$MAC_ARM64_SHA256"
+            platform_key="MAC_ARM64"
         else
-            target_url="$MAC_X64_URL"
-            target_sha="$MAC_X64_SHA256"
+            platform_key="MAC_X64"
         fi
     elif [ "$WSL_DISTRO_NAME" != "" ] || [ "$OSTYPE" = "msys" ] || [ "$OSTYPE" = "cygwin" ]; then
         install_type="exe"
         file_ext="exe"
-        # Assuming Windows x64 for WSL host by default, ARM WSL is rare but could check ARCH
         if [ "$ARCH" = "aarch64" ] || [ "$ARCH" = "arm64" ]; then
-            target_url="$WIN_ARM64_URL"
-            target_sha="$WIN_ARM64_SHA256"
+            platform_key="WIN_ARM64"
         else
-            target_url="$WIN_X64_URL"
-            target_sha="$WIN_X64_SHA256"
+            platform_key="WIN_X64"
         fi
     elif [ "$PLATFORM" = "Linux" ]; then
-        target_url="$LINUX_X64_URL"
-        target_sha="$LINUX_X64_SHA256"
+        platform_key="LINUX_X64"
         install_type="tarball"
         file_ext="tar.gz"
     else
         log_error "Unsupported platform for binary installation."
+        exit 1
+    fi
+
+    # Fetch release details dynamically
+    fetch_versions_json || true
+    local info
+    info=$(get_ide_release_info "$target_version" "$platform_key")
+    target_url=$(echo "$info" | cut -d'|' -f1)
+    target_sha=$(echo "$info" | cut -d'|' -f2)
+
+    if [ -z "$target_url" ] || [ -z "$target_sha" ]; then
+        log_error "Could not find package details for Google Antigravity IDE version $target_version ($platform_key)."
         exit 1
     fi
 
@@ -598,7 +764,7 @@ do_install_binary() {
         exit 1
     fi
 
-    log_info "${C_MAG}🚀 Starting Google Antigravity Official Binary Installation...${C_RESET}"
+    log_info "${C_MAG}🚀 Starting Google Antigravity Official Binary Installation ($target_version)...${C_RESET}"
     
     TMP_DIR=$(mktemp -d)
     trap 'rm -rf "$TMP_DIR"; if [ "$PLATFORM" = "Darwin" ] && [ -d "/Volumes/Antigravity" ]; then hdiutil detach /Volumes/Antigravity -force -quiet 2>/dev/null || true; fi; exit_handler' EXIT INT TERM
@@ -800,42 +966,195 @@ do_remove() {
     log_info "${C_GREEN}✅ Uninstalled successfully.${C_RESET} (Note: Your code in $WORKSPACE_DIR was kept safe)."
 }
 
-install_cli() {
-    JSON_METHOD="cli"
-    log_info "${C_MAG}🚀 Installing Antigravity CLI...${C_RESET}"
-    TMP_DIR=$(mktemp -d)
-    trap 'rm -rf "$TMP_DIR"; exit_handler' EXIT INT TERM
-    local install_script="$TMP_DIR/install.sh"
+get_cli_release_info() {
+    local version="$1"
+    local platform_key="$2"
+    local json_file="/tmp/versions.json"
     
-    if [ "$JSON_OUT" -eq 1 ] || [ "$QUIET" -eq 1 ]; then
-        if run_cmd curl -fSsL "$CLI_INSTALL_URL" -o "$install_script" && run_cmd bash "$install_script" --dir "$BIN_DIR"; then
-            :
+    if [ ! -f "$json_file" ]; then
+        echo "|"
+        return
+    fi
+    
+    local info
+    info=$(awk -v ver="$version" -v plat="$platform_key" '
+      BEGIN { in_cli=0; in_ver=0; in_plat=0 }
+      $0 ~ "\"cli\"" { in_cli=1; next }
+      in_cli && $0 ~ "}" && $0 !~ "," && in_ver==0 { in_cli=0 }
+      in_cli && $0 ~ "\"" ver "\"" { in_ver=1; next }
+      in_ver && $0 ~ "}" && $0 !~ "," { if (in_plat) in_plat=0; else in_ver=0 }
+      in_ver && $0 ~ "\"" plat "\"" { in_plat=1; next }
+      in_plat && $0 ~ "}" { in_plat=0 }
+      in_plat && $0 ~ "\"url\"" { split($0, a, "\""); url=a[4] }
+      in_plat && $0 ~ "\"sha512\"" { split($0, a, "\""); sha=a[4] }
+      END { if (url != "" && sha != "") print url "|" sha }
+    ' "$json_file" 2>/dev/null || true)
+    
+    echo "$info"
+}
+
+install_cli() {
+    local target_version="${1:-$DEFAULT_CLI_VERSION}"
+    JSON_METHOD="cli"
+    log_info "${C_MAG}🚀 Installing Antigravity CLI version $target_version...${C_RESET}"
+    
+    fetch_versions_json || true
+    
+    local cli_os=""
+    case "$PLATFORM" in
+        Darwin) cli_os="darwin" ;;
+        Linux) cli_os="linux" ;;
+        *) cli_os="linux" ;;
+    esac
+    
+    local cli_arch=""
+    case "$ARCH" in
+        x86_64|amd64) cli_arch="amd64" ;;
+        arm64|aarch64) cli_arch="arm64" ;;
+        *) cli_arch="amd64" ;;
+    esac
+    
+    local platform_key="${cli_os}_${cli_arch}"
+    
+    local info
+    info=$(get_cli_release_info "$target_version" "$platform_key")
+    local target_url
+    target_url=$(echo "$info" | cut -d'|' -f1)
+    local target_sha
+    target_sha=$(echo "$info" | cut -d'|' -f2)
+    
+    if [ -z "$target_url" ] || [ -z "$target_sha" ]; then
+        if [ "$target_version" = "$DEFAULT_CLI_VERSION" ]; then
+            log_warn "Release details not found in versions.json. Falling back to official bootstrap installer..."
+            TMP_DIR=$(mktemp -d)
+            trap 'rm -rf "$TMP_DIR"; exit_handler' EXIT INT TERM
+            local install_script="$TMP_DIR/install.sh"
+            
+            if [ "$JSON_OUT" -eq 1 ] || [ "$QUIET" -eq 1 ]; then
+                if run_cmd curl -fSsL "$CLI_INSTALL_URL" -o "$install_script" && run_cmd bash "$install_script" --dir "$BIN_DIR"; then
+                    :
+                else
+                    log_error "Antigravity CLI installation failed."
+                    rm -rf "$TMP_DIR"
+                    trap exit_handler EXIT INT TERM
+                    exit 1
+                fi
+            else
+                log_info "${C_BLUE}⬇️  Downloading CLI installer...${C_RESET}"
+                if ! curl -fSsL "$CLI_INSTALL_URL" -o "$install_script"; then
+                    log_error "Failed to download CLI installer."
+                    rm -rf "$TMP_DIR"
+                    trap exit_handler EXIT INT TERM
+                    exit 1
+                fi
+                log_info "${C_BLUE}📦 Executing CLI installer...${C_RESET}"
+                if ! bash "$install_script" --dir "$BIN_DIR"; then
+                    log_error "CLI installer execution failed."
+                    rm -rf "$TMP_DIR"
+                    trap exit_handler EXIT INT TERM
+                    exit 1
+                fi
+            fi
+            
+            rm -rf "$TMP_DIR"
+            trap exit_handler EXIT INT TERM
+            log_info "${C_GREEN}✅ Antigravity CLI installation complete!${C_RESET}"
+            return
         else
-            log_error "Antigravity CLI installation failed."
-            rm -rf "$TMP_DIR"
-            trap exit_handler EXIT INT TERM
-            exit 1
-        fi
-    else
-        log_info "${C_BLUE}⬇️  Downloading CLI installer...${C_RESET}"
-        if ! curl -fSsL "$CLI_INSTALL_URL" -o "$install_script"; then
-            log_error "Failed to download CLI installer."
-            rm -rf "$TMP_DIR"
-            trap exit_handler EXIT INT TERM
-            exit 1
-        fi
-        log_info "${C_BLUE}📦 Executing CLI installer...${C_RESET}"
-        if ! bash "$install_script" --dir "$BIN_DIR"; then
-            log_error "CLI installer execution failed."
-            rm -rf "$TMP_DIR"
-            trap exit_handler EXIT INT TERM
+            log_error "Could not find package details for Antigravity CLI version $target_version ($platform_key)."
             exit 1
         fi
     fi
     
+    TMP_DIR=$(mktemp -d)
+    trap 'rm -rf "$TMP_DIR"; exit_handler' EXIT INT TERM
+    
+    local is_tar_gz=false
+    local file_ext="bin"
+    case "$target_url" in
+        *.tar.gz*) is_tar_gz=true; file_ext="tar.gz" ;;
+    esac
+    
+    local dl_target="$TMP_DIR/cli.$file_ext"
+    
+    if [ "$JSON_OUT" -eq 1 ] || [ "$QUIET" -eq 1 ]; then
+        run_cmd curl -fSL "$target_url" -o "$dl_target"
+    else
+        log_info "${C_BLUE}⬇️  Downloading CLI package...${C_RESET}"
+        curl -fSL --progress-bar "$target_url" -o "$dl_target"
+    fi
+    
+    log_info "${C_BLUE}🔐 Verifying checksum (SHA-512)...${C_RESET}"
+    local sha_cmd=""
+    if command -v sha512sum >/dev/null 2>&1; then
+        sha_cmd="sha512sum"
+    elif command -v shasum >/dev/null 2>&1; then
+        sha_cmd="shasum -a 512"
+    else
+        log_error "sha512sum or shasum is required but was not found."
+        exit 1
+    fi
+    
+    if ! echo "$target_sha  $dl_target" | $sha_cmd -c - >/dev/null 2>&1; then
+        log_error "Checksum verification failed!"
+        exit 1
+    fi
+    
+    mkdir -p "$BIN_DIR"
+    local binary_dest="$BIN_DIR/agy"
+    
+    if [ "$is_tar_gz" = "true" ]; then
+        log_info "${C_BLUE}📦 Extracting CLI...${C_RESET}"
+        tar -xzf "$dl_target" -C "$TMP_DIR" antigravity
+        cp "$TMP_DIR/antigravity" "$binary_dest"
+    else
+        cp "$dl_target" "$binary_dest"
+    fi
+    
+    chmod +x "$binary_dest"
+    if [ "$PLATFORM" = "Darwin" ]; then
+        xattr -d com.apple.quarantine "$binary_dest" 2>/dev/null || true
+    fi
+    
+    log_info "${C_BLUE}⚙️  Configuring environment...${C_RESET}"
+    "$binary_dest" install || true
+    
     rm -rf "$TMP_DIR"
     trap exit_handler EXIT INT TERM
     log_info "${C_GREEN}✅ Antigravity CLI installation complete!${C_RESET}"
+}
+
+install_sdk() {
+    local target_version="${1:-$DEFAULT_SDK_VERSION}"
+    JSON_METHOD="sdk"
+    log_info "${C_MAG}🚀 Installing Antigravity Python SDK...${C_RESET}"
+    
+    if ! command -v python3 >/dev/null 2>&1; then
+        log_error "python3 is required but was not found on your system."
+        exit 1
+    fi
+    
+    if ! python3 -m pip --version >/dev/null 2>&1; then
+        log_error "pip is required but was not found. Please install pip for python3 first."
+        exit 1
+    fi
+    
+    local pkg="google-antigravity"
+    if [ -n "$target_version" ] && [ "$target_version" != "latest" ]; then
+        pkg="google-antigravity==$target_version"
+    fi
+    
+    log_info "${C_BLUE}📦 Installing package '$pkg' via pip...${C_RESET}"
+    if [ "$JSON_OUT" -eq 1 ] || [ "$QUIET" -eq 1 ]; then
+        run_cmd python3 -m pip install --upgrade "$pkg"
+    else
+        if ! python3 -m pip install --upgrade "$pkg"; then
+            log_error "Failed to install Google Antigravity SDK."
+            exit 1
+        fi
+    fi
+    
+    log_info "${C_GREEN}✅ Antigravity SDK installation complete!${C_RESET}"
 }
 
 # ── Top-level menu ──────────────────────────────────────────────
@@ -913,25 +1232,27 @@ install_submenu() {
         "Back"
         "${rec_brew}Homebrew (cross-platform, no sudo)"
         "${rec_repo}System Repo (APT/DNF, needs sudo)"
-        "${rec_bin}Official Binary (manual, standalone app)"
-        "Antigravity CLI (command-line helper tool)"
+        "${rec_bin}Official Binary IDE  →"
+        "Antigravity CLI (agy)  →"
+        "Antigravity SDK (Python)  →"
     )
 
     if command -v gum >/dev/null 2>&1; then
         local header
         header=$(get_menu_header)
-        CHOICE=$(gum filter --header="$header" --no-limit --indicator="❯ " --placeholder="Select an installation method..." "${options[@]}") || CHOICE="Back"
+        CHOICE=$(gum filter --header="$header" --no-limit --indicator="❯ " --placeholder="Select a product or installation method..." "${options[@]}") || CHOICE="Back"
     else
         clear || true
         get_menu_header
         for i in "${!options[@]}"; do echo "$((i+1))) ${options[$i]}"; done
-        read -r -p "Select method [1-5]: " num < /dev/tty
+        read -r -p "Select method [1-6]: " num < /dev/tty
         case "$num" in
             1) CHOICE="Back" ;;
             2) CHOICE="Homebrew" ;;
             3) CHOICE="System" ;;
-            4) CHOICE="Official Binary" ;;
+            4) CHOICE="Official Binary IDE" ;;
             5) CHOICE="CLI" ;;
+            6) CHOICE="SDK" ;;
             *) CHOICE="Back" ;;
         esac
     fi
@@ -940,8 +1261,9 @@ install_submenu() {
         "Back"*) choice="back" ;;
         *"Homebrew"*) choice="brew" ;;
         *"System"*) choice="repo" ;;
-        *"Binary"*) choice="binary" ;;
-        *"CLI"*) choice="cli" ;;
+        *"Binary IDE"*) choice="binary_menu" ;;
+        *"CLI"*) choice="cli_menu" ;;
+        *"SDK"*) choice="sdk_menu" ;;
         *) choice="back" ;;
     esac
 }
@@ -986,24 +1308,243 @@ cleanup_submenu() {
     esac
 }
 
+# ── Version Selection Helpers ────────────────────────────────────
+list_ide_versions() {
+    local json_file="/tmp/versions.json"
+    if [ -f "$json_file" ]; then
+        awk '
+          BEGIN { in_ide=0 }
+          $0 ~ "\"ide\"" { in_ide=1; next }
+          in_ide && $0 ~ "}" && $0 !~ "," { in_ide=0 }
+          in_ide && $0 ~ "^    \"[0-9.]+\":" {
+            split($0, a, "\"");
+            print a[2]
+          }
+        ' "$json_file" 2>/dev/null
+    else
+        echo "$DEFAULT_IDE_VERSION"
+    fi
+}
+
+list_cli_versions() {
+    local json_file="/tmp/versions.json"
+    if [ -f "$json_file" ]; then
+        awk '
+          BEGIN { in_cli=0 }
+          $0 ~ "\"cli\"" { in_cli=1; next }
+          in_cli && $0 ~ "}" && $0 !~ "," { in_cli=0 }
+          in_cli && $0 ~ "^    \"[0-9.]+\":" {
+            split($0, a, "\"");
+            print a[2]
+          }
+        ' "$json_file" 2>/dev/null
+    else
+        echo "$DEFAULT_CLI_VERSION"
+    fi
+}
+
+list_sdk_versions() {
+    local json_file="/tmp/versions.json"
+    if [ -f "$json_file" ]; then
+        awk '
+          BEGIN { in_sdk=0; in_vers=0 }
+          $0 ~ "\"sdk\"" { in_sdk=1; next }
+          in_sdk && $0 ~ "}" && $0 !~ "," { in_sdk=0 }
+          in_sdk && $0 ~ "\"versions\"" { in_vers=1; next }
+          in_vers && $0 ~ "]" { in_vers=0 }
+          in_vers && $0 ~ "\"[0-9.]+\"" {
+            split($0, a, "\"");
+            print a[2]
+          }
+        ' "$json_file" 2>/dev/null
+    else
+        echo "$DEFAULT_SDK_VERSION"
+    fi
+}
+
+choose_ide_version() {
+    fetch_versions_json || true
+    
+    local versions=()
+    while IFS= read -r line; do
+        versions+=("$line")
+    done < <(list_ide_versions)
+    
+    if [ ${#versions[@]} -eq 0 ]; then
+        versions+=("$DEFAULT_IDE_VERSION")
+    fi
+    
+    local options=("Back")
+    for v in "${versions[@]}"; do
+        if [ "$v" = "$DEFAULT_IDE_VERSION" ]; then
+            options+=("$v (Latest / Default)")
+        else
+            options+=("$v")
+        fi
+    done
+    
+    if command -v gum >/dev/null 2>&1; then
+        local header
+        header=$(get_menu_header)
+        CHOICE=$(gum filter --header="$header" --no-limit --indicator="❯ " --placeholder="Select IDE version to install..." "${options[@]}") || CHOICE="Back"
+    else
+        clear || true
+        get_menu_header
+        for i in "${!options[@]}"; do echo "$((i+1))) ${options[$i]}"; done
+        read -r -p "Select option [1-${#options[@]}]: " num < /dev/tty
+        local idx=$((num-1))
+        if [ $idx -ge 0 ] && [ $idx -lt ${#options[@]} ]; then
+            CHOICE="${options[$idx]}"
+        else
+            CHOICE="Back"
+        fi
+    fi
+    
+    case "$CHOICE" in
+        "Back"*) choice="back" ;;
+        *)
+            local selected_ver
+            selected_ver=$(echo "$CHOICE" | awk '{print $1}')
+            choice="binary:$selected_ver"
+            ;;
+    esac
+}
+
+choose_cli_version() {
+    fetch_versions_json || true
+    
+    local versions=()
+    while IFS= read -r line; do
+        versions+=("$line")
+    done < <(list_cli_versions)
+    
+    if [ ${#versions[@]} -eq 0 ]; then
+        versions+=("$DEFAULT_CLI_VERSION")
+    fi
+    
+    local options=("Back")
+    for v in "${versions[@]}"; do
+        if [ "$v" = "$DEFAULT_CLI_VERSION" ]; then
+            options+=("$v (Latest / Default)")
+        else
+            options+=("$v")
+        fi
+    done
+    
+    if command -v gum >/dev/null 2>&1; then
+        local header
+        header=$(get_menu_header)
+        CHOICE=$(gum filter --header="$header" --no-limit --indicator="❯ " --placeholder="Select CLI version to install..." "${options[@]}") || CHOICE="Back"
+    else
+        clear || true
+        get_menu_header
+        for i in "${!options[@]}"; do echo "$((i+1))) ${options[$i]}"; done
+        read -r -p "Select option [1-${#options[@]}]: " num < /dev/tty
+        local idx=$((num-1))
+        if [ $idx -ge 0 ] && [ $idx -lt ${#options[@]} ]; then
+            CHOICE="${options[$idx]}"
+        else
+            CHOICE="Back"
+        fi
+    fi
+    
+    case "$CHOICE" in
+        "Back"*) choice="back" ;;
+        *)
+            local selected_ver
+            selected_ver=$(echo "$CHOICE" | awk '{print $1}')
+            choice="cli:$selected_ver"
+            ;;
+    esac
+}
+
+choose_sdk_version() {
+    fetch_versions_json || true
+    
+    local versions=()
+    while IFS= read -r line; do
+        versions+=("$line")
+    done < <(list_sdk_versions)
+    
+    if [ ${#versions[@]} -eq 0 ]; then
+        versions+=("$DEFAULT_SDK_VERSION")
+    fi
+    
+    local options=("Back" "latest (Latest / Default)")
+    for v in "${versions[@]}"; do
+        options+=("$v")
+    done
+    
+    if command -v gum >/dev/null 2>&1; then
+        local header
+        header=$(get_menu_header)
+        CHOICE=$(gum filter --header="$header" --no-limit --indicator="❯ " --placeholder="Select SDK version to install..." "${options[@]}") || CHOICE="Back"
+    else
+        clear || true
+        get_menu_header
+        for i in "${!options[@]}"; do echo "$((i+1))) ${options[$i]}"; done
+        read -r -p "Select option [1-${#options[@]}]: " num < /dev/tty
+        local idx=$((num-1))
+        if [ $idx -ge 0 ] && [ $idx -lt ${#options[@]} ]; then
+            CHOICE="${options[$idx]}"
+        else
+            CHOICE="Back"
+        fi
+    fi
+    
+    case "$CHOICE" in
+        "Back"*) choice="back" ;;
+        *)
+            local selected_ver
+            selected_ver=$(echo "$CHOICE" | awk '{print $1}')
+            choice="sdk:$selected_ver"
+            ;;
+    esac
+}
+
 # ── Mock actions for sandbox mode ───────────────────────────────
 run_mock_action() {
     local action="$1"
 
     case "$action" in
-        brew|repo|binary|cli)
+        brew|repo|binary*|cli*|sdk*)
             local method="Homebrew"
-            [ "$action" = "repo" ] && method="System Repo"
-            [ "$action" = "binary" ] && method="Official Binary"
-            [ "$action" = "cli" ] && method="Antigravity CLI"
+            local product="Google Antigravity IDE"
+            local version=""
+            
+            if [[ "$action" == *":"* ]]; then
+                version=" (version $(echo "$action" | cut -d':' -f2))"
+            fi
+            
+            if [[ "$action" == "binary"* ]]; then
+                method="Official Binary"
+                product="Google Antigravity IDE"
+            elif [[ "$action" == "cli"* ]]; then
+                method="Antigravity CLI"
+                product="Antigravity CLI (agy)"
+            elif [[ "$action" == "sdk"* ]]; then
+                method="Antigravity SDK"
+                product="Antigravity SDK (Python)"
+            elif [ "$action" = "repo" ]; then
+                method="System Repo"
+            fi
 
-            log_info "${C_MAG}🚀 Starting mock installation via ${method}...${C_RESET}"
-            if [ "$action" = "cli" ]; then
+            log_info "${C_MAG}🚀 Starting mock installation of ${product}${version} via ${method}...${C_RESET}"
+            if [[ "$action" == "cli"* ]]; then
                 run_cmd_ui "Downloading Antigravity CLI installer..." sleep 1
                 run_cmd_ui "Executing installation script..." sleep 1.5
                 echo ""
                 log_info "${C_GREEN}${C_BOLD}🎉 Mock Installation Complete!${C_RESET}"
                 log_info "  ${C_CYAN}▸${C_RESET} Launch:    ${C_BOLD}agy --help${C_RESET}"
+                return
+            fi
+            
+            if [[ "$action" == "sdk"* ]]; then
+                run_cmd_ui "Connecting to PyPI..." sleep 1
+                run_cmd_ui "Installing package 'google-antigravity'..." sleep 1.5
+                echo ""
+                log_info "${C_GREEN}${C_BOLD}🎉 Mock Installation Complete!${C_RESET}"
+                log_info "  ${C_CYAN}▸${C_RESET} Verify:    ${C_BOLD}python3 -c \"import google_antigravity\"${C_RESET}"
                 return
             fi
 
@@ -1113,6 +1654,11 @@ do_health_check() {
         echo -e "  ${C_GREEN}✅ Antigravity CLI found in PATH ($(command -v agy))${C_RESET}"
     fi
 
+    # 6. Antigravity Python SDK (Optional)
+    if command -v python3 >/dev/null 2>&1 && python3 -c "import google_antigravity" >/dev/null 2>&1; then
+        echo -e "  ${C_GREEN}✅ Antigravity Python SDK found in Python environment${C_RESET}"
+    fi
+
     echo ""
     if [ "$failed" -eq 0 ]; then
         log_info "${C_GREEN}${C_BOLD}🎉 Health check passed! Your installation is healthy.${C_RESET}"
@@ -1129,6 +1675,7 @@ print_usage() {
     echo "  --install-repo    Headless System Repo install"
     echo "  --install-binary  Headless Official Binary install"
     echo "  --install-cli     Headless Antigravity CLI install"
+    echo "  --install-sdk     Headless Antigravity Python SDK install"
     echo "  --remove          Uninstall Antigravity"
     echo "  --demo-ui         Test and view the UI layout without modifying the system"
     echo "  --json            Output machine-readable JSON at end (disables prompts)"
@@ -1151,6 +1698,7 @@ for arg in "$@"; do
         --install-repo) ACTION="repo"; AUTO=1 ;;
         --install-binary) ACTION="binary"; AUTO=1 ;;
         --install-cli) ACTION="cli"; AUTO=1 ;;
+        --install-sdk) ACTION="sdk"; AUTO=1 ;;
         --remove) ACTION="remove" ;;
         --demo-ui) ACTION="demo_ui" ;;
         --json) JSON_OUT=1; QUIET=1 ;;
@@ -1254,6 +1802,11 @@ start_sandbox_mode() {
                 ;;
             install)
                 install_submenu
+                case "$choice" in
+                    binary_menu) choose_ide_version ;;
+                    cli_menu) choose_cli_version ;;
+                    sdk_menu) choose_sdk_version ;;
+                esac
                 if [ "$choice" != "back" ]; then
                     echo ""; run_mock_action "$choice"
                     echo ""; echo -ne "${C_DIM}Press Enter to continue...${C_RESET}"; read -r _ < /dev/tty
@@ -1283,10 +1836,34 @@ run_interactive() {
             install)
                 install_submenu
                 case "$choice" in
+                    binary_menu) choose_ide_version ;;
+                    cli_menu) choose_cli_version ;;
+                    sdk_menu) choose_sdk_version ;;
+                esac
+                case "$choice" in
                     brew) install_brew; save_manager_locally; break ;;
                     repo) install_repo; save_manager_locally; break ;;
-                    binary) do_install_binary; save_manager_locally; break ;;
-                    cli) install_cli; save_manager_locally; break ;;
+                    binary:*)
+                        local selected_version
+                        selected_version=$(echo "$choice" | cut -d':' -f2)
+                        do_install_binary "$selected_version"
+                        save_manager_locally
+                        break
+                        ;;
+                    cli:*)
+                        local selected_version
+                        selected_version=$(echo "$choice" | cut -d':' -f2)
+                        install_cli "$selected_version"
+                        save_manager_locally
+                        break
+                        ;;
+                    sdk:*)
+                        local selected_version
+                        selected_version=$(echo "$choice" | cut -d':' -f2)
+                        install_sdk "$selected_version"
+                        save_manager_locally
+                        break
+                        ;;
                     back) continue ;; # return to main menu
                 esac
                 ;;
@@ -1317,6 +1894,7 @@ case "$ACTION" in
     repo) install_repo; save_manager_locally ;;
     binary) do_install_binary; save_manager_locally ;;
     cli) install_cli; save_manager_locally ;;
+    sdk) install_sdk; save_manager_locally ;;
     check) do_health_check ;;
     demo_ui) start_sandbox_mode ;;
     install|"")

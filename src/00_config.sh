@@ -13,7 +13,12 @@ C_DIM='\033[2m'
 C_RESET='\033[0m'
 
 # Configuration
-SCRIPT_VERSION="0.2.9"
+SCRIPT_VERSION="0.2.10"
+DEFAULT_IDE_VERSION="2.0.0"
+DEFAULT_CLI_VERSION="1.0.0"
+DEFAULT_SDK_VERSION="0.1.0"
+VERSIONS_JSON_URL="https://raw.githubusercontent.com/wtg-codes/agv-easy-install/main/versions.json"
+
 LINUX_X64_SHA256="14bc9cb480a5be8fb3b7dc3e2b0cebfa66d370ad58cc1e0fa01140d1204d4297"
 LINUX_X64_URL="https://storage.googleapis.com/antigravity-public/antigravity-hub/2.0.0-6324554176528384/linux-x64/Antigravity.tar.gz"
 

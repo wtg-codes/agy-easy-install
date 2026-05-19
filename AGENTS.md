@@ -124,6 +124,7 @@ Before submitting any PR, the relevant phase gate(s) must pass.
 │   ├── 20_platform.sh                 ← detect_platform, print_system_info, print_banner
 │   ├── 30_installers.sh               ← install_brew, install_repo, do_install_tarball
 │   ├── 40_ui.sh                       ← main_menu, install_submenu, cleanup_submenu
+│   ├── 50_health.sh                   ← do_health_check (existing installation validation)
 │   └── 99_main.sh                     ← CLI dispatch, sandbox loop, run_interactive
 ├── scrape_latest.py                   ← Nightly URL scraper
 ├── requirements.txt                   ← Python deps for scraper

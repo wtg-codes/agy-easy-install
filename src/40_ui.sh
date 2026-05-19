@@ -73,25 +73,27 @@ install_submenu() {
         "Back"
         "${rec_brew}Homebrew (cross-platform, no sudo)"
         "${rec_repo}System Repo (APT/DNF, needs sudo)"
-        "${rec_bin}Official Binary (manual, standalone app)"
-        "Antigravity CLI (command-line helper tool)"
+        "${rec_bin}Official Binary IDE  →"
+        "Antigravity CLI (agy)  →"
+        "Antigravity SDK (Python)  →"
     )
 
     if command -v gum >/dev/null 2>&1; then
         local header
         header=$(get_menu_header)
-        CHOICE=$(gum filter --header="$header" --no-limit --indicator="❯ " --placeholder="Select an installation method..." "${options[@]}") || CHOICE="Back"
+        CHOICE=$(gum filter --header="$header" --no-limit --indicator="❯ " --placeholder="Select a product or installation method..." "${options[@]}") || CHOICE="Back"
     else
         clear || true
         get_menu_header
         for i in "${!options[@]}"; do echo "$((i+1))) ${options[$i]}"; done
-        read -r -p "Select method [1-5]: " num < /dev/tty
+        read -r -p "Select method [1-6]: " num < /dev/tty
         case "$num" in
             1) CHOICE="Back" ;;
             2) CHOICE="Homebrew" ;;
             3) CHOICE="System" ;;
-            4) CHOICE="Official Binary" ;;
+            4) CHOICE="Official Binary IDE" ;;
             5) CHOICE="CLI" ;;
+            6) CHOICE="SDK" ;;
             *) CHOICE="Back" ;;
         esac
     fi
@@ -100,8 +102,9 @@ install_submenu() {
         "Back"*) choice="back" ;;
         *"Homebrew"*) choice="brew" ;;
         *"System"*) choice="repo" ;;
-        *"Binary"*) choice="binary" ;;
-        *"CLI"*) choice="cli" ;;
+        *"Binary IDE"*) choice="binary_menu" ;;
+        *"CLI"*) choice="cli_menu" ;;
+        *"SDK"*) choice="sdk_menu" ;;
         *) choice="back" ;;
     esac
 }
@@ -146,24 +149,243 @@ cleanup_submenu() {
     esac
 }
 
+# ── Version Selection Helpers ────────────────────────────────────
+list_ide_versions() {
+    local json_file="/tmp/versions.json"
+    if [ -f "$json_file" ]; then
+        awk '
+          BEGIN { in_ide=0 }
+          $0 ~ "\"ide\"" { in_ide=1; next }
+          in_ide && $0 ~ "}" && $0 !~ "," { in_ide=0 }
+          in_ide && $0 ~ "^    \"[0-9.]+\":" {
+            split($0, a, "\"");
+            print a[2]
+          }
+        ' "$json_file" 2>/dev/null
+    else
+        echo "$DEFAULT_IDE_VERSION"
+    fi
+}
+
+list_cli_versions() {
+    local json_file="/tmp/versions.json"
+    if [ -f "$json_file" ]; then
+        awk '
+          BEGIN { in_cli=0 }
+          $0 ~ "\"cli\"" { in_cli=1; next }
+          in_cli && $0 ~ "}" && $0 !~ "," { in_cli=0 }
+          in_cli && $0 ~ "^    \"[0-9.]+\":" {
+            split($0, a, "\"");
+            print a[2]
+          }
+        ' "$json_file" 2>/dev/null
+    else
+        echo "$DEFAULT_CLI_VERSION"
+    fi
+}
+
+list_sdk_versions() {
+    local json_file="/tmp/versions.json"
+    if [ -f "$json_file" ]; then
+        awk '
+          BEGIN { in_sdk=0; in_vers=0 }
+          $0 ~ "\"sdk\"" { in_sdk=1; next }
+          in_sdk && $0 ~ "}" && $0 !~ "," { in_sdk=0 }
+          in_sdk && $0 ~ "\"versions\"" { in_vers=1; next }
+          in_vers && $0 ~ "]" { in_vers=0 }
+          in_vers && $0 ~ "\"[0-9.]+\"" {
+            split($0, a, "\"");
+            print a[2]
+          }
+        ' "$json_file" 2>/dev/null
+    else
+        echo "$DEFAULT_SDK_VERSION"
+    fi
+}
+
+choose_ide_version() {
+    fetch_versions_json || true
+    
+    local versions=()
+    while IFS= read -r line; do
+        versions+=("$line")
+    done < <(list_ide_versions)
+    
+    if [ ${#versions[@]} -eq 0 ]; then
+        versions+=("$DEFAULT_IDE_VERSION")
+    fi
+    
+    local options=("Back")
+    for v in "${versions[@]}"; do
+        if [ "$v" = "$DEFAULT_IDE_VERSION" ]; then
+            options+=("$v (Latest / Default)")
+        else
+            options+=("$v")
+        fi
+    done
+    
+    if command -v gum >/dev/null 2>&1; then
+        local header
+        header=$(get_menu_header)
+        CHOICE=$(gum filter --header="$header" --no-limit --indicator="❯ " --placeholder="Select IDE version to install..." "${options[@]}") || CHOICE="Back"
+    else
+        clear || true
+        get_menu_header
+        for i in "${!options[@]}"; do echo "$((i+1))) ${options[$i]}"; done
+        read -r -p "Select option [1-${#options[@]}]: " num < /dev/tty
+        local idx=$((num-1))
+        if [ $idx -ge 0 ] && [ $idx -lt ${#options[@]} ]; then
+            CHOICE="${options[$idx]}"
+        else
+            CHOICE="Back"
+        fi
+    fi
+    
+    case "$CHOICE" in
+        "Back"*) choice="back" ;;
+        *)
+            local selected_ver
+            selected_ver=$(echo "$CHOICE" | awk '{print $1}')
+            choice="binary:$selected_ver"
+            ;;
+    esac
+}
+
+choose_cli_version() {
+    fetch_versions_json || true
+    
+    local versions=()
+    while IFS= read -r line; do
+        versions+=("$line")
+    done < <(list_cli_versions)
+    
+    if [ ${#versions[@]} -eq 0 ]; then
+        versions+=("$DEFAULT_CLI_VERSION")
+    fi
+    
+    local options=("Back")
+    for v in "${versions[@]}"; do
+        if [ "$v" = "$DEFAULT_CLI_VERSION" ]; then
+            options+=("$v (Latest / Default)")
+        else
+            options+=("$v")
+        fi
+    done
+    
+    if command -v gum >/dev/null 2>&1; then
+        local header
+        header=$(get_menu_header)
+        CHOICE=$(gum filter --header="$header" --no-limit --indicator="❯ " --placeholder="Select CLI version to install..." "${options[@]}") || CHOICE="Back"
+    else
+        clear || true
+        get_menu_header
+        for i in "${!options[@]}"; do echo "$((i+1))) ${options[$i]}"; done
+        read -r -p "Select option [1-${#options[@]}]: " num < /dev/tty
+        local idx=$((num-1))
+        if [ $idx -ge 0 ] && [ $idx -lt ${#options[@]} ]; then
+            CHOICE="${options[$idx]}"
+        else
+            CHOICE="Back"
+        fi
+    fi
+    
+    case "$CHOICE" in
+        "Back"*) choice="back" ;;
+        *)
+            local selected_ver
+            selected_ver=$(echo "$CHOICE" | awk '{print $1}')
+            choice="cli:$selected_ver"
+            ;;
+    esac
+}
+
+choose_sdk_version() {
+    fetch_versions_json || true
+    
+    local versions=()
+    while IFS= read -r line; do
+        versions+=("$line")
+    done < <(list_sdk_versions)
+    
+    if [ ${#versions[@]} -eq 0 ]; then
+        versions+=("$DEFAULT_SDK_VERSION")
+    fi
+    
+    local options=("Back" "latest (Latest / Default)")
+    for v in "${versions[@]}"; do
+        options+=("$v")
+    done
+    
+    if command -v gum >/dev/null 2>&1; then
+        local header
+        header=$(get_menu_header)
+        CHOICE=$(gum filter --header="$header" --no-limit --indicator="❯ " --placeholder="Select SDK version to install..." "${options[@]}") || CHOICE="Back"
+    else
+        clear || true
+        get_menu_header
+        for i in "${!options[@]}"; do echo "$((i+1))) ${options[$i]}"; done
+        read -r -p "Select option [1-${#options[@]}]: " num < /dev/tty
+        local idx=$((num-1))
+        if [ $idx -ge 0 ] && [ $idx -lt ${#options[@]} ]; then
+            CHOICE="${options[$idx]}"
+        else
+            CHOICE="Back"
+        fi
+    fi
+    
+    case "$CHOICE" in
+        "Back"*) choice="back" ;;
+        *)
+            local selected_ver
+            selected_ver=$(echo "$CHOICE" | awk '{print $1}')
+            choice="sdk:$selected_ver"
+            ;;
+    esac
+}
+
 # ── Mock actions for sandbox mode ───────────────────────────────
 run_mock_action() {
     local action="$1"
 
     case "$action" in
-        brew|repo|binary|cli)
+        brew|repo|binary*|cli*|sdk*)
             local method="Homebrew"
-            [ "$action" = "repo" ] && method="System Repo"
-            [ "$action" = "binary" ] && method="Official Binary"
-            [ "$action" = "cli" ] && method="Antigravity CLI"
+            local product="Google Antigravity IDE"
+            local version=""
+            
+            if [[ "$action" == *":"* ]]; then
+                version=" (version $(echo "$action" | cut -d':' -f2))"
+            fi
+            
+            if [[ "$action" == "binary"* ]]; then
+                method="Official Binary"
+                product="Google Antigravity IDE"
+            elif [[ "$action" == "cli"* ]]; then
+                method="Antigravity CLI"
+                product="Antigravity CLI (agy)"
+            elif [[ "$action" == "sdk"* ]]; then
+                method="Antigravity SDK"
+                product="Antigravity SDK (Python)"
+            elif [ "$action" = "repo" ]; then
+                method="System Repo"
+            fi
 
-            log_info "${C_MAG}🚀 Starting mock installation via ${method}...${C_RESET}"
-            if [ "$action" = "cli" ]; then
+            log_info "${C_MAG}🚀 Starting mock installation of ${product}${version} via ${method}...${C_RESET}"
+            if [[ "$action" == "cli"* ]]; then
                 run_cmd_ui "Downloading Antigravity CLI installer..." sleep 1
                 run_cmd_ui "Executing installation script..." sleep 1.5
                 echo ""
                 log_info "${C_GREEN}${C_BOLD}🎉 Mock Installation Complete!${C_RESET}"
                 log_info "  ${C_CYAN}▸${C_RESET} Launch:    ${C_BOLD}agy --help${C_RESET}"
+                return
+            fi
+            
+            if [[ "$action" == "sdk"* ]]; then
+                run_cmd_ui "Connecting to PyPI..." sleep 1
+                run_cmd_ui "Installing package 'google-antigravity'..." sleep 1.5
+                echo ""
+                log_info "${C_GREEN}${C_BOLD}🎉 Mock Installation Complete!${C_RESET}"
+                log_info "  ${C_CYAN}▸${C_RESET} Verify:    ${C_BOLD}python3 -c \"import google_antigravity\"${C_RESET}"
                 return
             fi
 

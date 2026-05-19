@@ -5,6 +5,16 @@ Format follows [Keep a Changelog](https://keepachangelog.com/).
 
 ---
 
+## [0.2.10] — 2026-05-19
+
+### Added
+- **Multi-Product Support:** Re-imagined installer interface to support Google Antigravity IDE, Antigravity CLI (`agy`), and Antigravity Python SDK (`google-antigravity`).
+- **Dynamic Version Listing & Selection:** Fetches available releases dynamically from `versions.json` (and PyPI API for the SDK), letting users choose historical versions of each product to install.
+- **Installed Version Detection:** Checks and displays currently installed versions of the IDE, CLI, and SDK on the startup dashboard alongside the latest available versions.
+- **SDK Installation Support:** Added support for installing specific versions of the Antigravity Python SDK directly from PyPI.
+- **Improved Scraper & Cache:** Upgraded `scrape_latest.py` with hash caching to prevent redundant file downloads of old versions, PyPI querying, and multi-product JSON manifest generation.
+- **Health Check and Sandbox Updates:** Added SDK verification to the health check flow and integrated multi-product selection and mock actions in the sandbox demo mode.
+
 ## [0.2.9] — 2026-05-19
 
 ### Added

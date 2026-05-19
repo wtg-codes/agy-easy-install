@@ -1,6 +1,6 @@
 # AGV Easy Install — Implementation Plan
 
-> **Last updated:** 2026-05-13 · Branch: `feat-platform-extensions`
+> **Last updated:** 2026-05-19 · Branch: `feature/multi-product-support`
 > This is a living document. It reflects the current architecture and roadmap.
 > For pending work items, see [`TODO.md`](../../TODO.md) in the project root.
 
@@ -16,6 +16,7 @@
 │  ├── 20_platform.sh   OS detect, banner, sys info   │
 │  ├── 30_installers.sh Brew, repo, tarball install   │
 │  ├── 40_ui.sh         Hierarchical menus            │
+│  ├── 50_health.sh     Health check verification     │
 │  └── 99_main.sh       CLI dispatch, sandbox loop    │
 └──────────┬──────────────────────────────────────────┘
            │ ./build.sh

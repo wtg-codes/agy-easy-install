@@ -237,18 +237,92 @@ detect_platform() {
     fi
 }
 
+get_installed_ide_version() {
+    # Check binary install directory (Linux/WSL)
+    if [ -f "$APP_DIR/resources/app/package.json" ]; then
+        awk -F'"' '/"version":/ {print $4}' "$APP_DIR/resources/app/package.json"
+        return
+    fi
+    if [ -f "$APP_DIR/resources/app/product.json" ]; then
+        awk -F'"' '/"version":/ {print $4}' "$APP_DIR/resources/app/product.json"
+        return
+    fi
+    # Check macOS bundle
+    if [ -f "/Applications/Google Antigravity.app/Contents/Resources/app/package.json" ]; then
+        awk -F'"' '/"version":/ {print $4}' "/Applications/Google Antigravity.app/Contents/Resources/app/package.json"
+        return
+    fi
+    if [ -f "/Applications/Google Antigravity.app/Contents/Resources/app/product.json" ]; then
+        awk -F'"' '/"version":/ {print $4}' "/Applications/Google Antigravity.app/Contents/Resources/app/product.json"
+        return
+    fi
+    # Check package managers
+    if command -v dpkg-query >/dev/null 2>&1; then
+        local v
+        v=$(dpkg-query -W -f='${Version}' antigravity 2>/dev/null || true)
+        if [ -n "$v" ]; then echo "$v"; return; fi
+    fi
+    if command -v rpm >/dev/null 2>&1; then
+        local v
+        v=$(rpm -q --qf "%{VERSION}" antigravity 2>/dev/null || true)
+        if [ -n "$v" ]; then echo "$v"; return; fi
+    fi
+    if command -v brew >/dev/null 2>&1; then
+        local v
+        v=$(brew info --cask antigravity 2>/dev/null | awk 'NR==1 {print $2}' || true)
+        if [ -n "$v" ] && [ "$v" != "Error:" ]; then echo "$v"; return; fi
+    fi
+    echo ""
+}
+
+get_installed_cli_version() {
+    if command -v agy >/dev/null 2>&1; then
+        agy --version 2>/dev/null | awk '{print $NF}' || echo "Installed"
+    elif [ -f "$BIN_DIR/agy" ]; then
+        "$BIN_DIR/agy" --version 2>/dev/null | awk '{print $NF}' || echo "Installed"
+    else
+        echo ""
+    fi
+}
+
+get_installed_sdk_version() {
+    if command -v python3 >/dev/null 2>&1; then
+        python3 -c "import google_antigravity; print(google_antigravity.__version__)" 2>/dev/null || \
+        python3 -m pip show google-antigravity 2>/dev/null | awk -F': ' '/Version:/ {print $2}' || \
+        echo ""
+    else
+        echo ""
+    fi
+}
+
 print_system_info() {
-    # --- Detect AGV installation status ---
-    local AGV_STATUS="${C_YELLOW}Not Installed${C_RESET}"
-    if command -v antigravity >/dev/null 2>&1; then
-        local p
-        p=$(command -v antigravity)
-        if [[ "$p" == *".local/bin"* ]] || [[ "$p" == *"/Applications/"* ]]; then AGV_STATUS="${C_GREEN}✓ Installed${C_RESET} ${C_DIM}(Binary)${C_RESET}"
-        elif [[ "$p" == *"brew"* ]]; then AGV_STATUS="${C_GREEN}✓ Installed${C_RESET} ${C_DIM}(Homebrew)${C_RESET}"
-        elif [[ "$p" == "/usr/bin/"* ]]; then AGV_STATUS="${C_GREEN}✓ Installed${C_RESET} ${C_DIM}(System Repo)${C_RESET}"
-        else AGV_STATUS="${C_GREEN}✓ Installed${C_RESET} ${C_DIM}($p)${C_RESET}"; fi
-    elif [ -f "$HOME/.local/bin/antigravity" ]; then
-        AGV_STATUS="${C_YELLOW}⚠ Installed but not in PATH${C_RESET}"
+    # --- Detect dynamic current versions ---
+    local inst_ide
+    inst_ide=$(get_installed_ide_version)
+    local inst_cli
+    inst_cli=$(get_installed_cli_version)
+    local inst_sdk
+    inst_sdk=$(get_installed_sdk_version)
+
+    local ide_status
+    if [ -n "$inst_ide" ]; then
+        ide_status="${C_GREEN}✓ $inst_ide${C_RESET}"
+    else
+        ide_status="${C_YELLOW}Not Installed${C_RESET}"
+    fi
+
+    local cli_status
+    if [ -n "$inst_cli" ]; then
+        cli_status="${C_GREEN}✓ $inst_cli${C_RESET}"
+    else
+        cli_status="${C_YELLOW}Not Installed${C_RESET}"
+    fi
+
+    local sdk_status
+    if [ -n "$inst_sdk" ]; then
+        sdk_status="${C_GREEN}✓ $inst_sdk${C_RESET}"
+    else
+        sdk_status="${C_YELLOW}Not Installed${C_RESET}"
     fi
 
     # --- Build recommendation label ---
@@ -260,9 +334,12 @@ print_system_info() {
     esac
 
     # --- Print dashboard ---
-    log_info "  ${C_CYAN}OS:${C_RESET}   ${C_BOLD}${DISTRO_PRETTY}${C_RESET} ${C_DIM}(${ARCH})${C_RESET}"
-    log_info "  ${C_CYAN}AGV:${C_RESET}  ${AGV_STATUS}"
-    log_info "  ${C_CYAN}Best:${C_RESET} ${REC_LABEL}"
+    log_info "  ${C_CYAN}OS:${C_RESET}                 ${C_BOLD}${DISTRO_PRETTY}${C_RESET} ${C_DIM}(${ARCH})${C_RESET}"
+    log_info "  ${C_CYAN}Installed Products:${C_RESET}"
+    log_info "    ${C_BOLD}Google Antigravity IDE:${C_RESET}  ${ide_status} ${C_DIM}[Latest: $DEFAULT_IDE_VERSION]${C_RESET}"
+    log_info "    ${C_BOLD}Antigravity CLI (agy):${C_RESET}   ${cli_status} ${C_DIM}[Latest: $DEFAULT_CLI_VERSION]${C_RESET}"
+    log_info "    ${C_BOLD}Antigravity SDK (Python):${C_RESET} ${sdk_status} ${C_DIM}[Latest: $DEFAULT_SDK_VERSION]${C_RESET}"
+    log_info "  ${C_CYAN}Best Install Method:${C_RESET}        ${REC_LABEL}"
 
     # --- Warnings (only shown when relevant) ---
     if [ -n "$GLIBC_VERSION" ]; then

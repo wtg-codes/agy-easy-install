@@ -39,6 +39,7 @@ bash antigravity-manager.sh --install-brew
 bash antigravity-manager.sh --install-repo
 bash antigravity-manager.sh --install-binary
 bash antigravity-manager.sh --install-cli    # Headless Antigravity CLI install
+bash antigravity-manager.sh --install-sdk    # Headless Antigravity Python SDK install
 
 # Additional options
 bash antigravity-manager.sh --verbose  # Print detailed logs
@@ -48,6 +49,8 @@ bash antigravity-manager.sh --update   # Force update of this manager script
 bash antigravity-manager.sh --remove   # Uninstall
 bash antigravity-manager.sh --json     # Output single JSON object on completion
 bash antigravity-manager.sh --demo-ui  # Sandbox mode — test the UI without installing
+
+*Note: Interactively, the manager displays currently installed versions alongside the latest releases and allows installing custom historical versions.*
 ```
 
 ---
