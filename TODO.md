@@ -1,6 +1,6 @@
 # TODO — AGV Easy Install
 
-> **Last updated:** 2026-05-19 · Branch: `fix/nightly-scraper-v2`
+> **Last updated:** 2026-05-19 · Branch: `feature/multi-product-support`
 > This file is the single source of truth for all pending work.
 > It MUST be updated at the end of every coding session.
 
@@ -159,7 +159,8 @@
 - [x] Auto-update mechanism for the manager script itself
 - [x] `--check` flag to verify existing installation health
 - [x] **Antigravity CLI Support (`agy`)**: Add helper functions and UI/headless flags to install/uninstall the new command-line helper tool.
-- [ ] **Gemini CLI Support**: Integrate installation of the Gemini CLI helper (see [installation docs](https://geminicli.com/docs/get-started/installation/)).
+- [x] **Gemini CLI Support**: Rebranded and transitioned to Antigravity CLI (`agy`) as per developers blog post.
+- [x] **Multi-Product Re-Imagining**: Offer Google Antigravity IDE, CLI, and SDK in the install helper with version checking and custom version choosing.
 - [ ] **Jules-cli Support**: Add installer support for the Jules-cli developer tool.
 - [ ] Localization / i18n (stretch goal)
 

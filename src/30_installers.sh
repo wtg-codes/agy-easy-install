@@ -80,42 +80,101 @@ EOL
     echo '{"method": "repo", "version": "'"$SCRIPT_VERSION"'"}' > "$STATE_FILE"
 }
 
+get_ide_release_info() {
+    local version="$1"
+    local platform_key="$2"
+    local json_file="/tmp/versions.json"
+    
+    if [ ! -f "$json_file" ]; then
+        if [ "$version" = "$DEFAULT_IDE_VERSION" ]; then
+            case "$platform_key" in
+                LINUX_X64) echo "$LINUX_X64_URL|$LINUX_X64_SHA256" ;;
+                MAC_X64) echo "$MAC_X64_URL|$MAC_X64_SHA256" ;;
+                MAC_ARM64) echo "$MAC_ARM64_URL|$MAC_ARM64_SHA256" ;;
+                WIN_X64) echo "$WIN_X64_URL|$WIN_X64_SHA256" ;;
+                WIN_ARM64) echo "$WIN_ARM64_URL|$WIN_ARM64_SHA256" ;;
+            esac
+            return
+        fi
+        echo "|"
+        return
+    fi
+    
+    local info
+    info=$(awk -v ver="$version" -v plat="$platform_key" '
+      BEGIN { in_ide=0; in_ver=0; in_plat=0 }
+      $0 ~ "\"ide\"" { in_ide=1; next }
+      in_ide && $0 ~ "}" && $0 !~ "," && in_ver==0 { in_ide=0 }
+      in_ide && $0 ~ "\"" ver "\"" { in_ver=1; next }
+      in_ver && $0 ~ "}" && $0 !~ "," { if (in_plat) in_plat=0; else in_ver=0 }
+      in_ver && $0 ~ "\"" plat "\"" { in_plat=1; next }
+      in_plat && $0 ~ "}" { in_plat=0 }
+      in_plat && $0 ~ "\"url\"" { split($0, a, "\""); url=a[4] }
+      in_plat && $0 ~ "\"sha256\"" { split($0, a, "\""); sha=a[4] }
+      END { if (url != "" && sha != "") print url "|" sha }
+    ' "$json_file" 2>/dev/null || true)
+    
+    if [ -n "$info" ]; then
+        echo "$info"
+    else
+        if [ "$version" = "$DEFAULT_IDE_VERSION" ]; then
+            case "$platform_key" in
+                LINUX_X64) echo "$LINUX_X64_URL|$LINUX_X64_SHA256" ;;
+                MAC_X64) echo "$MAC_X64_URL|$MAC_X64_SHA256" ;;
+                MAC_ARM64) echo "$MAC_ARM64_URL|$MAC_ARM64_SHA256" ;;
+                WIN_X64) echo "$WIN_X64_URL|$WIN_X64_SHA256" ;;
+                WIN_ARM64) echo "$WIN_ARM64_URL|$WIN_ARM64_SHA256" ;;
+            esac
+        else
+            echo "|"
+        fi
+    fi
+}
+
 do_install_binary() {
+    local target_version="${1:-$DEFAULT_IDE_VERSION}"
     JSON_METHOD="binary"
     local target_url=""
     local target_sha=""
     local install_type=""
     local file_ext=""
+    local platform_key=""
 
     # Determine target based on platform and architecture
     if [ "$PLATFORM" = "Darwin" ]; then
         install_type="dmg"
         file_ext="dmg"
         if [ "$ARCH" = "arm64" ]; then
-            target_url="$MAC_ARM64_URL"
-            target_sha="$MAC_ARM64_SHA256"
+            platform_key="MAC_ARM64"
         else
-            target_url="$MAC_X64_URL"
-            target_sha="$MAC_X64_SHA256"
+            platform_key="MAC_X64"
         fi
     elif [ "$WSL_DISTRO_NAME" != "" ] || [ "$OSTYPE" = "msys" ] || [ "$OSTYPE" = "cygwin" ]; then
         install_type="exe"
         file_ext="exe"
-        # Assuming Windows x64 for WSL host by default, ARM WSL is rare but could check ARCH
         if [ "$ARCH" = "aarch64" ] || [ "$ARCH" = "arm64" ]; then
-            target_url="$WIN_ARM64_URL"
-            target_sha="$WIN_ARM64_SHA256"
+            platform_key="WIN_ARM64"
         else
-            target_url="$WIN_X64_URL"
-            target_sha="$WIN_X64_SHA256"
+            platform_key="WIN_X64"
         fi
     elif [ "$PLATFORM" = "Linux" ]; then
-        target_url="$LINUX_X64_URL"
-        target_sha="$LINUX_X64_SHA256"
+        platform_key="LINUX_X64"
         install_type="tarball"
         file_ext="tar.gz"
     else
         log_error "Unsupported platform for binary installation."
+        exit 1
+    fi
+
+    # Fetch release details dynamically
+    fetch_versions_json || true
+    local info
+    info=$(get_ide_release_info "$target_version" "$platform_key")
+    target_url=$(echo "$info" | cut -d'|' -f1)
+    target_sha=$(echo "$info" | cut -d'|' -f2)
+
+    if [ -z "$target_url" ] || [ -z "$target_sha" ]; then
+        log_error "Could not find package details for Google Antigravity IDE version $target_version ($platform_key)."
         exit 1
     fi
 
@@ -129,7 +188,7 @@ do_install_binary() {
         exit 1
     fi
 
-    log_info "${C_MAG}🚀 Starting Google Antigravity Official Binary Installation...${C_RESET}"
+    log_info "${C_MAG}🚀 Starting Google Antigravity Official Binary Installation ($target_version)...${C_RESET}"
     
     TMP_DIR=$(mktemp -d)
     trap 'rm -rf "$TMP_DIR"; if [ "$PLATFORM" = "Darwin" ] && [ -d "/Volumes/Antigravity" ]; then hdiutil detach /Volumes/Antigravity -force -quiet 2>/dev/null || true; fi; exit_handler' EXIT INT TERM
@@ -331,41 +390,194 @@ do_remove() {
     log_info "${C_GREEN}✅ Uninstalled successfully.${C_RESET} (Note: Your code in $WORKSPACE_DIR was kept safe)."
 }
 
-install_cli() {
-    JSON_METHOD="cli"
-    log_info "${C_MAG}🚀 Installing Antigravity CLI...${C_RESET}"
-    TMP_DIR=$(mktemp -d)
-    trap 'rm -rf "$TMP_DIR"; exit_handler' EXIT INT TERM
-    local install_script="$TMP_DIR/install.sh"
+get_cli_release_info() {
+    local version="$1"
+    local platform_key="$2"
+    local json_file="/tmp/versions.json"
     
-    if [ "$JSON_OUT" -eq 1 ] || [ "$QUIET" -eq 1 ]; then
-        if run_cmd curl -fSsL "$CLI_INSTALL_URL" -o "$install_script" && run_cmd bash "$install_script" --dir "$BIN_DIR"; then
-            :
+    if [ ! -f "$json_file" ]; then
+        echo "|"
+        return
+    fi
+    
+    local info
+    info=$(awk -v ver="$version" -v plat="$platform_key" '
+      BEGIN { in_cli=0; in_ver=0; in_plat=0 }
+      $0 ~ "\"cli\"" { in_cli=1; next }
+      in_cli && $0 ~ "}" && $0 !~ "," && in_ver==0 { in_cli=0 }
+      in_cli && $0 ~ "\"" ver "\"" { in_ver=1; next }
+      in_ver && $0 ~ "}" && $0 !~ "," { if (in_plat) in_plat=0; else in_ver=0 }
+      in_ver && $0 ~ "\"" plat "\"" { in_plat=1; next }
+      in_plat && $0 ~ "}" { in_plat=0 }
+      in_plat && $0 ~ "\"url\"" { split($0, a, "\""); url=a[4] }
+      in_plat && $0 ~ "\"sha512\"" { split($0, a, "\""); sha=a[4] }
+      END { if (url != "" && sha != "") print url "|" sha }
+    ' "$json_file" 2>/dev/null || true)
+    
+    echo "$info"
+}
+
+install_cli() {
+    local target_version="${1:-$DEFAULT_CLI_VERSION}"
+    JSON_METHOD="cli"
+    log_info "${C_MAG}🚀 Installing Antigravity CLI version $target_version...${C_RESET}"
+    
+    fetch_versions_json || true
+    
+    local cli_os=""
+    case "$PLATFORM" in
+        Darwin) cli_os="darwin" ;;
+        Linux) cli_os="linux" ;;
+        *) cli_os="linux" ;;
+    esac
+    
+    local cli_arch=""
+    case "$ARCH" in
+        x86_64|amd64) cli_arch="amd64" ;;
+        arm64|aarch64) cli_arch="arm64" ;;
+        *) cli_arch="amd64" ;;
+    esac
+    
+    local platform_key="${cli_os}_${cli_arch}"
+    
+    local info
+    info=$(get_cli_release_info "$target_version" "$platform_key")
+    local target_url
+    target_url=$(echo "$info" | cut -d'|' -f1)
+    local target_sha
+    target_sha=$(echo "$info" | cut -d'|' -f2)
+    
+    if [ -z "$target_url" ] || [ -z "$target_sha" ]; then
+        if [ "$target_version" = "$DEFAULT_CLI_VERSION" ]; then
+            log_warn "Release details not found in versions.json. Falling back to official bootstrap installer..."
+            TMP_DIR=$(mktemp -d)
+            trap 'rm -rf "$TMP_DIR"; exit_handler' EXIT INT TERM
+            local install_script="$TMP_DIR/install.sh"
+            
+            if [ "$JSON_OUT" -eq 1 ] || [ "$QUIET" -eq 1 ]; then
+                if run_cmd curl -fSsL "$CLI_INSTALL_URL" -o "$install_script" && run_cmd bash "$install_script" --dir "$BIN_DIR"; then
+                    :
+                else
+                    log_error "Antigravity CLI installation failed."
+                    rm -rf "$TMP_DIR"
+                    trap exit_handler EXIT INT TERM
+                    exit 1
+                fi
+            else
+                log_info "${C_BLUE}⬇️  Downloading CLI installer...${C_RESET}"
+                if ! curl -fSsL "$CLI_INSTALL_URL" -o "$install_script"; then
+                    log_error "Failed to download CLI installer."
+                    rm -rf "$TMP_DIR"
+                    trap exit_handler EXIT INT TERM
+                    exit 1
+                fi
+                log_info "${C_BLUE}📦 Executing CLI installer...${C_RESET}"
+                if ! bash "$install_script" --dir "$BIN_DIR"; then
+                    log_error "CLI installer execution failed."
+                    rm -rf "$TMP_DIR"
+                    trap exit_handler EXIT INT TERM
+                    exit 1
+                fi
+            fi
+            
+            rm -rf "$TMP_DIR"
+            trap exit_handler EXIT INT TERM
+            log_info "${C_GREEN}✅ Antigravity CLI installation complete!${C_RESET}"
+            return
         else
-            log_error "Antigravity CLI installation failed."
-            rm -rf "$TMP_DIR"
-            trap exit_handler EXIT INT TERM
-            exit 1
-        fi
-    else
-        log_info "${C_BLUE}⬇️  Downloading CLI installer...${C_RESET}"
-        if ! curl -fSsL "$CLI_INSTALL_URL" -o "$install_script"; then
-            log_error "Failed to download CLI installer."
-            rm -rf "$TMP_DIR"
-            trap exit_handler EXIT INT TERM
-            exit 1
-        fi
-        log_info "${C_BLUE}📦 Executing CLI installer...${C_RESET}"
-        if ! bash "$install_script" --dir "$BIN_DIR"; then
-            log_error "CLI installer execution failed."
-            rm -rf "$TMP_DIR"
-            trap exit_handler EXIT INT TERM
+            log_error "Could not find package details for Antigravity CLI version $target_version ($platform_key)."
             exit 1
         fi
     fi
     
+    TMP_DIR=$(mktemp -d)
+    trap 'rm -rf "$TMP_DIR"; exit_handler' EXIT INT TERM
+    
+    local is_tar_gz=false
+    local file_ext="bin"
+    case "$target_url" in
+        *.tar.gz*) is_tar_gz=true; file_ext="tar.gz" ;;
+    esac
+    
+    local dl_target="$TMP_DIR/cli.$file_ext"
+    
+    if [ "$JSON_OUT" -eq 1 ] || [ "$QUIET" -eq 1 ]; then
+        run_cmd curl -fSL "$target_url" -o "$dl_target"
+    else
+        log_info "${C_BLUE}⬇️  Downloading CLI package...${C_RESET}"
+        curl -fSL --progress-bar "$target_url" -o "$dl_target"
+    fi
+    
+    log_info "${C_BLUE}🔐 Verifying checksum (SHA-512)...${C_RESET}"
+    local sha_cmd=""
+    if command -v sha512sum >/dev/null 2>&1; then
+        sha_cmd="sha512sum"
+    elif command -v shasum >/dev/null 2>&1; then
+        sha_cmd="shasum -a 512"
+    else
+        log_error "sha512sum or shasum is required but was not found."
+        exit 1
+    fi
+    
+    if ! echo "$target_sha  $dl_target" | $sha_cmd -c - >/dev/null 2>&1; then
+        log_error "Checksum verification failed!"
+        exit 1
+    fi
+    
+    mkdir -p "$BIN_DIR"
+    local binary_dest="$BIN_DIR/agy"
+    
+    if [ "$is_tar_gz" = "true" ]; then
+        log_info "${C_BLUE}📦 Extracting CLI...${C_RESET}"
+        tar -xzf "$dl_target" -C "$TMP_DIR" antigravity
+        cp "$TMP_DIR/antigravity" "$binary_dest"
+    else
+        cp "$dl_target" "$binary_dest"
+    fi
+    
+    chmod +x "$binary_dest"
+    if [ "$PLATFORM" = "Darwin" ]; then
+        xattr -d com.apple.quarantine "$binary_dest" 2>/dev/null || true
+    fi
+    
+    log_info "${C_BLUE}⚙️  Configuring environment...${C_RESET}"
+    "$binary_dest" install || true
+    
     rm -rf "$TMP_DIR"
     trap exit_handler EXIT INT TERM
     log_info "${C_GREEN}✅ Antigravity CLI installation complete!${C_RESET}"
+}
+
+install_sdk() {
+    local target_version="${1:-$DEFAULT_SDK_VERSION}"
+    JSON_METHOD="sdk"
+    log_info "${C_MAG}🚀 Installing Antigravity Python SDK...${C_RESET}"
+    
+    if ! command -v python3 >/dev/null 2>&1; then
+        log_error "python3 is required but was not found on your system."
+        exit 1
+    fi
+    
+    if ! python3 -m pip --version >/dev/null 2>&1; then
+        log_error "pip is required but was not found. Please install pip for python3 first."
+        exit 1
+    fi
+    
+    local pkg="google-antigravity"
+    if [ -n "$target_version" ] && [ "$target_version" != "latest" ]; then
+        pkg="google-antigravity==$target_version"
+    fi
+    
+    log_info "${C_BLUE}📦 Installing package '$pkg' via pip...${C_RESET}"
+    if [ "$JSON_OUT" -eq 1 ] || [ "$QUIET" -eq 1 ]; then
+        run_cmd python3 -m pip install --upgrade "$pkg"
+    else
+        if ! python3 -m pip install --upgrade "$pkg"; then
+            log_error "Failed to install Google Antigravity SDK."
+            exit 1
+        fi
+    fi
+    
+    log_info "${C_GREEN}✅ Antigravity SDK installation complete!${C_RESET}"
 }
 

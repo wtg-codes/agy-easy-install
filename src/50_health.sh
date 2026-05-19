@@ -48,6 +48,11 @@ do_health_check() {
         echo -e "  ${C_GREEN}✅ Antigravity CLI found in PATH ($(command -v agy))${C_RESET}"
     fi
 
+    # 6. Antigravity Python SDK (Optional)
+    if command -v python3 >/dev/null 2>&1 && python3 -c "import google_antigravity" >/dev/null 2>&1; then
+        echo -e "  ${C_GREEN}✅ Antigravity Python SDK found in Python environment${C_RESET}"
+    fi
+
     echo ""
     if [ "$failed" -eq 0 ]; then
         log_info "${C_GREEN}${C_BOLD}🎉 Health check passed! Your installation is healthy.${C_RESET}"

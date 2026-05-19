@@ -7,6 +7,7 @@ print_usage() {
     echo "  --install-repo    Headless System Repo install"
     echo "  --install-binary  Headless Official Binary install"
     echo "  --install-cli     Headless Antigravity CLI install"
+    echo "  --install-sdk     Headless Antigravity Python SDK install"
     echo "  --remove          Uninstall Antigravity"
     echo "  --demo-ui         Test and view the UI layout without modifying the system"
     echo "  --json            Output machine-readable JSON at end (disables prompts)"
@@ -29,6 +30,7 @@ for arg in "$@"; do
         --install-repo) ACTION="repo"; AUTO=1 ;;
         --install-binary) ACTION="binary"; AUTO=1 ;;
         --install-cli) ACTION="cli"; AUTO=1 ;;
+        --install-sdk) ACTION="sdk"; AUTO=1 ;;
         --remove) ACTION="remove" ;;
         --demo-ui) ACTION="demo_ui" ;;
         --json) JSON_OUT=1; QUIET=1 ;;
@@ -132,6 +134,11 @@ start_sandbox_mode() {
                 ;;
             install)
                 install_submenu
+                case "$choice" in
+                    binary_menu) choose_ide_version ;;
+                    cli_menu) choose_cli_version ;;
+                    sdk_menu) choose_sdk_version ;;
+                esac
                 if [ "$choice" != "back" ]; then
                     echo ""; run_mock_action "$choice"
                     echo ""; echo -ne "${C_DIM}Press Enter to continue...${C_RESET}"; read -r _ < /dev/tty
@@ -161,10 +168,34 @@ run_interactive() {
             install)
                 install_submenu
                 case "$choice" in
+                    binary_menu) choose_ide_version ;;
+                    cli_menu) choose_cli_version ;;
+                    sdk_menu) choose_sdk_version ;;
+                esac
+                case "$choice" in
                     brew) install_brew; save_manager_locally; break ;;
                     repo) install_repo; save_manager_locally; break ;;
-                    binary) do_install_binary; save_manager_locally; break ;;
-                    cli) install_cli; save_manager_locally; break ;;
+                    binary:*)
+                        local selected_version
+                        selected_version=$(echo "$choice" | cut -d':' -f2)
+                        do_install_binary "$selected_version"
+                        save_manager_locally
+                        break
+                        ;;
+                    cli:*)
+                        local selected_version
+                        selected_version=$(echo "$choice" | cut -d':' -f2)
+                        install_cli "$selected_version"
+                        save_manager_locally
+                        break
+                        ;;
+                    sdk:*)
+                        local selected_version
+                        selected_version=$(echo "$choice" | cut -d':' -f2)
+                        install_sdk "$selected_version"
+                        save_manager_locally
+                        break
+                        ;;
                     back) continue ;; # return to main menu
                 esac
                 ;;
@@ -195,6 +226,7 @@ case "$ACTION" in
     repo) install_repo; save_manager_locally ;;
     binary) do_install_binary; save_manager_locally ;;
     cli) install_cli; save_manager_locally ;;
+    sdk) install_sdk; save_manager_locally ;;
     check) do_health_check ;;
     demo_ui) start_sandbox_mode ;;
     install|"")

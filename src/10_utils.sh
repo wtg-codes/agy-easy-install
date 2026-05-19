@@ -114,3 +114,28 @@ check_dependencies() {
     touch "$LOG_FILE" || true
 }
 
+fetch_versions_json() {
+    if [ -f "/tmp/versions.json" ]; then
+        return 0
+    fi
+    local local_json=""
+    if [ -f "versions.json" ]; then
+        local_json="versions.json"
+    elif [ -f "../versions.json" ]; then
+        local_json="../versions.json"
+    elif [ -f "$(dirname "$0")/versions.json" ]; then
+        local_json="$(dirname "$0")/versions.json"
+    fi
+    
+    if [ -n "$local_json" ]; then
+        cp "$local_json" /tmp/versions.json
+        return 0
+    fi
+    
+    if curl -fSsL --connect-timeout 5 "$VERSIONS_JSON_URL" -o /tmp/versions.json 2>/dev/null; then
+        return 0
+    else
+        return 1
+    fi
+}
+
