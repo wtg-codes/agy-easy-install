@@ -16,7 +16,9 @@ install_brew() {
             return
         fi
     else
-        if ! run_cmd_ui "Brewing Antigravity..." brew install antigravity; then
+        # For Linux platforms using Brew (especially Bluefin)
+        run_cmd_ui "Tapping Ublue-OS experimental tap..." brew tap ublue-os/experimental-tap
+        if ! run_cmd_ui "Brewing Antigravity Linux..." brew install ublue-os/experimental-tap/antigravity-linux; then
             log_error "Formula not found or installation failed."
             log_warn "Falling back to official Binary installation..."
             do_install_binary
@@ -470,8 +472,11 @@ do_remove() {
         
         case "$method" in
             "brew")
-                if [ "$PLATFORM" = "Darwin" ]; then run_cmd brew uninstall --cask antigravity || true
-                else run_cmd brew uninstall antigravity || true; fi ;;
+                if [ "$PLATFORM" = "Darwin" ]; then 
+                    run_cmd brew uninstall --cask antigravity || true
+                else 
+                    run_cmd brew uninstall ublue-os/experimental-tap/antigravity-linux || run_cmd brew uninstall antigravity || true
+                fi ;;
             "repo")
                 detect_distro
                 if command -v apt &> /dev/null && [ -f /etc/apt/sources.list.d/antigravity.list ]; then
