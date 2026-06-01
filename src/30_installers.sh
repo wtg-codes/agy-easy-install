@@ -103,13 +103,13 @@ get_product_release_info() {
     local json_file="/tmp/versions.json"
     
     if [ ! -f "$json_file" ]; then
-        if [ "$product_name" = "antigravity" ] && [ "$version" = "$DEFAULT_AGV_VERSION" ]; then
+        if [ "$product_name" = "antigravity" ] && [ "$version" = "$DEFAULT_AGY_VERSION" ]; then
             case "$platform_key" in
-                LINUX_X64) echo "$AGV_LINUX_X64_URL|$AGV_LINUX_X64_SHA256" ;;
-                MAC_X64) echo "$AGV_MAC_X64_URL|$AGV_MAC_X64_SHA256" ;;
-                MAC_ARM64) echo "$AGV_MAC_ARM64_URL|$AGV_MAC_ARM64_SHA256" ;;
-                WIN_X64) echo "$AGV_WIN_X64_URL|$AGV_WIN_X64_SHA256" ;;
-                WIN_ARM64) echo "$AGV_WIN_ARM64_URL|$AGV_WIN_ARM64_SHA256" ;;
+                LINUX_X64) echo "$AGY_LINUX_X64_URL|$AGY_LINUX_X64_SHA256" ;;
+                MAC_X64) echo "$AGY_MAC_X64_URL|$AGY_MAC_X64_SHA256" ;;
+                MAC_ARM64) echo "$AGY_MAC_ARM64_URL|$AGY_MAC_ARM64_SHA256" ;;
+                WIN_X64) echo "$AGY_WIN_X64_URL|$AGY_WIN_X64_SHA256" ;;
+                WIN_ARM64) echo "$AGY_WIN_ARM64_URL|$AGY_WIN_ARM64_SHA256" ;;
             esac
             return
         elif [ "$product_name" = "ide" ] && [ "$version" = "$DEFAULT_IDE_VERSION" ]; then
@@ -143,13 +143,13 @@ get_product_release_info() {
     if [ -n "$info" ]; then
         echo "$info"
     else
-        if [ "$product_name" = "antigravity" ] && [ "$version" = "$DEFAULT_AGV_VERSION" ]; then
+        if [ "$product_name" = "antigravity" ] && [ "$version" = "$DEFAULT_AGY_VERSION" ]; then
             case "$platform_key" in
-                LINUX_X64) echo "$AGV_LINUX_X64_URL|$AGV_LINUX_X64_SHA256" ;;
-                MAC_X64) echo "$AGV_MAC_X64_URL|$AGV_MAC_X64_SHA256" ;;
-                MAC_ARM64) echo "$AGV_MAC_ARM64_URL|$AGV_MAC_ARM64_SHA256" ;;
-                WIN_X64) echo "$AGV_WIN_X64_URL|$AGV_WIN_X64_SHA256" ;;
-                WIN_ARM64) echo "$AGV_WIN_ARM64_URL|$AGV_WIN_ARM64_SHA256" ;;
+                LINUX_X64) echo "$AGY_LINUX_X64_URL|$AGY_LINUX_X64_SHA256" ;;
+                MAC_X64) echo "$AGY_MAC_X64_URL|$AGY_MAC_X64_SHA256" ;;
+                MAC_ARM64) echo "$AGY_MAC_ARM64_URL|$AGY_MAC_ARM64_SHA256" ;;
+                WIN_X64) echo "$AGY_WIN_X64_URL|$AGY_WIN_X64_SHA256" ;;
+                WIN_ARM64) echo "$AGY_WIN_ARM64_URL|$AGY_WIN_ARM64_SHA256" ;;
             esac
         elif [ "$product_name" = "ide" ] && [ "$version" = "$DEFAULT_IDE_VERSION" ]; then
             case "$platform_key" in
@@ -172,7 +172,7 @@ do_install_binary() {
         if [ "$product_name" = "ide" ]; then
             target_version="$DEFAULT_IDE_VERSION"
         else
-            target_version="$DEFAULT_AGV_VERSION"
+            target_version="$DEFAULT_AGY_VERSION"
         fi
     fi
 
@@ -457,6 +457,9 @@ do_remove() {
     fi
     log_info "${C_RED}🧹 Removing Google Antigravity...${C_RESET}"
     
+    # Remove agy-box sandbox if installed
+    uninstall_agy_box || true
+
     # Remove CLI and other shared files
     rm -f "$BIN_DIR/agy" "$BIN_DIR/jules"
     if command -v npm >/dev/null 2>&1; then
@@ -942,4 +945,158 @@ install_jules() {
     
     log_info "${C_GREEN}✅ Google Jules CLI installation complete!${C_RESET}"
 }
+
+get_agy_box_release_url() {
+    local version="$1"
+    local json_file="/tmp/versions.json"
+    
+    if [ ! -f "$json_file" ]; then
+        echo ""
+        return
+    fi
+    
+    local url
+    url=$(awk -v ver="$version" '
+      BEGIN { in_agy=0; in_ver=0 }
+      $0 ~ "\"agy-box\"" { in_agy=1; next }
+      in_agy && $0 ~ "}" && $0 !~ "," && in_ver==0 { in_agy=0 }
+      in_agy && $0 ~ "\"" ver "\"" { in_ver=1; next }
+      in_ver && $0 ~ "}" && $0 !~ "," { in_ver=0 }
+      in_ver && $0 ~ "\"url\"" { split($0, a, "\""); url=a[4] }
+      END { if (url != "") print url }
+    ' "$json_file" 2>/dev/null || true)
+    
+    echo "$url"
+}
+
+install_agy_box() {
+    log_info "Verifying container sandboxing prerequisites..."
+
+    # 1. Check unsupported platform macOS
+    if [ "$PLATFORM" = "Darwin" ]; then
+        log_error "agy-box is not natively supported on macOS."
+        echo -e "${C_YELLOW}💡 Guidance: To run agy-box on macOS:${C_RESET}"
+        echo -e "  1. Install Podman Desktop or Docker Desktop on macOS."
+        echo -e "  2. Install distrobox using Homebrew: ${C_BOLD}brew install distrobox${C_RESET}"
+        echo -e "  3. Ensure the podman machine or docker daemon is running."
+        echo -e "  After completing these steps, re-run this installer."
+        return 1
+    fi
+
+    # 2. Check WSL/Windows or standard Linux
+    # Check distrobox
+    if ! command -v distrobox &>/dev/null; then
+        log_warn "distrobox is not installed on the host."
+        if [ "$PLATFORM" = "Linux" ] && [ "${HAS_APT:-no}" = "yes" ]; then
+            if [ "$AUTO" -eq 1 ]; then
+                log_info "Headless mode: automatically installing distrobox and podman..."
+                sudo apt update && sudo apt install -y distrobox podman
+            else
+                if gum confirm "Would you like to install distrobox and podman now?"; then
+                    sudo apt update && sudo apt install -y distrobox podman
+                else
+                    log_error "Sandbox installation cannot proceed without distrobox."
+                    return 1
+                fi
+            fi
+        elif [ "$PLATFORM" = "Linux" ] && [ "${HAS_DNF:-no}" = "yes" ]; then
+            if [ "$AUTO" -eq 1 ]; then
+                log_info "Headless mode: automatically installing distrobox and podman..."
+                sudo dnf install -y distrobox podman
+            else
+                if gum confirm "Would you like to install distrobox and podman now?"; then
+                    sudo dnf install -y distrobox podman
+                else
+                    log_error "Sandbox installation cannot proceed without distrobox."
+                    return 1
+                fi
+            fi
+        else
+            if grep -qi "microsoft" /proc/version 2>/dev/null; then
+                log_error "distrobox is missing in your WSL2 environment."
+                echo -e "${C_YELLOW}💡 Guidance: To run agy-box on WSL2 (Windows):${C_RESET}"
+                echo -e "  1. Install Podman or Docker inside your WSL2 distro (e.g., Ubuntu)."
+                echo -e "  2. Install distrobox: ${C_BOLD}curl -s https://raw.githubusercontent.com/89luca89/distrobox/main/install | sh${C_RESET}"
+                echo -e "  Alternatively, follow the official WSL2 container setup instructions."
+            else
+                log_error "Please install distrobox and a container manager (podman/docker) first."
+            fi
+            return 1
+        fi
+    fi
+
+    # Check podman/docker
+    if ! command -v podman &>/dev/null && ! command -v docker &>/dev/null; then
+        log_error "No container manager (podman or docker) detected."
+        if [ "$PLATFORM" = "Linux" ] && [ "${HAS_APT:-no}" = "yes" ]; then
+            if [ "$AUTO" -eq 1 ]; then
+                sudo apt update && sudo apt install -y podman
+            else
+                if gum confirm "Would you like to install podman now?"; then
+                    sudo apt update && sudo apt install -y podman
+                fi
+            fi
+        elif [ "$PLATFORM" = "Linux" ] && [ "${HAS_DNF:-no}" = "yes" ]; then
+            if [ "$AUTO" -eq 1 ]; then
+                sudo dnf install -y podman
+            else
+                if gum confirm "Would you like to install podman now?"; then
+                    sudo dnf install -y podman
+                fi
+            fi
+        fi
+        if ! command -v podman &>/dev/null && ! command -v docker &>/dev/null; then
+            log_error "Sandbox installation cannot proceed without podman or docker."
+            return 1
+        fi
+    fi
+
+    # 3. Download and install agy-box-manager globally from tag version
+    log_info "Fetching agy-box version details..."
+    fetch_versions_json || true
+    local agy_ver="${DEFAULT_AGY_BOX_VERSION:-v0.5.0}"
+    local remote_url
+    remote_url=$(get_agy_box_release_url "$agy_ver")
+    
+    if [ -z "$remote_url" ]; then
+        log_warn "Release version $agy_ver not found in versions.json. Falling back to official release tag URL..."
+        remote_url="https://raw.githubusercontent.com/wtg-codes/agy-box/${agy_ver}/agy-box-manager"
+    fi
+    
+    log_info "Downloading agy-box-manager CLI ($agy_ver)..."
+    local target_dir="$HOME/.local/bin"
+    mkdir -p "$target_dir"
+    
+    if ! curl -fsSL "$remote_url" -o "$target_dir/agy-box-manager"; then
+        log_error "Failed to download agy-box-manager from $remote_url"
+        return 1
+    fi
+    chmod +x "$target_dir/agy-box-manager"
+
+    # 4. Trigger sandbox installation
+    log_info "Starting agy-box container setup..."
+    if ! "$target_dir/agy-box-manager" install; then
+        log_error "agy-box container setup failed during execution of agy-box-manager install."
+        return 1
+    fi
+    log_info "${C_GREEN}✅ agy-box sandbox installation completed successfully.${C_RESET}"
+}
+
+uninstall_agy_box() {
+    local manager_bin="$HOME/.local/bin/agy-box-manager"
+    if [ -f "$manager_bin" ]; then
+        log_info "Uninstalling agy-box environment..."
+        if ! "$manager_bin" clean; then
+            log_warn "agy-box clean command encountered an error."
+        fi
+        if ! "$manager_bin" uninstall-global; then
+            log_warn "agy-box uninstall-global command encountered an error."
+        fi
+        rm -f "$manager_bin"
+        log_info "${C_GREEN}✅ agy-box uninstalled successfully.${C_RESET}"
+    else
+        log_warn "agy-box-manager is not installed globally."
+    fi
+}
+
 

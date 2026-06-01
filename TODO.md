@@ -1,4 +1,4 @@
-# TODO — AGV Easy Install
+# TODO — AGY Easy Install
 
 > **Last updated:** 2026-05-20 · Branch: `feature/jules-and-bootstrapping`
 > This file is the single source of truth for all pending work.
@@ -17,13 +17,13 @@
 - [x] `do_remove()` — uninstall Antigravity and CLI binary
 - [x] `install_cli()` — install and configure the new Antigravity CLI
 - [x] `save_manager_locally()` — persist the manager script
-- [x] AGV detection at startup — check if Antigravity is already installed
+- [x] AGY detection at startup — check if Antigravity is already installed
 - [x] Chrome browser detection + auto-configuration prompt
 
 ### Terminal UI
 - [x] Ephemeral `gum` bootstrap (download → temp dir → cleanup)
 - [x] Colorful ASCII art banner with version + repo link
-- [x] System info dashboard (OS, AGV status, recommendation)
+- [x] System info dashboard (OS, AGY status, recommendation)
 - [x] Hierarchical Cancel-first menu (main → install / cleanup sub-menus)
 - [x] `--demo-ui` sandbox mode with mock actions for every path
 - [x] Fallback plain-text menu when `gum` unavailable
@@ -184,15 +184,15 @@
 ### Workstream 3: Repo Rename Migration (agv -> agy)
 - [ ] Create new GitHub repo `wtg-codes/agy-easy-install`
 - [ ] Sync git history and push to the new repository
-- [ ] Run bulk URL and string replacements across all script files (replace `agv-easy-install` with `agy-easy-install`)
+- [ ] Run bulk URL and string replacements across all script files (replace `agy-easy-install` with `agy-easy-install`)
 - [ ] Update documentation references and self-updater check URLs
 - [ ] Configure new GitHub Pages and trigger test CI run
-- [ ] Add deprecation warning banners to the old `agv-easy-install` and `agv-easy-install-ink` README files
+- [ ] Add deprecation warning banners to the old `agy-easy-install` and `agy-easy-install-ink` README files
 - [ ] Set up minimal redirect page in `docs/index.html` on the old repository, then archive the old repositories
 
 ### Workstream 4: Downstream Integration (agy-box)
-- [ ] Rebase and finish integration testing on branch `feature/agy-box-install`
-- [ ] Implement `agy-box-manager` script download lock strategy (pin to release tag vs fetching `main`)
-- [ ] Integrate agy-box version tracking inside `versions.json`
-- [ ] Implement error handling for Docker/Podman install failures, missing dependencies, or unsupported macOS environment blocks
+- [x] Rebase and finish integration testing on branch `feature/agy-box-install`
+- [x] Implement `agy-box-manager` script download lock strategy (pin to release tag vs fetching `main`)
+- [x] Integrate agy-box version tracking inside `versions.json`
+- [x] Implement error handling for Docker/Podman install failures, missing dependencies, or unsupported macOS environment blocks
 

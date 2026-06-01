@@ -1,13 +1,13 @@
-# Implementation Plan — `agy-box` Integration in `agv-easy-install`
+# Implementation Plan — `agy-box` Integration in `agy-easy-install`
 
 ## Goal
-Integrate the **Antigravity Developer Sandbox (`agy-box`)** as a native installation choice inside the `agv-easy-install` interactive menu and automated command-line tool.
+Integrate the **Antigravity Developer Sandbox (`agy-box`)** as a native installation choice inside the `agy-easy-install` interactive menu and automated command-line tool.
 
 ---
 
 ## Architecture Flow
 
-The following diagram illustrates how the `agv-easy-install` script will orchestrate checking for prerequisites, installing the manager, and building the sandboxed environment.
+The following diagram illustrates how the `agy-easy-install` script will orchestrate checking for prerequisites, installing the manager, and building the sandboxed environment.
 
 ```mermaid
 graph TD

@@ -3,9 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AGV Easy Install — Google Antigravity Setup</title>
-    <meta name="description" content="AGV Easy Install — unofficial cross-platform setup for Google Antigravity by wtg-codes.">
-    <meta property="og:title" content="AGV Easy Install — Google Antigravity Setup">
+    <title>AGY Easy Install — Google Antigravity Setup</title>
+    <meta name="description" content="AGY Easy Install — unofficial cross-platform setup for Google Antigravity by wtg-codes.">
+    <meta property="og:title" content="AGY Easy Install — Google Antigravity Setup">
     <meta property="og:description" content="One command. Any shell. Get coding with Google Antigravity.">
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🚀</text></svg>">
     <script src="https://cdn.tailwindcss.com"></script>
@@ -74,9 +74,9 @@
             <div class="inline-flex items-center justify-center p-4 bg-indigo-500/20 text-indigo-400 rounded-2xl mb-4">
                 <i data-lucide="rocket" class="w-10 h-10"></i>
             </div>
-            <h1 class="text-3xl sm:text-4xl font-extrabold text-white tracking-tight mb-2">AGV Easy Install</h1>
+            <h1 class="text-3xl sm:text-4xl font-extrabold text-white tracking-tight mb-2">AGY Easy Install</h1>
             <p class="text-slate-400 text-lg">Unofficial Google Antigravity setup by <a href="https://github.com/wtg-codes" class="text-indigo-400 hover:underline">wtg-codes</a></p>
-            <img src="images/main_menu.png" alt="AGV Easy Install main menu" class="mt-6 rounded-xl border border-slate-700 shadow-lg max-w-full">
+            <img src="images/main_menu.png" alt="AGY Easy Install main menu" class="mt-6 rounded-xl border border-slate-700 shadow-lg max-w-full">
         </div>
 
         <!-- Prerequisites -->
@@ -163,7 +163,7 @@
                     <!-- Code Block UI -->
                     <div class="relative bg-slate-950 rounded-xl border border-slate-700 p-4 shadow-inner group">
                         <code class="block font-mono text-sm sm:text-base text-emerald-400 break-all pr-12">
-                            curl -fSsL "https://raw.githubusercontent.com/wtg-codes/agv-easy-install/main/antigravity-manager.sh" | bash
+                            curl -fSsL "https://raw.githubusercontent.com/wtg-codes/agy-easy-install/main/antigravity-manager.sh" | bash
                         </code>
 
                         <!-- Copy Button -->
@@ -353,7 +353,7 @@
     </div>
 
     <footer class="mt-8 text-center text-slate-500 text-sm pb-8 no-print">
-        <a href="https://github.com/wtg-codes/agv-easy-install" target="_blank" class="hover:text-indigo-400 transition-colors underline">AGV Easy Install</a> · Unofficial Google Antigravity setup by <a href="https://github.com/wtg-codes" target="_blank" class="hover:text-indigo-400 transition-colors">wtg-codes</a><br>
+        <a href="https://github.com/wtg-codes/agy-easy-install" target="_blank" class="hover:text-indigo-400 transition-colors underline">AGY Easy Install</a> · Unofficial Google Antigravity setup by <a href="https://github.com/wtg-codes" target="_blank" class="hover:text-indigo-400 transition-colors">wtg-codes</a><br>
         Linux (tested) · macOS (beta)
     </footer>
 
@@ -362,7 +362,7 @@
         lucide.createIcons();
 
         // The command to copy (Updated to match the actual repo)
-        const commandToCopy = 'curl -fSsL "https://raw.githubusercontent.com/wtg-codes/agv-easy-install/main/antigravity-manager.sh" | bash';
+        const commandToCopy = 'curl -fSsL "https://raw.githubusercontent.com/wtg-codes/agy-easy-install/main/antigravity-manager.sh" | bash';
 
         function copyCommand() {
             const copyBtn = document.getElementById('copyBtn');
@@ -425,7 +425,7 @@
             if (sourceFetched) return;
             const sourceEl = document.getElementById('sourceCode');
             try {
-                const response = await fetch('https://raw.githubusercontent.com/wtg-codes/agv-easy-install/main/antigravity-manager.sh');
+                const response = await fetch('https://raw.githubusercontent.com/wtg-codes/agy-easy-install/main/antigravity-manager.sh');
                 if (!response.ok) throw new Error('Failed to fetch source');
                 const text = await response.text();
                 // SECURITY: We use textContent instead of innerHTML to prevent XSS attacks when injecting fetched source code.

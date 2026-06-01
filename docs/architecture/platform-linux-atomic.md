@@ -99,7 +99,7 @@ This allows Antigravity to spawn Chrome natively on the host, avoiding Bubblewra
 
 Many developers on Atomic Linux use **Distrobox** or **Toolbx** to spin up mutable, containerized environments (via Podman) that feel native to the host.
 
-If a user runs the `agv-easy-install` script *inside* a Distrobox container (e.g., an Ubuntu container), the script will correctly identify the environment as `ubuntu` and install via the APT System Repo.
+If a user runs the `agy-easy-install` script *inside* a Distrobox container (e.g., an Ubuntu container), the script will correctly identify the environment as `ubuntu` and install via the APT System Repo.
 
 **This is safe and supported.** The container provides a mutable `/usr` filesystem, and Distrobox automatically maps the container's exported `.desktop` files to the host.
 

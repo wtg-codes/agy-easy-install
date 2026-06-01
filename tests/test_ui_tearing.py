@@ -2,7 +2,7 @@
 """
 test_ui_tearing.py
 ------------------
-Two-part test for the AGV Easy Install UI:
+Two-part test for the AGY Easy Install UI:
 
 1. PTY TEARING CHECK  — Spawns antigravity-manager.sh --demo-ui in a real
    pseudo-terminal (via pexpect) at a realistic terminal size, captures the

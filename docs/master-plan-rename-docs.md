@@ -90,14 +90,14 @@
 | 7 | [index.html](file:///home/wtg/Repos/agy-box/docs/index.html#L274-L325) | 274–325 | `graph TD` (HTML) | Layered Arch (simplified) | HIGH (14 nodes) | ⚠️ JS theme only |
 | 8 | [index.html](file:///home/wtg/Repos/agy-box/docs/index.html#L336-L360) | 336–360 | `flowchart LR` (HTML) | Suite Comm (simplified) | MEDIUM (9 nodes) | ⚠️ JS theme only |
 
-#### agv-easy-install Diagrams (4 total — all unstyled)
+#### agy-easy-install Diagrams (4 total — all unstyled)
 
 | # | File | Lines | Type | Depicts | Complexity | Styled? |
 |---|------|-------|------|---------|------------|---------|
-| 9 | [README.md](file:///home/wtg/Repos/agv-easy-install/README.md#L95-L102) | 95–102 | `graph TD` | Installer Overview | LOW (6 nodes) | ❌ None |
-| 10 | [platform-linux.md](file:///home/wtg/Repos/agv-easy-install/docs/architecture/platform-linux.md#L43-L56) | 43–56 | `graph TD` | Linux Recommendation | LOW-MED (9 nodes) | ❌ None |
-| 11 | [platform-linux-atomic.md](file:///home/wtg/Repos/agv-easy-install/docs/architecture/platform-linux-atomic.md#L56-L66) | 56–66 | `graph TD` | Atomic Install Hierarchy | LOW (6 nodes) | ❌ None |
-| 12 | [agy_box_integration_plan.md](file:///home/wtg/Repos/agv-easy-install/docs/architecture/agy_box_integration_plan.md#L12-L21) | 12–21 | `graph TD` | agy-box Integration | LOW-MED (8 nodes) | ❌ None |
+| 9 | [README.md](file:///home/wtg/Repos/agy-easy-install/README.md#L95-L102) | 95–102 | `graph TD` | Installer Overview | LOW (6 nodes) | ❌ None |
+| 10 | [platform-linux.md](file:///home/wtg/Repos/agy-easy-install/docs/architecture/platform-linux.md#L43-L56) | 43–56 | `graph TD` | Linux Recommendation | LOW-MED (9 nodes) | ❌ None |
+| 11 | [platform-linux-atomic.md](file:///home/wtg/Repos/agy-easy-install/docs/architecture/platform-linux-atomic.md#L56-L66) | 56–66 | `graph TD` | Atomic Install Hierarchy | LOW (6 nodes) | ❌ None |
+| 12 | [agy_box_integration_plan.md](file:///home/wtg/Repos/agy-easy-install/docs/architecture/agy_box_integration_plan.md#L12-L21) | 12–21 | `graph TD` | agy-box Integration | LOW-MED (8 nodes) | ❌ None |
 
 ### Tooling Comparison Matrix
 
@@ -216,18 +216,18 @@ docs/
 
 ### Decision: Ink Variant
 
-> **KILLED.** The `agv-easy-install-ink` repo and local folder have been deleted. The Bash variant (`v0.2.15`) is the sole path forward with multi-product support, agy-box integration, and 77 test gates. The Ink variant (`v0.2.8`) only supported IDE installation and had zero agy-box integration.
+> **KILLED.** The `agy-easy-install-ink` repo and local folder have been deleted. The Bash variant (`v0.2.15`) is the sole path forward with multi-product support, agy-box integration, and 77 test gates. The Ink variant (`v0.2.8`) only supported IDE installation and had zero agy-box integration.
 >
-> **Action**: Archive `agv-easy-install-ink` on GitHub with a deprecation banner. No further work needed.
+> **Action**: Archive `agy-easy-install-ink` on GitHub with a deprecation banner. No further work needed.
 
-### Link Audit — Every `agv-easy-install` Reference
+### Link Audit — Every `agy-easy-install` Reference
 
 #### In Script Source (`src/`)
 | File | Line | Reference |
 |------|------|-----------|
-| `src/00_config.sh` | 22 | `VERSIONS_JSON_URL` → `raw.githubusercontent.com/wtg-codes/agv-easy-install/...` |
-| `src/00_config.sh` | 65 | `MANAGER_URL` → `raw.githubusercontent.com/wtg-codes/agv-easy-install/...` |
-| `src/20_platform.sh` | 367 | Banner: `github.com/wtg-codes/agv-easy-install` |
+| `src/00_config.sh` | 22 | `VERSIONS_JSON_URL` → `raw.githubusercontent.com/wtg-codes/agy-easy-install/...` |
+| `src/00_config.sh` | 65 | `MANAGER_URL` → `raw.githubusercontent.com/wtg-codes/agy-easy-install/...` |
+| `src/20_platform.sh` | 367 | Banner: `github.com/wtg-codes/agy-easy-install` |
 | `src/99_main.sh` | 71 | Self-update check URL |
 
 #### In README.md
@@ -251,13 +251,13 @@ docs/
 #### Phase 1: Preparation (Day 1 — ~30 min)
 
 - [ ] Finalize name: `agy-easy-install`
-- [ ] Prepare `sed` script for bulk `agv-easy-install` → `agy-easy-install` replacement
+- [ ] Prepare `sed` script for bulk `agy-easy-install` → `agy-easy-install` replacement
 - [ ] Audit and verify all references listed above
 
 #### Phase 2: Create New Repo (Day 1 — ~30 min)
 
 - [ ] Create `wtg-codes/agy-easy-install` on GitHub (empty, MIT license)
-- [ ] Clone current `agv-easy-install` locally
+- [ ] Clone current `agy-easy-install` locally
 - [ ] Run bulk URL replacement across all files
 - [ ] Fix remaining branding: "AGV" → "AGY" in banner text, TODO title, etc.
 - [ ] Push to new repo
@@ -276,7 +276,7 @@ docs/
 #### Phase 4: Deprecate Old Repo (Day 2 — ~30 min)
 
 ##### 4a. Giant README Banner
-Add to the very top of `agv-easy-install/README.md`:
+Add to the very top of `agy-easy-install/README.md`:
 
 ```markdown
 > [!CAUTION]
@@ -313,12 +313,12 @@ Replace `docs/index.html` with a minimal page that auto-redirects to the new sit
 - Settings → Archive this repository (makes it read-only, preserves history/stars/links)
 
 ##### 4e. Archive the Ink Repo
-- Add same deprecation banner to `agv-easy-install-ink` README
+- Add same deprecation banner to `agy-easy-install-ink` README
 - Archive the repo
 
 #### Phase 5: Cross-Repo Reference Updates (Day 2–3)
 
-- [ ] Update `agy-box` references to `agv-easy-install` (if any exist in README, architecture docs, etc.)
+- [ ] Update `agy-box` references to `agy-easy-install` (if any exist in README, architecture docs, etc.)
 - [ ] Update any course materials or external docs that link to the old repo
 
 ### Timeline
@@ -349,10 +349,10 @@ Replace `docs/index.html` with a minimal page that auto-redirects to the new sit
 
 ### Current State
 
-The Bash variant of `agv-easy-install` already has **deep agy-box integration work in progress**:
+The Bash variant of `agy-easy-install` already has **deep agy-box integration work in progress**:
 
 - Currently on branch `feature/agy-box-install`
-- Full integration plan at [agy_box_integration_plan.md](file:///home/wtg/Repos/agv-easy-install/docs/architecture/agy_box_integration_plan.md)
+- Full integration plan at [agy_box_integration_plan.md](file:///home/wtg/Repos/agy-easy-install/docs/architecture/agy_box_integration_plan.md)
 - agy-box appears as **Option 4** in the install menu (alongside Homebrew, APT/DNF, Official Binary)
 - Downloads `agy-box-manager` from `https://raw.githubusercontent.com/wtg-codes/agy-box/main/agy-box-manager`
 - CLI flag: `--install-sandbox` / `--install-agy-box`

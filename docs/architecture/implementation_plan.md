@@ -1,4 +1,4 @@
-# AGV Easy Install — Implementation Plan
+# AGY Easy Install — Implementation Plan
 
 > **Last updated:** 2026-05-20 · Branch: `feature/tool-first-wizard-flow`
 > This is a living document. It reflects the current architecture and roadmap.

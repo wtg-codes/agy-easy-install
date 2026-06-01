@@ -198,11 +198,13 @@ def assert_no_tearing(session: TerminalSession, label: str) -> list[str]:
 
 
 def assert_option_highlighted(session: TerminalSession, label: str,
-                               expected_option: str) -> list[str]:
-    """Assert that `expected_option` is on the same line as the ❯ cursor."""
+                              expected_option: str) -> list[str]:
+    """Assert that `expected_option` is on the same line as the cursor."""
     failures = []
     lines = session.visible_lines()
     cursor_line = next((l for l in lines if "❯" in l), None)
+    if cursor_line is None:
+        cursor_line = next((l for l in lines if l.startswith(">") and "Select" not in l), None)
     if cursor_line is None:
         failures.append(f"[{label}] No cursor line found on screen")
     elif expected_option not in cursor_line:
@@ -240,15 +242,15 @@ def test_main_menu_navigation() -> tuple[bool, list[str]]:
         import time; time.sleep(1); session.snapshot_label("initial render")
         failures += assert_no_tearing(session, "initial render")
         failures += assert_option_highlighted(session, "initial", "Cancel")
-        failures += assert_text_visible(session, "initial", "Choose Antigravity install method")
-        failures += assert_text_visible(session, "initial", "Antigravity cleanup options")
-        failures += assert_text_visible(session, "initial", "Install this script locally")
+        failures += assert_text_visible(session, "initial", "🎓 Set up for lab")
+        failures += assert_text_visible(session, "initial", "⚡ Install or update a specific tool")
+        failures += assert_text_visible(session, "initial", "🧹 Manage existing installation")
 
-        # Arrow down × 3 — should land on "Install this script locally"
+        # Arrow down × 3
         for i, expected in enumerate([
-            "Choose Antigravity install method",
-            "Antigravity cleanup options",
-            "Install this script locally",
+            "🎓 Set up for lab (IDE + CLI, one click)",
+            "⚡ Install or update a specific tool  →",
+            "🧹 Manage existing installation  →",
         ]):
             session.send(KEY_DOWN, settle=0.4)
             session.snapshot_label(f"after DOWN #{i+1}")
@@ -257,8 +259,8 @@ def test_main_menu_navigation() -> tuple[bool, list[str]]:
 
         # Arrow up × 3 — should land back on Cancel
         for i, expected in enumerate([
-            "Antigravity cleanup options",
-            "Choose Antigravity install method",
+            "⚡ Install or update a specific tool  →",
+            "🎓 Set up for lab (IDE + CLI, one click)",
             "Cancel",
         ]):
             session.send(KEY_UP, settle=0.4)
@@ -285,21 +287,22 @@ def test_install_submenu() -> tuple[bool, list[str]]:
         if not session.wait_for("navigate", timeout=20):
             return False, ["[install_submenu] Timed out on main menu"]
 
-        # Select "Choose Antigravity install method"
+        # Select "⚡ Install or update a specific tool  →" (requires 2 down presses)
+        session.send(KEY_DOWN, settle=0.4)
         session.send(KEY_DOWN, settle=0.4)
         session.send(KEY_ENTER, settle=1.5)
 
-        if not session.wait_for("Homebrew", timeout=10):
+        if not session.wait_for("Google Antigravity", timeout=10):
             return False, ["[install_submenu] Timed out waiting for install sub-menu"]
 
         session.snapshot_label("install submenu — initial")
         failures += assert_no_tearing(session, "install submenu initial")
-        failures += assert_text_visible(session, "install submenu", "Homebrew")
-        failures += assert_text_visible(session, "install submenu", "System Repo")
-        failures += assert_text_visible(session, "install submenu", "Official Binary")
+        failures += assert_text_visible(session, "install submenu", "Google Antigravity")
+        failures += assert_text_visible(session, "install submenu", "Antigravity IDE")
+        failures += assert_text_visible(session, "install submenu", "Antigravity CLI (agy)")
 
         # Navigate down through all install options
-        for i, expected in enumerate(["Homebrew", "System Repo", "Official Binary"]):
+        for i, expected in enumerate(["Google Antigravity  →", "Antigravity IDE  →", "Antigravity CLI (agy)  →"]):
             session.send(KEY_DOWN, settle=0.4)
             session.snapshot_label(f"install submenu DOWN #{i+1}")
             failures += assert_no_tearing(session, f"install submenu DOWN #{i+1}")
@@ -335,7 +338,8 @@ def test_cleanup_submenu() -> tuple[bool, list[str]]:
         if not session.wait_for("navigate", timeout=20):
             return False, ["[cleanup_submenu] Timed out on main menu"]
 
-        # Select "Antigravity cleanup options"
+        # Select "🧹 Manage existing installation  →" (requires 3 down presses)
+        session.send(KEY_DOWN, settle=0.4)
         session.send(KEY_DOWN, settle=0.4)
         session.send(KEY_DOWN, settle=0.4)
         session.send(KEY_ENTER, settle=1.5)
@@ -346,16 +350,16 @@ def test_cleanup_submenu() -> tuple[bool, list[str]]:
         session.snapshot_label("cleanup submenu — initial")
         failures += assert_no_tearing(session, "cleanup submenu initial")
         failures += assert_text_visible(session, "cleanup submenu", "Uninstall Antigravity")
+        failures += assert_text_visible(session, "cleanup submenu", "Uninstall Antigravity Dev Box")
         failures += assert_text_visible(session, "cleanup submenu", "Save manager")
         failures += assert_text_visible(session, "cleanup submenu", "Remove manager")
-        failures += assert_text_visible(session, "cleanup submenu", "Demo UI")
 
         # Navigate down through all cleanup options
         for i, expected in enumerate([
             "Uninstall Antigravity",
+            "Uninstall Antigravity Dev Box",
             "Save manager",
             "Remove manager",
-            "Demo UI",
         ]):
             session.send(KEY_DOWN, settle=0.4)
             session.snapshot_label(f"cleanup DOWN #{i+1}")
@@ -442,7 +446,7 @@ def test_easter_egg() -> tuple[bool, list[str]]:
         lines = session.visible_lines()
 
         # Verify the regular options are filtered out
-        if "Choose Antigravity install method" in session.display():
+        if "🎓 Set up for lab" in session.display():
             failures.append(
                 "[easter_egg] Regular options still visible after typing 'Google' "
                 "— filter not working"
@@ -477,7 +481,7 @@ def test_banner_visible_on_main_menu() -> tuple[bool, list[str]]:
         session.snapshot_label("main menu with banner")
         display = session.display()
 
-        for marker in ["AGV Easy Install", "github.com/wtg-codes", "OS:"]:
+        for marker in ["AGY Easy Install", "github.com/wtg-codes", "OS:"]:
             if marker not in display:
                 failures.append(
                     f"[banner] '{marker}' not visible — banner may have been "
@@ -504,8 +508,8 @@ def test_back_returns_to_main_menu() -> tuple[bool, list[str]]:
     print("\n▶  test_back_returns_to_main_menu")
 
     for submenu_label, down_presses, wait_text in [
-        ("install submenu", 1, "Homebrew"),
-        ("cleanup submenu", 2, "Uninstall"),
+        ("install submenu", 2, "Google Antigravity"),
+        ("cleanup submenu", 3, "Uninstall"),
     ]:
         session = TerminalSession(["bash", SCRIPT, "--demo-ui", "--no-update"])
         try:
@@ -532,7 +536,7 @@ def test_back_returns_to_main_menu() -> tuple[bool, list[str]]:
                     "— script may have exited instead of looping"
                 )
             else:
-                if "AGV Easy Install" not in session.display():
+                if "AGY Easy Install" not in session.display():
                     failures.append(
                         f"[back/{submenu_label}] Returned to menu but banner missing"
                     )
@@ -553,7 +557,7 @@ def test_back_returns_to_main_menu() -> tuple[bool, list[str]]:
 
 def main():
     print("=" * 62)
-    print(" AGV Easy Install — Full UI Navigation Test Suite")
+    print(" AGY Easy Install — Full UI Navigation Test Suite")
     print(f" Script: {SCRIPT}")
     print(f" Terminal: {COLS}×{ROWS}")
     print("=" * 62)

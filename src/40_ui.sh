@@ -9,7 +9,7 @@ get_compact_header() {
     local label="${1:-}"
     local mode="${UI_MODE:-}"
     local os_label="${DISTRO_PRETTY:-Unknown OS}"
-    echo -e "${C_BOLD}AGV Easy Install v${SCRIPT_VERSION}${C_RESET} ${C_DIM}|${C_RESET} ${os_label} ${C_DIM}|${C_RESET} ${mode:+${C_YELLOW}${mode}${C_RESET} ${C_DIM}|${C_RESET} }${label}"
+    echo -e "${C_BOLD}AGY Easy Install v${SCRIPT_VERSION}${C_RESET} ${C_DIM}|${C_RESET} ${os_label} ${C_DIM}|${C_RESET} ${mode:+${C_YELLOW}${mode}${C_RESET} ${C_DIM}|${C_RESET} }${label}"
 }
 
 # ── Wizard Step 1: Intent Question ──────────────────────────────
@@ -177,7 +177,7 @@ fast_track_setup() {
     echo ""
     local summary="📦 Ready to install:"
     if echo "$FAST_TRACK_PRODUCTS" | grep -q "antigravity"; then
-        summary="${summary}\n  ✦ Google Antigravity (v${DEFAULT_AGV_VERSION})"
+        summary="${summary}\n  ✦ Google Antigravity (v${DEFAULT_AGY_VERSION})"
     fi
     if echo "$FAST_TRACK_PRODUCTS" | grep -q "ide"; then
         local method_label="Homebrew"
@@ -229,6 +229,7 @@ install_submenu() {
         "Antigravity CLI (agy)  →"
         "Google Jules CLI (npm)  →"
         "Antigravity SDK (Python)  →"
+        "Antigravity Developer Sandbox (agy-box, containerized lab)  →"
     )
 
     if command -v gum >/dev/null 2>&1; then
@@ -239,7 +240,7 @@ install_submenu() {
         clear || true
         echo "Select a tool to install:"
         for i in "${!options[@]}"; do echo "$((i+1))) ${options[$i]}"; done
-        read -r -p "Select tool [1-6]: " num < /dev/tty
+        read -r -p "Select tool [1-7]: " num < /dev/tty
         case "$num" in
             1) CHOICE="Back" ;;
             2) CHOICE="Google Antigravity" ;;
@@ -247,6 +248,7 @@ install_submenu() {
             4) CHOICE="Antigravity CLI" ;;
             5) CHOICE="Google Jules CLI" ;;
             6) CHOICE="Antigravity SDK" ;;
+            7) CHOICE="Antigravity Developer Sandbox" ;;
             *) CHOICE="Back" ;;
         esac
     fi
@@ -258,6 +260,7 @@ install_submenu() {
         *"CLI"*) choice="cli_menu" ;;
         *"Jules"*) choice="jules_menu" ;;
         *"SDK"*) choice="sdk_menu" ;;
+        *"Sandbox"*|*"agy-box"*) choice="agy_box" ;;
         *) choice="back" ;;
     esac
 }
@@ -315,6 +318,7 @@ cleanup_submenu() {
     local options=(
         "Back"
         "Uninstall Antigravity"
+        "Uninstall Antigravity Dev Box (agy-box)"
         "Save manager (add 'antigravity-manager' command)"
         "Remove manager (delete this script)"
     )
@@ -327,18 +331,20 @@ cleanup_submenu() {
         clear || true
         echo "Manage installation:"
         for i in "${!options[@]}"; do echo "$((i+1))) ${options[$i]}"; done
-        read -r -p "Select option [1-4]: " num < /dev/tty
+        read -r -p "Select option [1-5]: " num < /dev/tty
         case "$num" in
             1) CHOICE="Back" ;;
             2) CHOICE="Uninstall" ;;
-            3) CHOICE="Save" ;;
-            4) CHOICE="Remove manager" ;;
+            3) CHOICE="Uninstall Dev Box" ;;
+            4) CHOICE="Save" ;;
+            5) CHOICE="Remove manager" ;;
             *) CHOICE="Back" ;;
         esac
     fi
 
     case "$CHOICE" in
         "Back"*) choice="back" ;;
+        "Uninstall Antigravity Dev Box"*) choice="uninstall_agy_box" ;;
         "Uninstall"*) choice="remove" ;;
         "Save"*) choice="save" ;;
         "Remove"*) choice="remove_mgr" ;;
@@ -429,7 +435,7 @@ list_antigravity_versions() {
           }
         ' "$json_file" 2>/dev/null
     else
-        echo "$DEFAULT_AGV_VERSION"
+        echo "$DEFAULT_AGY_VERSION"
     fi
 }
 
@@ -442,12 +448,12 @@ choose_antigravity_version() {
     done < <(list_antigravity_versions)
     
     if [ ${#versions[@]} -eq 0 ]; then
-        versions+=("$DEFAULT_AGV_VERSION")
+        versions+=("$DEFAULT_AGY_VERSION")
     fi
     
     local options=("Back")
     for v in "${versions[@]}"; do
-        if [ "$v" = "$DEFAULT_AGV_VERSION" ]; then
+        if [ "$v" = "$DEFAULT_AGY_VERSION" ]; then
             options+=("$v (Latest / Default)")
         else
             options+=("$v")
@@ -714,13 +720,29 @@ run_mock_action() {
     local action="$1"
 
     case "$action" in
+        agy_box)
+            log_info "${C_MAG}🚀 Starting mock installation of Antigravity Developer Sandbox (agy-box)...${C_RESET}"
+            run_cmd_ui "Verifying container sandboxing prerequisites..." sleep 1
+            run_cmd_ui "Downloading agy-box-manager CLI..." sleep 1
+            run_cmd_ui "Starting agy-box container setup..." sleep 1.5
+            echo ""
+            log_info "${C_GREEN}${C_BOLD}🎉 Mock Installation Complete!${C_RESET}"
+            log_info "  ${C_CYAN}▸${C_RESET} Launch status:  ${C_BOLD}ujust agy-status${C_RESET}"
+            ;;
+        uninstall_agy_box)
+            log_info "${C_MAG}🚀 Uninstalling Antigravity Developer Sandbox (agy-box) (Mock)...${C_RESET}"
+            run_cmd_ui "Stopping and cleaning up container..." sleep 1
+            run_cmd_ui "Removing global wrappers..." sleep 1
+            echo ""
+            log_info "✅ agy-box uninstalled successfully (Mock)."
+            ;;
         fast_track_go)
             local method_label="Homebrew"
             case "$FAST_TRACK_METHOD" in repo) method_label="System Repo" ;; binary) method_label="Official Binary" ;; esac
 
             log_info "${C_MAG}🚀 Starting setup (Mock)...${C_RESET}"
             if echo "$FAST_TRACK_PRODUCTS" | grep -q "antigravity"; then
-                run_cmd_ui "Installing Google Antigravity (v${DEFAULT_AGV_VERSION})..." sleep 1
+                run_cmd_ui "Installing Google Antigravity (v${DEFAULT_AGY_VERSION})..." sleep 1
             fi
             if echo "$FAST_TRACK_PRODUCTS" | grep -q "ide"; then
                 run_cmd_ui "Installing Antigravity IDE (v${DEFAULT_IDE_VERSION}) via ${method_label}..." sleep 1.5
@@ -738,7 +760,7 @@ run_mock_action() {
             local done_msg="🎉 Mock Setup Complete!"
             local mock_bin_name="antigravity"
             if echo "$FAST_TRACK_PRODUCTS" | grep -q "antigravity"; then
-                done_msg="${done_msg}\nAntigravity: v${DEFAULT_AGV_VERSION} installed"
+                done_msg="${done_msg}\nAntigravity: v${DEFAULT_AGY_VERSION} installed"
             fi
             if echo "$FAST_TRACK_PRODUCTS" | grep -q "ide"; then
                 done_msg="${done_msg}\nIDE:  v${DEFAULT_IDE_VERSION} installed via ${method_label}"

@@ -9,6 +9,8 @@ print_usage() {
     echo "  --install-cli     Headless Antigravity CLI install"
     echo "  --install-jules   Headless Google Jules CLI install"
     echo "  --install-sdk     Headless Antigravity Python SDK install"
+    echo "  --install-sandbox Headless Antigravity Developer Sandbox (agy-box) install"
+    echo "  --install-agy-box Headless Antigravity Developer Sandbox (agy-box) install"
     echo "  --fast-track      Headless lab setup (IDE + CLI + Jules)"
     echo "  --remove          Uninstall Antigravity"
     echo "  --demo-ui         Test and view the UI layout without modifying the system"
@@ -34,6 +36,7 @@ for arg in "$@"; do
         --install-cli) ACTION="cli"; AUTO=1 ;;
         --install-jules) ACTION="jules"; AUTO=1 ;;
         --install-sdk) ACTION="sdk"; AUTO=1 ;;
+        --install-sandbox|--install-agy-box) ACTION="agy_box"; AUTO=1 ;;
         --fast-track) ACTION="fast_track"; AUTO=1 ;;
         --remove) ACTION="remove" ;;
         --demo-ui) ACTION="demo_ui" ;;
@@ -68,7 +71,7 @@ check_for_updates() {
     if ! curl -fSsL --head "$MANAGER_URL" >/dev/null 2>&1; then return 0; fi
 
     local remote_version
-    remote_version=$(curl -fSsL "https://raw.githubusercontent.com/wtg-codes/agv-easy-install/main/src/00_config.sh" | grep '^SCRIPT_VERSION=' | cut -d'"' -f2)
+    remote_version=$(curl -fSsL "https://raw.githubusercontent.com/wtg-codes/agy-easy-install/main/src/00_config.sh" | grep '^SCRIPT_VERSION=' | cut -d'"' -f2)
     
     if [ -n "$remote_version" ] && [ "$remote_version" != "$SCRIPT_VERSION" ]; then
         # Simple string comparison (assumes semver format like 0.2.2)
@@ -180,7 +183,7 @@ do_fast_track_install() {
     local done_msg="🎉 Setup Complete!"
     local mock_bin_name="antigravity"
     if echo "$FAST_TRACK_PRODUCTS" | grep -q "antigravity"; then
-        done_msg="${done_msg}\nAntigravity: v${DEFAULT_AGV_VERSION} installed"
+        done_msg="${done_msg}\nAntigravity: v${DEFAULT_AGY_VERSION} installed"
     fi
     if echo "$FAST_TRACK_PRODUCTS" | grep -q "ide"; then
         done_msg="${done_msg}\nIDE:  v${DEFAULT_IDE_VERSION} installed"
@@ -290,6 +293,8 @@ start_sandbox_mode() {
                             continue
                         fi
                         in_install=false
+                    elif [ "$choice" = "agy_box" ]; then
+                        in_install=false
                     fi
                 done
                 if [ "$choice" != "back" ]; then
@@ -300,7 +305,7 @@ start_sandbox_mode() {
             cleanup)
                 cleanup_submenu
                 case "$choice" in
-                    remove|save|remove_mgr) echo ""; run_mock_action "$choice"; echo ""; echo -ne "${C_DIM}Press Enter to continue...${C_RESET}"; read -r _ < /dev/tty ;;
+                    remove|save|remove_mgr|uninstall_agy_box) echo ""; run_mock_action "$choice"; echo ""; echo -ne "${C_DIM}Press Enter to continue...${C_RESET}"; read -r _ < /dev/tty ;;
                     back) ;; # loop back to main
                 esac
                 ;;
@@ -389,6 +394,8 @@ run_interactive() {
                             continue
                         fi
                         in_install=false
+                    elif [ "$choice" = "agy_box" ]; then
+                        in_install=false
                     fi
                 done
                 case "$choice" in
@@ -439,6 +446,13 @@ run_interactive() {
                         post_install_menu
                         break
                         ;;
+                    agy_box)
+                        FAST_TRACK_PRODUCTS="agy-box"
+                        install_agy_box
+                        save_manager_locally
+                        post_install_menu
+                        break
+                        ;;
                     back) continue ;; # return to main menu
                 esac
                 ;;
@@ -446,6 +460,7 @@ run_interactive() {
                 cleanup_submenu
                 case "$choice" in
                     remove) do_remove; break ;;
+                    uninstall_agy_box) uninstall_agy_box; break ;;
                     save) save_manager_locally; break ;;
                     remove_mgr) remove_manager_script; break ;;
                     back) continue ;; # return to main menu
@@ -474,6 +489,7 @@ case "$ACTION" in
     cli) install_cli; save_manager_locally ;;
     jules) install_jules; save_manager_locally ;;
     sdk) install_sdk; save_manager_locally ;;
+    agy_box) install_agy_box; save_manager_locally ;;
     check) do_health_check ;;
     demo_ui) start_sandbox_mode ;;
     install|"")

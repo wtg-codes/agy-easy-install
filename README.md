@@ -1,12 +1,12 @@
 <p align="center">
-  <a href="https://github.com/wtg-codes/agv-easy-install/actions/workflows/ci.yml">
-    <img src="https://img.shields.io/github/actions/workflow/status/wtg-codes/agv-easy-install/ci.yml?branch=main&label=CI%2FCD&style=flat-square" alt="CI/CD Status">
+  <a href="https://github.com/wtg-codes/agy-easy-install/actions/workflows/ci.yml">
+    <img src="https://img.shields.io/github/actions/workflow/status/wtg-codes/agy-easy-install/ci.yml?branch=main&label=CI%2FCD&style=flat-square" alt="CI/CD Status">
   </a>
-  <a href="https://github.com/wtg-codes/agv-easy-install/actions/workflows/nightly-update.yml">
-    <img src="https://img.shields.io/github/actions/workflow/status/wtg-codes/agv-easy-install/nightly-update.yml?label=Nightly%20Sync&style=flat-square" alt="Nightly Sync Status">
+  <a href="https://github.com/wtg-codes/agy-easy-install/actions/workflows/nightly-update.yml">
+    <img src="https://img.shields.io/github/actions/workflow/status/wtg-codes/agy-easy-install/nightly-update.yml?label=Nightly%20Sync&style=flat-square" alt="Nightly Sync Status">
   </a>
-  <a href="https://github.com/wtg-codes/agv-easy-install/actions/workflows/deploy-pages.yml">
-    <img src="https://img.shields.io/github/actions/workflow/status/wtg-codes/agv-easy-install/deploy-pages.yml?label=Docs%20Build&style=flat-square" alt="GitHub Pages Status">
+  <a href="https://github.com/wtg-codes/agy-easy-install/actions/workflows/deploy-pages.yml">
+    <img src="https://img.shields.io/github/actions/workflow/status/wtg-codes/agy-easy-install/deploy-pages.yml?label=Docs%20Build&style=flat-square" alt="GitHub Pages Status">
   </a>
   <img src="https://img.shields.io/badge/platforms-Linux%20%7C%20macOS%20%7C%20WSL2%20%7C%20ChromeOS-blue?style=flat-square" alt="Supported Platforms">
   <a href="LICENSE">
@@ -29,12 +29,12 @@
 
 **Option A — Interactive Guide (recommended for students)**
 
-👉 **[Open the Interactive Installation Guide](https://wtg-codes.github.io/agv-easy-install/)**
+👉 **[Open the Interactive Installation Guide](https://wtg-codes.github.io/agy-easy-install/)**
 
 **Option B — Direct install**
 
 ```bash
-curl -fSsL "https://raw.githubusercontent.com/wtg-codes/agv-easy-install/main/antigravity-manager.sh" | bash
+curl -fSsL "https://raw.githubusercontent.com/wtg-codes/agy-easy-install/main/antigravity-manager.sh" | bash
 ```
 
 **Option C — Advanced (Headless / Automation)**
@@ -42,7 +42,7 @@ curl -fSsL "https://raw.githubusercontent.com/wtg-codes/agv-easy-install/main/an
 The script supports non-interactive execution for CI/CD and provisioning tools:
 ```bash
 # Auto-detect and install without prompts
-curl -fSsL "https://raw.githubusercontent.com/wtg-codes/agv-easy-install/main/antigravity-manager.sh" | bash -s -- --auto
+curl -fSsL "https://raw.githubusercontent.com/wtg-codes/agy-easy-install/main/antigravity-manager.sh" | bash -s -- --auto
 
 # Or force a specific method
 bash antigravity-manager.sh --install-brew
@@ -170,5 +170,5 @@ All changes must pass `bash tests/run_gates.sh --phase all` before merging.
 ---
 
 <p align="center">
-  <sub>MIT License · Made for students · <a href="https://wtg-codes.github.io/agv-easy-install/">Interactive Guide</a></sub>
+  <sub>MIT License · Made for students · <a href="https://wtg-codes.github.io/agy-easy-install/">Interactive Guide</a></sub>
 </p>

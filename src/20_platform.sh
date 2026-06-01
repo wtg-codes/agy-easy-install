@@ -363,8 +363,8 @@ print_banner() {
     [0;34m/_/   \_\[0;31m_| |_|\[1;33m__|_|[0;34m\__[0;32m__|_|  [0;31m\__,_|[0;34m \_/ |_[0;31m|\__|\[1;33m__,[0;34m |  [0;32m       [0m
     [0;34m         [0;31m       [1;33m     [0;34m   [0;32m       [0;31m      [0;34m       [0;31m     |[1;33m___[0;34m/   [0;32m       [0m
 BANNER_EOF
-    echo -e "      ${C_BOLD}AGV Easy Install v${SCRIPT_VERSION}${C_RESET} ${mode}"
-    echo -e "      ${C_DIM}github.com/wtg-codes/agv-easy-install${C_RESET}"
+    echo -e "      ${C_BOLD}AGY Easy Install v${SCRIPT_VERSION}${C_RESET} ${mode}"
+    echo -e "      ${C_DIM}github.com/wtg-codes/agy-easy-install${C_RESET}"
     echo -e "      ${C_DIM}──────────────────────────────────────────────────${C_RESET}"
 }
 

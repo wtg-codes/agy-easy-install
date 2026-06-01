@@ -1,4 +1,4 @@
-# Contributing to `agv-easy-install`
+# Contributing to `agy-easy-install`
 
 Thanks for your interest in improving the installer! Here's how to get started.
 

@@ -208,5 +208,13 @@
     "versions": [
       "0.1.0"
     ]
+  },
+  "agy-box": {
+    "v0.5.0": {
+      "url": "https://raw.githubusercontent.com/wtg-codes/agy-box/v0.5.0/agy-box-manager"
+    },
+    "v0.4.2": {
+      "url": "https://raw.githubusercontent.com/wtg-codes/agy-box/v0.4.2/agy-box-manager"
+    }
   }
 }

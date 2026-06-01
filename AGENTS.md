@@ -1,4 +1,4 @@
-# Agent Instructions — `agv-easy-install`
+# Agent Instructions — `agy-easy-install`
 
 > This file provides context and rules for AI coding agents working in this repository.
 

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # =============================================================================
-# tests/run_gates.sh — Phase gate test runner for agv-easy-install
+# tests/run_gates.sh — Phase gate test runner for agy-easy-install
 # =============================================================================
 # Usage:
 #   bash tests/run_gates.sh --phase 0       # Run one phase gate
@@ -212,6 +212,16 @@ gate_6() {
     # Sandbox/mock updates
     check "6.G10 Sandbox has jules_menu"        "grep -q 'jules_menu' src/99_main.sh"
     check "6.G11 Sandbox mocks Jules package"   "grep -q '@google/jules' src/40_ui.sh"
+
+    # agy-box Sandbox Integration
+    check "6.G12 --install-sandbox flag exists" "grep -q -- '--install-sandbox' $SCRIPT"
+    check "6.G13 --install-agy-box flag exists" "grep -q -- '--install-agy-box' $SCRIPT"
+    check "6.G14 --help lists --install-sandbox" "bash $SCRIPT --help 2>&1 | grep -- '--install-sandbox' >/dev/null"
+    check "6.G15 --help lists --install-agy-box" "bash $SCRIPT --help 2>&1 | grep -- '--install-agy-box' >/dev/null"
+    check "6.G16 DEFAULT_AGY_BOX_VERSION exists" "grep -q 'DEFAULT_AGY_BOX_VERSION' $SCRIPT"
+    check "6.G17 install_agy_box() exists"       "grep -q 'install_agy_box()' $SCRIPT"
+    check "6.G18 uninstall_agy_box() exists"     "grep -q 'uninstall_agy_box()' $SCRIPT"
+    check "6.G19 versions.json has agy-box entry" "grep -q 'agy-box' versions.json"
 }
 
 # =============================================================================
@@ -233,7 +243,7 @@ print_summary() {
 usage() {
     echo "Usage: $0 --phase <0|1|2|3|4|5|6|all>"
     echo ""
-    echo "Runs phase gate tests for the agv-easy-install fix-up."
+    echo "Runs phase gate tests for the agy-easy-install fix-up."
     echo ""
     echo "Options:"
     echo "  --phase 0     Run Phase 0 gate (Documentation Bootstrap)"
@@ -261,7 +271,7 @@ if [ -z "$PHASE" ]; then
     usage
 fi
 
-echo -e "${BOLD}agv-easy-install — Phase Gate Runner${RESET}"
+echo -e "${BOLD}agy-easy-install — Phase Gate Runner${RESET}"
 echo -e "Working directory: ${REPO_DIR}"
 
 if [ "$PHASE" = "all" ]; then

@@ -19,12 +19,13 @@ C_RESET='\033[0m'
 
 # Configuration
 SCRIPT_VERSION="0.2.15"
-DEFAULT_AGV_VERSION="2.0.0"
+DEFAULT_AGY_VERSION="2.0.0"
 DEFAULT_IDE_VERSION="1.23.2"
 DEFAULT_CLI_VERSION="1.0.0"
 DEFAULT_SDK_VERSION="0.1.0"
 DEFAULT_JULES_VERSION="latest"
-VERSIONS_JSON_URL="https://raw.githubusercontent.com/wtg-codes/agv-easy-install/main/versions.json"
+DEFAULT_AGY_BOX_VERSION="v0.5.0"
+VERSIONS_JSON_URL="https://raw.githubusercontent.com/wtg-codes/agy-easy-install/main/versions.json"
 
 LINUX_X64_SHA256="5232a4048ff4fa15685d9a981ba4fba573e297f3efc9b76f638e794baf775725"
 LINUX_X64_URL="https://edgedl.me.gvt1.com/edgedl/release2/j0qc3/antigravity/stable/1.23.2-4781536860569600/linux-x64/Antigravity.tar.gz"
@@ -45,16 +46,16 @@ WIN_ARM64_URL="https://edgedl.me.gvt1.com/edgedl/release2/j0qc3/antigravity/stab
 : "$LINUX_X64_SHA256" "$LINUX_X64_URL" "$MAC_X64_SHA256" "$MAC_X64_URL" "$MAC_ARM64_SHA256" "$MAC_ARM64_URL" "$WIN_X64_SHA256" "$WIN_X64_URL" "$WIN_ARM64_SHA256" "$WIN_ARM64_URL"
 
 # Google Antigravity Fallbacks (2.0.0)
-AGV_LINUX_X64_SHA256="14bc9cb480a5be8fb3b7dc3e2b0cebfa66d370ad58cc1e0fa01140d1204d4297"
-AGV_LINUX_X64_URL="https://storage.googleapis.com/antigravity-public/antigravity-hub/2.0.0-6324554176528384/linux-x64/Antigravity.tar.gz"
-AGV_MAC_X64_SHA256="7416561b81866656453d51810ff64c19bfdc41b5fabca2ca253e9f835e7b20a6"
-AGV_MAC_X64_URL="https://storage.googleapis.com/antigravity-public/antigravity-hub/2.0.0-6324554176528384/darwin-x64/Antigravity.dmg"
-AGV_MAC_ARM64_SHA256="f96c360be0dc419186f987276b0aa1f8c22def1b76eec0892537c193e6bf4fdd"
-AGV_MAC_ARM64_URL="https://storage.googleapis.com/antigravity-public/antigravity-hub/2.0.0-6324554176528384/darwin-arm/Antigravity.dmg"
-AGV_WIN_X64_SHA256="06e1b95dca9bf14fcbfc72ace0c11b42123c0cb65f35ee3c979b63bab3b56a6a"
-AGV_WIN_X64_URL="https://storage.googleapis.com/antigravity-public/antigravity-hub/2.0.0-6324554176528384/windows-x64/Antigravity.exe"
-AGV_WIN_ARM64_SHA256="5b8f70548455c61fbc7ddf137b4d74c189444167085fdd6ef29b8cd2feb57b18"
-AGV_WIN_ARM64_URL="https://storage.googleapis.com/antigravity-public/antigravity-hub/2.0.0-6324554176528384/windows-arm/Antigravity.exe"
+AGY_LINUX_X64_SHA256="14bc9cb480a5be8fb3b7dc3e2b0cebfa66d370ad58cc1e0fa01140d1204d4297"
+AGY_LINUX_X64_URL="https://storage.googleapis.com/antigravity-public/antigravity-hub/2.0.0-6324554176528384/linux-x64/Antigravity.tar.gz"
+AGY_MAC_X64_SHA256="7416561b81866656453d51810ff64c19bfdc41b5fabca2ca253e9f835e7b20a6"
+AGY_MAC_X64_URL="https://storage.googleapis.com/antigravity-public/antigravity-hub/2.0.0-6324554176528384/darwin-x64/Antigravity.dmg"
+AGY_MAC_ARM64_SHA256="f96c360be0dc419186f987276b0aa1f8c22def1b76eec0892537c193e6bf4fdd"
+AGY_MAC_ARM64_URL="https://storage.googleapis.com/antigravity-public/antigravity-hub/2.0.0-6324554176528384/darwin-arm/Antigravity.dmg"
+AGY_WIN_X64_SHA256="06e1b95dca9bf14fcbfc72ace0c11b42123c0cb65f35ee3c979b63bab3b56a6a"
+AGY_WIN_X64_URL="https://storage.googleapis.com/antigravity-public/antigravity-hub/2.0.0-6324554176528384/windows-x64/Antigravity.exe"
+AGY_WIN_ARM64_SHA256="5b8f70548455c61fbc7ddf137b4d74c189444167085fdd6ef29b8cd2feb57b18"
+AGY_WIN_ARM64_URL="https://storage.googleapis.com/antigravity-public/antigravity-hub/2.0.0-6324554176528384/windows-arm/Antigravity.exe"
 
 # IDE Fallbacks (1.23.2)
 IDE_LINUX_X64_SHA256="5232a4048ff4fa15685d9a981ba4fba573e297f3efc9b76f638e794baf775725"
@@ -67,7 +68,7 @@ IDE_WIN_X64_SHA256="3874fc761e5c90b3edf8e0365f506ce22241a88f6881cea09713b3f472c4
 IDE_WIN_X64_URL="https://edgedl.me.gvt1.com/edgedl/release2/j0qc3/antigravity/stable/1.23.2-4781536860569600/windows-x64/Antigravity.exe"
 IDE_WIN_ARM64_SHA256="a14aa1971ad801131adcb12afe216522aadea176c141c4b5d793d216bfe02101"
 IDE_WIN_ARM64_URL="https://edgedl.me.gvt1.com/edgedl/release2/j0qc3/antigravity/stable/1.23.2-4781536860569600/windows-arm64/Antigravity.exe"
-MANAGER_URL="https://raw.githubusercontent.com/wtg-codes/agv-easy-install/main/antigravity-manager.sh"
+MANAGER_URL="https://raw.githubusercontent.com/wtg-codes/agy-easy-install/main/antigravity-manager.sh"
 CLI_INSTALL_URL="https://antigravity.google/cli/install.sh"
 
 # Directories
@@ -598,8 +599,8 @@ print_banner() {
     [0;34m/_/   \_\[0;31m_| |_|\[1;33m__|_|[0;34m\__[0;32m__|_|  [0;31m\__,_|[0;34m \_/ |_[0;31m|\__|\[1;33m__,[0;34m |  [0;32m       [0m
     [0;34m         [0;31m       [1;33m     [0;34m   [0;32m       [0;31m      [0;34m       [0;31m     |[1;33m___[0;34m/   [0;32m       [0m
 BANNER_EOF
-    echo -e "      ${C_BOLD}AGV Easy Install v${SCRIPT_VERSION}${C_RESET} ${mode}"
-    echo -e "      ${C_DIM}github.com/wtg-codes/agv-easy-install${C_RESET}"
+    echo -e "      ${C_BOLD}AGY Easy Install v${SCRIPT_VERSION}${C_RESET} ${mode}"
+    echo -e "      ${C_DIM}github.com/wtg-codes/agy-easy-install${C_RESET}"
     echo -e "      ${C_DIM}──────────────────────────────────────────────────${C_RESET}"
 }
 
@@ -708,13 +709,13 @@ get_product_release_info() {
     local json_file="/tmp/versions.json"
     
     if [ ! -f "$json_file" ]; then
-        if [ "$product_name" = "antigravity" ] && [ "$version" = "$DEFAULT_AGV_VERSION" ]; then
+        if [ "$product_name" = "antigravity" ] && [ "$version" = "$DEFAULT_AGY_VERSION" ]; then
             case "$platform_key" in
-                LINUX_X64) echo "$AGV_LINUX_X64_URL|$AGV_LINUX_X64_SHA256" ;;
-                MAC_X64) echo "$AGV_MAC_X64_URL|$AGV_MAC_X64_SHA256" ;;
-                MAC_ARM64) echo "$AGV_MAC_ARM64_URL|$AGV_MAC_ARM64_SHA256" ;;
-                WIN_X64) echo "$AGV_WIN_X64_URL|$AGV_WIN_X64_SHA256" ;;
-                WIN_ARM64) echo "$AGV_WIN_ARM64_URL|$AGV_WIN_ARM64_SHA256" ;;
+                LINUX_X64) echo "$AGY_LINUX_X64_URL|$AGY_LINUX_X64_SHA256" ;;
+                MAC_X64) echo "$AGY_MAC_X64_URL|$AGY_MAC_X64_SHA256" ;;
+                MAC_ARM64) echo "$AGY_MAC_ARM64_URL|$AGY_MAC_ARM64_SHA256" ;;
+                WIN_X64) echo "$AGY_WIN_X64_URL|$AGY_WIN_X64_SHA256" ;;
+                WIN_ARM64) echo "$AGY_WIN_ARM64_URL|$AGY_WIN_ARM64_SHA256" ;;
             esac
             return
         elif [ "$product_name" = "ide" ] && [ "$version" = "$DEFAULT_IDE_VERSION" ]; then
@@ -748,13 +749,13 @@ get_product_release_info() {
     if [ -n "$info" ]; then
         echo "$info"
     else
-        if [ "$product_name" = "antigravity" ] && [ "$version" = "$DEFAULT_AGV_VERSION" ]; then
+        if [ "$product_name" = "antigravity" ] && [ "$version" = "$DEFAULT_AGY_VERSION" ]; then
             case "$platform_key" in
-                LINUX_X64) echo "$AGV_LINUX_X64_URL|$AGV_LINUX_X64_SHA256" ;;
-                MAC_X64) echo "$AGV_MAC_X64_URL|$AGV_MAC_X64_SHA256" ;;
-                MAC_ARM64) echo "$AGV_MAC_ARM64_URL|$AGV_MAC_ARM64_SHA256" ;;
-                WIN_X64) echo "$AGV_WIN_X64_URL|$AGV_WIN_X64_SHA256" ;;
-                WIN_ARM64) echo "$AGV_WIN_ARM64_URL|$AGV_WIN_ARM64_SHA256" ;;
+                LINUX_X64) echo "$AGY_LINUX_X64_URL|$AGY_LINUX_X64_SHA256" ;;
+                MAC_X64) echo "$AGY_MAC_X64_URL|$AGY_MAC_X64_SHA256" ;;
+                MAC_ARM64) echo "$AGY_MAC_ARM64_URL|$AGY_MAC_ARM64_SHA256" ;;
+                WIN_X64) echo "$AGY_WIN_X64_URL|$AGY_WIN_X64_SHA256" ;;
+                WIN_ARM64) echo "$AGY_WIN_ARM64_URL|$AGY_WIN_ARM64_SHA256" ;;
             esac
         elif [ "$product_name" = "ide" ] && [ "$version" = "$DEFAULT_IDE_VERSION" ]; then
             case "$platform_key" in
@@ -777,7 +778,7 @@ do_install_binary() {
         if [ "$product_name" = "ide" ]; then
             target_version="$DEFAULT_IDE_VERSION"
         else
-            target_version="$DEFAULT_AGV_VERSION"
+            target_version="$DEFAULT_AGY_VERSION"
         fi
     fi
 
@@ -1062,6 +1063,9 @@ do_remove() {
     fi
     log_info "${C_RED}🧹 Removing Google Antigravity...${C_RESET}"
     
+    # Remove agy-box sandbox if installed
+    uninstall_agy_box || true
+
     # Remove CLI and other shared files
     rm -f "$BIN_DIR/agy" "$BIN_DIR/jules"
     if command -v npm >/dev/null 2>&1; then
@@ -1548,6 +1552,160 @@ install_jules() {
     log_info "${C_GREEN}✅ Google Jules CLI installation complete!${C_RESET}"
 }
 
+get_agy_box_release_url() {
+    local version="$1"
+    local json_file="/tmp/versions.json"
+    
+    if [ ! -f "$json_file" ]; then
+        echo ""
+        return
+    fi
+    
+    local url
+    url=$(awk -v ver="$version" '
+      BEGIN { in_agy=0; in_ver=0 }
+      $0 ~ "\"agy-box\"" { in_agy=1; next }
+      in_agy && $0 ~ "}" && $0 !~ "," && in_ver==0 { in_agy=0 }
+      in_agy && $0 ~ "\"" ver "\"" { in_ver=1; next }
+      in_ver && $0 ~ "}" && $0 !~ "," { in_ver=0 }
+      in_ver && $0 ~ "\"url\"" { split($0, a, "\""); url=a[4] }
+      END { if (url != "") print url }
+    ' "$json_file" 2>/dev/null || true)
+    
+    echo "$url"
+}
+
+install_agy_box() {
+    log_info "Verifying container sandboxing prerequisites..."
+
+    # 1. Check unsupported platform macOS
+    if [ "$PLATFORM" = "Darwin" ]; then
+        log_error "agy-box is not natively supported on macOS."
+        echo -e "${C_YELLOW}💡 Guidance: To run agy-box on macOS:${C_RESET}"
+        echo -e "  1. Install Podman Desktop or Docker Desktop on macOS."
+        echo -e "  2. Install distrobox using Homebrew: ${C_BOLD}brew install distrobox${C_RESET}"
+        echo -e "  3. Ensure the podman machine or docker daemon is running."
+        echo -e "  After completing these steps, re-run this installer."
+        return 1
+    fi
+
+    # 2. Check WSL/Windows or standard Linux
+    # Check distrobox
+    if ! command -v distrobox &>/dev/null; then
+        log_warn "distrobox is not installed on the host."
+        if [ "$PLATFORM" = "Linux" ] && [ "${HAS_APT:-no}" = "yes" ]; then
+            if [ "$AUTO" -eq 1 ]; then
+                log_info "Headless mode: automatically installing distrobox and podman..."
+                sudo apt update && sudo apt install -y distrobox podman
+            else
+                if gum confirm "Would you like to install distrobox and podman now?"; then
+                    sudo apt update && sudo apt install -y distrobox podman
+                else
+                    log_error "Sandbox installation cannot proceed without distrobox."
+                    return 1
+                fi
+            fi
+        elif [ "$PLATFORM" = "Linux" ] && [ "${HAS_DNF:-no}" = "yes" ]; then
+            if [ "$AUTO" -eq 1 ]; then
+                log_info "Headless mode: automatically installing distrobox and podman..."
+                sudo dnf install -y distrobox podman
+            else
+                if gum confirm "Would you like to install distrobox and podman now?"; then
+                    sudo dnf install -y distrobox podman
+                else
+                    log_error "Sandbox installation cannot proceed without distrobox."
+                    return 1
+                fi
+            fi
+        else
+            if grep -qi "microsoft" /proc/version 2>/dev/null; then
+                log_error "distrobox is missing in your WSL2 environment."
+                echo -e "${C_YELLOW}💡 Guidance: To run agy-box on WSL2 (Windows):${C_RESET}"
+                echo -e "  1. Install Podman or Docker inside your WSL2 distro (e.g., Ubuntu)."
+                echo -e "  2. Install distrobox: ${C_BOLD}curl -s https://raw.githubusercontent.com/89luca89/distrobox/main/install | sh${C_RESET}"
+                echo -e "  Alternatively, follow the official WSL2 container setup instructions."
+            else
+                log_error "Please install distrobox and a container manager (podman/docker) first."
+            fi
+            return 1
+        fi
+    fi
+
+    # Check podman/docker
+    if ! command -v podman &>/dev/null && ! command -v docker &>/dev/null; then
+        log_error "No container manager (podman or docker) detected."
+        if [ "$PLATFORM" = "Linux" ] && [ "${HAS_APT:-no}" = "yes" ]; then
+            if [ "$AUTO" -eq 1 ]; then
+                sudo apt update && sudo apt install -y podman
+            else
+                if gum confirm "Would you like to install podman now?"; then
+                    sudo apt update && sudo apt install -y podman
+                fi
+            fi
+        elif [ "$PLATFORM" = "Linux" ] && [ "${HAS_DNF:-no}" = "yes" ]; then
+            if [ "$AUTO" -eq 1 ]; then
+                sudo dnf install -y podman
+            else
+                if gum confirm "Would you like to install podman now?"; then
+                    sudo dnf install -y podman
+                fi
+            fi
+        fi
+        if ! command -v podman &>/dev/null && ! command -v docker &>/dev/null; then
+            log_error "Sandbox installation cannot proceed without podman or docker."
+            return 1
+        fi
+    fi
+
+    # 3. Download and install agy-box-manager globally from tag version
+    log_info "Fetching agy-box version details..."
+    fetch_versions_json || true
+    local agy_ver="${DEFAULT_AGY_BOX_VERSION:-v0.5.0}"
+    local remote_url
+    remote_url=$(get_agy_box_release_url "$agy_ver")
+    
+    if [ -z "$remote_url" ]; then
+        log_warn "Release version $agy_ver not found in versions.json. Falling back to official release tag URL..."
+        remote_url="https://raw.githubusercontent.com/wtg-codes/agy-box/${agy_ver}/agy-box-manager"
+    fi
+    
+    log_info "Downloading agy-box-manager CLI ($agy_ver)..."
+    local target_dir="$HOME/.local/bin"
+    mkdir -p "$target_dir"
+    
+    if ! curl -fsSL "$remote_url" -o "$target_dir/agy-box-manager"; then
+        log_error "Failed to download agy-box-manager from $remote_url"
+        return 1
+    fi
+    chmod +x "$target_dir/agy-box-manager"
+
+    # 4. Trigger sandbox installation
+    log_info "Starting agy-box container setup..."
+    if ! "$target_dir/agy-box-manager" install; then
+        log_error "agy-box container setup failed during execution of agy-box-manager install."
+        return 1
+    fi
+    log_info "${C_GREEN}✅ agy-box sandbox installation completed successfully.${C_RESET}"
+}
+
+uninstall_agy_box() {
+    local manager_bin="$HOME/.local/bin/agy-box-manager"
+    if [ -f "$manager_bin" ]; then
+        log_info "Uninstalling agy-box environment..."
+        if ! "$manager_bin" clean; then
+            log_warn "agy-box clean command encountered an error."
+        fi
+        if ! "$manager_bin" uninstall-global; then
+            log_warn "agy-box uninstall-global command encountered an error."
+        fi
+        rm -f "$manager_bin"
+        log_info "${C_GREEN}✅ agy-box uninstalled successfully.${C_RESET}"
+    else
+        log_warn "agy-box-manager is not installed globally."
+    fi
+}
+
+
 # ── Top-level menu header (full banner + system info) ────────────
 get_menu_header() {
     print_banner "${UI_MODE:-}"
@@ -1559,7 +1717,7 @@ get_compact_header() {
     local label="${1:-}"
     local mode="${UI_MODE:-}"
     local os_label="${DISTRO_PRETTY:-Unknown OS}"
-    echo -e "${C_BOLD}AGV Easy Install v${SCRIPT_VERSION}${C_RESET} ${C_DIM}|${C_RESET} ${os_label} ${C_DIM}|${C_RESET} ${mode:+${C_YELLOW}${mode}${C_RESET} ${C_DIM}|${C_RESET} }${label}"
+    echo -e "${C_BOLD}AGY Easy Install v${SCRIPT_VERSION}${C_RESET} ${C_DIM}|${C_RESET} ${os_label} ${C_DIM}|${C_RESET} ${mode:+${C_YELLOW}${mode}${C_RESET} ${C_DIM}|${C_RESET} }${label}"
 }
 
 # ── Wizard Step 1: Intent Question ──────────────────────────────
@@ -1727,7 +1885,7 @@ fast_track_setup() {
     echo ""
     local summary="📦 Ready to install:"
     if echo "$FAST_TRACK_PRODUCTS" | grep -q "antigravity"; then
-        summary="${summary}\n  ✦ Google Antigravity (v${DEFAULT_AGV_VERSION})"
+        summary="${summary}\n  ✦ Google Antigravity (v${DEFAULT_AGY_VERSION})"
     fi
     if echo "$FAST_TRACK_PRODUCTS" | grep -q "ide"; then
         local method_label="Homebrew"
@@ -1779,6 +1937,7 @@ install_submenu() {
         "Antigravity CLI (agy)  →"
         "Google Jules CLI (npm)  →"
         "Antigravity SDK (Python)  →"
+        "Antigravity Developer Sandbox (agy-box, containerized lab)  →"
     )
 
     if command -v gum >/dev/null 2>&1; then
@@ -1789,7 +1948,7 @@ install_submenu() {
         clear || true
         echo "Select a tool to install:"
         for i in "${!options[@]}"; do echo "$((i+1))) ${options[$i]}"; done
-        read -r -p "Select tool [1-6]: " num < /dev/tty
+        read -r -p "Select tool [1-7]: " num < /dev/tty
         case "$num" in
             1) CHOICE="Back" ;;
             2) CHOICE="Google Antigravity" ;;
@@ -1797,6 +1956,7 @@ install_submenu() {
             4) CHOICE="Antigravity CLI" ;;
             5) CHOICE="Google Jules CLI" ;;
             6) CHOICE="Antigravity SDK" ;;
+            7) CHOICE="Antigravity Developer Sandbox" ;;
             *) CHOICE="Back" ;;
         esac
     fi
@@ -1808,6 +1968,7 @@ install_submenu() {
         *"CLI"*) choice="cli_menu" ;;
         *"Jules"*) choice="jules_menu" ;;
         *"SDK"*) choice="sdk_menu" ;;
+        *"Sandbox"*|*"agy-box"*) choice="agy_box" ;;
         *) choice="back" ;;
     esac
 }
@@ -1865,6 +2026,7 @@ cleanup_submenu() {
     local options=(
         "Back"
         "Uninstall Antigravity"
+        "Uninstall Antigravity Dev Box (agy-box)"
         "Save manager (add 'antigravity-manager' command)"
         "Remove manager (delete this script)"
     )
@@ -1877,18 +2039,20 @@ cleanup_submenu() {
         clear || true
         echo "Manage installation:"
         for i in "${!options[@]}"; do echo "$((i+1))) ${options[$i]}"; done
-        read -r -p "Select option [1-4]: " num < /dev/tty
+        read -r -p "Select option [1-5]: " num < /dev/tty
         case "$num" in
             1) CHOICE="Back" ;;
             2) CHOICE="Uninstall" ;;
-            3) CHOICE="Save" ;;
-            4) CHOICE="Remove manager" ;;
+            3) CHOICE="Uninstall Dev Box" ;;
+            4) CHOICE="Save" ;;
+            5) CHOICE="Remove manager" ;;
             *) CHOICE="Back" ;;
         esac
     fi
 
     case "$CHOICE" in
         "Back"*) choice="back" ;;
+        "Uninstall Antigravity Dev Box"*) choice="uninstall_agy_box" ;;
         "Uninstall"*) choice="remove" ;;
         "Save"*) choice="save" ;;
         "Remove"*) choice="remove_mgr" ;;
@@ -1979,7 +2143,7 @@ list_antigravity_versions() {
           }
         ' "$json_file" 2>/dev/null
     else
-        echo "$DEFAULT_AGV_VERSION"
+        echo "$DEFAULT_AGY_VERSION"
     fi
 }
 
@@ -1992,12 +2156,12 @@ choose_antigravity_version() {
     done < <(list_antigravity_versions)
     
     if [ ${#versions[@]} -eq 0 ]; then
-        versions+=("$DEFAULT_AGV_VERSION")
+        versions+=("$DEFAULT_AGY_VERSION")
     fi
     
     local options=("Back")
     for v in "${versions[@]}"; do
-        if [ "$v" = "$DEFAULT_AGV_VERSION" ]; then
+        if [ "$v" = "$DEFAULT_AGY_VERSION" ]; then
             options+=("$v (Latest / Default)")
         else
             options+=("$v")
@@ -2264,13 +2428,29 @@ run_mock_action() {
     local action="$1"
 
     case "$action" in
+        agy_box)
+            log_info "${C_MAG}🚀 Starting mock installation of Antigravity Developer Sandbox (agy-box)...${C_RESET}"
+            run_cmd_ui "Verifying container sandboxing prerequisites..." sleep 1
+            run_cmd_ui "Downloading agy-box-manager CLI..." sleep 1
+            run_cmd_ui "Starting agy-box container setup..." sleep 1.5
+            echo ""
+            log_info "${C_GREEN}${C_BOLD}🎉 Mock Installation Complete!${C_RESET}"
+            log_info "  ${C_CYAN}▸${C_RESET} Launch status:  ${C_BOLD}ujust agy-status${C_RESET}"
+            ;;
+        uninstall_agy_box)
+            log_info "${C_MAG}🚀 Uninstalling Antigravity Developer Sandbox (agy-box) (Mock)...${C_RESET}"
+            run_cmd_ui "Stopping and cleaning up container..." sleep 1
+            run_cmd_ui "Removing global wrappers..." sleep 1
+            echo ""
+            log_info "✅ agy-box uninstalled successfully (Mock)."
+            ;;
         fast_track_go)
             local method_label="Homebrew"
             case "$FAST_TRACK_METHOD" in repo) method_label="System Repo" ;; binary) method_label="Official Binary" ;; esac
 
             log_info "${C_MAG}🚀 Starting setup (Mock)...${C_RESET}"
             if echo "$FAST_TRACK_PRODUCTS" | grep -q "antigravity"; then
-                run_cmd_ui "Installing Google Antigravity (v${DEFAULT_AGV_VERSION})..." sleep 1
+                run_cmd_ui "Installing Google Antigravity (v${DEFAULT_AGY_VERSION})..." sleep 1
             fi
             if echo "$FAST_TRACK_PRODUCTS" | grep -q "ide"; then
                 run_cmd_ui "Installing Antigravity IDE (v${DEFAULT_IDE_VERSION}) via ${method_label}..." sleep 1.5
@@ -2288,7 +2468,7 @@ run_mock_action() {
             local done_msg="🎉 Mock Setup Complete!"
             local mock_bin_name="antigravity"
             if echo "$FAST_TRACK_PRODUCTS" | grep -q "antigravity"; then
-                done_msg="${done_msg}\nAntigravity: v${DEFAULT_AGV_VERSION} installed"
+                done_msg="${done_msg}\nAntigravity: v${DEFAULT_AGY_VERSION} installed"
             fi
             if echo "$FAST_TRACK_PRODUCTS" | grep -q "ide"; then
                 done_msg="${done_msg}\nIDE:  v${DEFAULT_IDE_VERSION} installed via ${method_label}"
@@ -2502,6 +2682,8 @@ print_usage() {
     echo "  --install-cli     Headless Antigravity CLI install"
     echo "  --install-jules   Headless Google Jules CLI install"
     echo "  --install-sdk     Headless Antigravity Python SDK install"
+    echo "  --install-sandbox Headless Antigravity Developer Sandbox (agy-box) install"
+    echo "  --install-agy-box Headless Antigravity Developer Sandbox (agy-box) install"
     echo "  --fast-track      Headless lab setup (IDE + CLI + Jules)"
     echo "  --remove          Uninstall Antigravity"
     echo "  --demo-ui         Test and view the UI layout without modifying the system"
@@ -2527,6 +2709,7 @@ for arg in "$@"; do
         --install-cli) ACTION="cli"; AUTO=1 ;;
         --install-jules) ACTION="jules"; AUTO=1 ;;
         --install-sdk) ACTION="sdk"; AUTO=1 ;;
+        --install-sandbox|--install-agy-box) ACTION="agy_box"; AUTO=1 ;;
         --fast-track) ACTION="fast_track"; AUTO=1 ;;
         --remove) ACTION="remove" ;;
         --demo-ui) ACTION="demo_ui" ;;
@@ -2561,7 +2744,7 @@ check_for_updates() {
     if ! curl -fSsL --head "$MANAGER_URL" >/dev/null 2>&1; then return 0; fi
 
     local remote_version
-    remote_version=$(curl -fSsL "https://raw.githubusercontent.com/wtg-codes/agv-easy-install/main/src/00_config.sh" | grep '^SCRIPT_VERSION=' | cut -d'"' -f2)
+    remote_version=$(curl -fSsL "https://raw.githubusercontent.com/wtg-codes/agy-easy-install/main/src/00_config.sh" | grep '^SCRIPT_VERSION=' | cut -d'"' -f2)
     
     if [ -n "$remote_version" ] && [ "$remote_version" != "$SCRIPT_VERSION" ]; then
         # Simple string comparison (assumes semver format like 0.2.2)
@@ -2673,7 +2856,7 @@ do_fast_track_install() {
     local done_msg="🎉 Setup Complete!"
     local mock_bin_name="antigravity"
     if echo "$FAST_TRACK_PRODUCTS" | grep -q "antigravity"; then
-        done_msg="${done_msg}\nAntigravity: v${DEFAULT_AGV_VERSION} installed"
+        done_msg="${done_msg}\nAntigravity: v${DEFAULT_AGY_VERSION} installed"
     fi
     if echo "$FAST_TRACK_PRODUCTS" | grep -q "ide"; then
         done_msg="${done_msg}\nIDE:  v${DEFAULT_IDE_VERSION} installed"
@@ -2783,6 +2966,8 @@ start_sandbox_mode() {
                             continue
                         fi
                         in_install=false
+                    elif [ "$choice" = "agy_box" ]; then
+                        in_install=false
                     fi
                 done
                 if [ "$choice" != "back" ]; then
@@ -2793,7 +2978,7 @@ start_sandbox_mode() {
             cleanup)
                 cleanup_submenu
                 case "$choice" in
-                    remove|save|remove_mgr) echo ""; run_mock_action "$choice"; echo ""; echo -ne "${C_DIM}Press Enter to continue...${C_RESET}"; read -r _ < /dev/tty ;;
+                    remove|save|remove_mgr|uninstall_agy_box) echo ""; run_mock_action "$choice"; echo ""; echo -ne "${C_DIM}Press Enter to continue...${C_RESET}"; read -r _ < /dev/tty ;;
                     back) ;; # loop back to main
                 esac
                 ;;
@@ -2882,6 +3067,8 @@ run_interactive() {
                             continue
                         fi
                         in_install=false
+                    elif [ "$choice" = "agy_box" ]; then
+                        in_install=false
                     fi
                 done
                 case "$choice" in
@@ -2932,6 +3119,13 @@ run_interactive() {
                         post_install_menu
                         break
                         ;;
+                    agy_box)
+                        FAST_TRACK_PRODUCTS="agy-box"
+                        install_agy_box
+                        save_manager_locally
+                        post_install_menu
+                        break
+                        ;;
                     back) continue ;; # return to main menu
                 esac
                 ;;
@@ -2939,6 +3133,7 @@ run_interactive() {
                 cleanup_submenu
                 case "$choice" in
                     remove) do_remove; break ;;
+                    uninstall_agy_box) uninstall_agy_box; break ;;
                     save) save_manager_locally; break ;;
                     remove_mgr) remove_manager_script; break ;;
                     back) continue ;; # return to main menu
@@ -2967,6 +3162,7 @@ case "$ACTION" in
     cli) install_cli; save_manager_locally ;;
     jules) install_jules; save_manager_locally ;;
     sdk) install_sdk; save_manager_locally ;;
+    agy_box) install_agy_box; save_manager_locally ;;
     check) do_health_check ;;
     demo_ui) start_sandbox_mode ;;
     install|"")
