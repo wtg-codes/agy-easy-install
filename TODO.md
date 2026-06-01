@@ -176,3 +176,23 @@
 - [x] Regenerate screenshots: ran `python3 docs/images/capture.py` — 4 PNGs updated
 - [x] Gate count in implementation plan — verified: 77 gates across 7 phases
 - [x] Architecture Documentation Deep-Dive — researched and enhanced all 10 platform and install architecture documents with tool skills and background logic.
+
+---
+
+## 🗺️ Master Plan Workstreams (Active Plan)
+
+### Workstream 3: Repo Rename Migration (agv -> agy)
+- [ ] Create new GitHub repo `wtg-codes/agy-easy-install`
+- [ ] Sync git history and push to the new repository
+- [ ] Run bulk URL and string replacements across all script files (replace `agv-easy-install` with `agy-easy-install`)
+- [ ] Update documentation references and self-updater check URLs
+- [ ] Configure new GitHub Pages and trigger test CI run
+- [ ] Add deprecation warning banners to the old `agv-easy-install` and `agv-easy-install-ink` README files
+- [ ] Set up minimal redirect page in `docs/index.html` on the old repository, then archive the old repositories
+
+### Workstream 4: Downstream Integration (agy-box)
+- [ ] Rebase and finish integration testing on branch `feature/agy-box-install`
+- [ ] Implement `agy-box-manager` script download lock strategy (pin to release tag vs fetching `main`)
+- [ ] Integrate agy-box version tracking inside `versions.json`
+- [ ] Implement error handling for Docker/Podman install failures, missing dependencies, or unsupported macOS environment blocks
+
