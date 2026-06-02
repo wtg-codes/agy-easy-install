@@ -111,6 +111,7 @@ We support **Linux (APT/DNF/Atomic)**, **macOS (Homebrew/DMG)**, and **Windows (
 The script automatically detects your environment and recommends the best installation path.
 
 For detailed platform-specific architecture, see our documentation:
+- [Platform & Binary Installation Matrix](docs/architecture/platform-binary-matrix.md) — Unified path and version reference.
 - [Linux Support Notes](docs/architecture/platform-linux.md)
 - [macOS Support Notes (Beta)](docs/architecture/platform-macos.md)
 - [Windows & WSL2 Notes (Beta)](docs/architecture/platform-windows.md)
