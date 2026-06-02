@@ -1,4 +1,4 @@
-# ADR-0004: Ag-Box Sandbox Installation Paths and Verification
+# ADR-0004: agy-box Sandbox Installation Paths and Verification
 
 ## Status
 **Accepted**

@@ -17,7 +17,7 @@ This document serves as the unified source of truth for all products installed v
 | | **Windows (Native)** | `1.0.0` | Direct Download | `C:\Users\<user>\.local\bin\agy.exe` | Standalone executable | `C:\Users\<user>\.config\antigravity-cli/`<br>`C:\Users\<user>\.gemini\antigravity-cli\settings.json` |
 | **Antigravity SDK** | **All Platforms** | `0.1.0` | Python package (`pip`) | N/A | Target Python's `site-packages/` or active virtualenv | Determined by host Python environment |
 | **Jules CLI** (`jules`) | **All Platforms** | `latest` | Node package (`npm`) | `~/.local/bin/jules` or system global node path | Local or global `node_modules` | `~/.config/jules-cli/`<br>`~/.gemini/jules/` |
-| **Ag-Box Sandbox** (`agy-box`) | **Linux / WSL2** | `v0.5.0` | Distrobox Container | `~/.local/bin/agy-box-manager` | Distrobox container named `agy-box`<br>Image: `ghcr.io/wtg-codes/agy-box-image:latest` | `~/.config/distrobox/`<br>Container home: `~/.local/share/agy-box/` |
+| **agy-box Sandbox** (`agy-box`) | **Linux / WSL2** | `v0.5.0` | Distrobox Container | `~/.local/bin/agy-box-manager` | Distrobox container named `agy-box`<br>Image: `ghcr.io/wtg-codes/agy-box-image:latest` | `~/.config/distrobox/`<br>Container home: `~/.local/share/agy-box/` |
 
 ---
 
@@ -43,9 +43,24 @@ This document serves as the unified source of truth for all products installed v
     *   Requires Node.js >= 18 and NPM. If absent, the manager offers to bootstrap Node.js.
     *   Symlinked into `~/.local/bin/jules` to ensure it is executable without adding additional global NPM directories to the shell PATH.
 
-### D. Ag-Box Sandbox (`agy-box`)
+### D. agy-box Sandbox (`agy-box`)
 *   **Virtual Machine Integration (macOS & Windows WSL2):**
     *   On macOS, container runtimes run inside a hypervisor VM (e.g. `colima` or `podman machine`).
     *   On Windows, WSL2 acts as the VM layer.
 *   **Host Directories Shared inside Container:**
     *   The user's home folder `~` is mounted to map files directly, allowing IDE instances running on the host to open workspaces inside the sandbox.
+
+---
+
+## 3. Alternative & Cloud Deployment Options for agy-box
+
+Since `agy-box` is compiled as a standard OCI-compliant container image (`ghcr.io/wtg-codes/agy-box-image:latest`), it can be deployed in environments outside of local `distrobox` setups:
+
+*   **Cloud Virtual Machines (GCP Compute Engine, AWS EC2):**
+    *   Instead of installing distrobox locally, you can run the container image directly using `podman run` or `docker run` on a persistent cloud VM.
+    *   Map container ports (e.g., port `8080` for noVNC browser-based display, or port `22` for SSH connection) to access the fully functional development sandbox remotely.
+*   **Web-based IDE Cloud Services (GitHub Codespaces, Coder, Gitpod):**
+    *   `ghcr.io/wtg-codes/agy-box-image` can serve as the default devcontainer configuration base image.
+    *   When you launch a GitHub Codespace, it spins up this container on a cloud node, launching a browser-accessible IDE with all CLI and SDK toolchains pre-installed and authenticated via GitHub SSO.
+*   **Jules VM Sandbox Parity:**
+    *   The `agy-box` container image can be loaded directly inside the secure ephemeral VMs used by Jules for task execution. This guarantees 100% environment parity between the developer's local environment and the agent's cloud container.
