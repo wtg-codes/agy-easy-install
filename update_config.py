@@ -18,12 +18,12 @@ def main():
     if agy_data:
         latest_agy_ver = sorted(agy_data.keys(), key=lambda v: list(map(int, v.split('.'))), reverse=True)[0]
         
-        # Update default AGV version variable
+        # Update default AGY version variable
         agy_ver_pattern = re.compile(r'^DEFAULT_AGY_VERSION=".*"$', re.MULTILINE)
         if agy_ver_pattern.search(config):
             config = agy_ver_pattern.sub(f'DEFAULT_AGY_VERSION="{latest_agy_ver}"', config)
 
-        # Update AGV platform variables
+        # Update AGY platform variables
         for key, info in agy_data[latest_agy_ver].items():
             url = info["url"]
             sha = info["sha256"]

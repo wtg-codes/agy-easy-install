@@ -2134,10 +2134,10 @@ list_antigravity_versions() {
     local json_file="/tmp/versions.json"
     if [ -f "$json_file" ]; then
         awk '
-          BEGIN { in_agv=0 }
-          $0 ~ "\"antigravity\"" { in_agv=1; next }
-          in_agv && $0 ~ "}" && $0 !~ "," { in_agv=0 }
-          in_agv && $0 ~ "^    \"[0-9.]+\":" {
+          BEGIN { in_agy=0 }
+          $0 ~ "\"antigravity\"" { in_agy=1; next }
+          in_agy && $0 ~ "}" && $0 !~ "," { in_agy=0 }
+          in_agy && $0 ~ "^    \"[0-9.]+\":" {
             split($0, a, "\"");
             print a[2]
           }
