@@ -147,6 +147,7 @@ These links are updated nightly by our CI pipeline. If they fail, run the instal
 Having issues? Curious how the installer works under the hood or what's on the roadmap?
 
 - **[Implementation Plan & Architecture](docs/architecture/implementation_plan.md)**
+- **[Architectural Decision Records (ADRs)](docs/architecture/adr/README.md)**
 - **[Homebrew Install Details](docs/architecture/install-homebrew.md)**
 - **[System Repo Install Details](docs/architecture/install-repo.md)**
 - **[Official Binary Install Details](docs/architecture/install-tarball.md)**

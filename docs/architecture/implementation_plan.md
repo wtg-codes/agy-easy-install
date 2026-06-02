@@ -198,6 +198,15 @@ python3 docs/images/capture.py
 | Antigravity CLI | [package-antigravity-cli.md](package-antigravity-cli.md) | Command line `agy` tool |
 | Antigravity SDK | [package-antigravity-sdk.md](package-antigravity-sdk.md) | `google-antigravity` Python library |
 
+### Architectural Decision Records (ADRs)
+
+We document major architectural decisions and trade-offs. Read the detailed ADR files:
+* **[ADR Index](adr/README.md)**
+* **[ADR-0001: Single-Script Bundling Architecture](adr/0001-single-script-bundle.md)**
+* **[ADR-0002: Ephemeral Gum TUI Bootstrap](adr/0002-ephemeral-gum-tui-bootstrap.md)**
+* **[ADR-0003: Platform-Aware Installation Target Selection](adr/0003-platform-aware-installation.md)**
+
+
 
 ---
 
