@@ -1025,11 +1025,12 @@ install_agy_box() {
         fi
     fi
 
-    # Check podman/docker
+    # Check podman/docker existence
     if ! command -v podman &>/dev/null && ! command -v docker &>/dev/null; then
         log_error "No container manager (podman or docker) detected."
         if [ "$PLATFORM" = "Linux" ] && [ "${HAS_APT:-no}" = "yes" ]; then
             if [ "$AUTO" -eq 1 ]; then
+                log_info "Headless mode: automatically installing podman..."
                 sudo apt update && sudo apt install -y podman
             else
                 if gum confirm "Would you like to install podman now?"; then
@@ -1038,6 +1039,7 @@ install_agy_box() {
             fi
         elif [ "$PLATFORM" = "Linux" ] && [ "${HAS_DNF:-no}" = "yes" ]; then
             if [ "$AUTO" -eq 1 ]; then
+                log_info "Headless mode: automatically installing podman..."
                 sudo dnf install -y podman
             else
                 if gum confirm "Would you like to install podman now?"; then
@@ -1048,6 +1050,38 @@ install_agy_box() {
         if ! command -v podman &>/dev/null && ! command -v docker &>/dev/null; then
             log_error "Sandbox installation cannot proceed without podman or docker."
             return 1
+        fi
+    fi
+
+    # Verify active container service/socket access
+    local socket_ok=no
+    if command -v podman &>/dev/null; then
+        if podman info &>/dev/null; then
+            socket_ok=yes
+        fi
+    elif command -v docker &>/dev/null; then
+        if docker info &>/dev/null; then
+            socket_ok=yes
+        fi
+    fi
+
+    if [ "$socket_ok" = "no" ]; then
+        log_warn "Container runtime is installed but the socket/service is not running or accessible."
+        echo -e "${C_YELLOW}💡 Troubleshooting Guidance:${C_RESET}"
+        if command -v docker &>/dev/null; then
+            echo -e "  - Docker daemon might be stopped. Run: ${C_BOLD}sudo systemctl start docker${C_RESET}"
+            echo -e "  - You may need group permissions. Run: ${C_BOLD}sudo usermod -aG docker \$USER${C_RESET} and restart your shell."
+        else
+            echo -e "  - Podman socket may be unreachable. If using rootless, verify subuid/subgid mapping."
+            echo -e "  - On Atomic Linux hosts, verify group configurations or run: ${C_BOLD}ujust dx-group${C_RESET}"
+        fi
+        if [ "$AUTO" -eq 1 ]; then
+            log_error "Sandbox installation cannot proceed with unresponsive container socket in headless mode."
+            return 1
+        else
+            if ! gum confirm "Would you like to attempt installation anyway?"; then
+                return 1
+            fi
         fi
     fi
 
@@ -1079,6 +1113,17 @@ install_agy_box() {
         log_error "agy-box container setup failed during execution of agy-box-manager install."
         return 1
     fi
+
+    # 5. Check if ~/.local/bin is in PATH
+    case ":$PATH:" in
+        *:"$HOME/.local/bin":*) ;;
+        *)
+            echo -e "${C_YELLOW}⚠️  Warning: '$HOME/.local/bin' is not in your current PATH.${C_RESET}"
+            echo -e "  To run agy-box-manager easily, add it to your profile or execute:"
+            echo -e "  ${C_BOLD}export PATH=\"\$HOME/.local/bin:\$PATH\"${C_RESET}"
+            ;;
+    esac
+
     log_info "${C_GREEN}✅ agy-box sandbox installation completed successfully.${C_RESET}"
 }
 
