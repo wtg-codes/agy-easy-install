@@ -46,28 +46,6 @@
         "sha256": "a14aa1971ad801131adcb12afe216522aadea176c141c4b5d793d216bfe02101"
       }
     },
-    "1.22.2": {
-      "LINUX_X64": {
-        "url": "https://edgedl.me.gvt1.com/edgedl/release2/j0qc3/antigravity/stable/1.22.2-5206900187463680/linux-x64/Antigravity.tar.gz",
-        "sha256": "85c6b2decfefef2c6e0adaf161b602da7c1ecb2db6157ec0a4caffcfe4811209"
-      },
-      "MAC_X64": {
-        "url": "https://edgedl.me.gvt1.com/edgedl/release2/j0qc3/antigravity/stable/1.22.2-5206900187463680/darwin-x64/Antigravity.dmg",
-        "sha256": "86644c8c7ce06e40733595c20c35ffececfe67193058f20ab7118cc943efa7a5"
-      },
-      "MAC_ARM64": {
-        "url": "https://edgedl.me.gvt1.com/edgedl/release2/j0qc3/antigravity/stable/1.22.2-5206900187463680/darwin-arm/Antigravity.dmg",
-        "sha256": "9b845782c74d4b7a95ee37c88f0ec89e85fb2e3cad9d387a2c1a0e1a98684cac"
-      },
-      "WIN_X64": {
-        "url": "https://edgedl.me.gvt1.com/edgedl/release2/j0qc3/antigravity/stable/1.22.2-5206900187463680/windows-x64/Antigravity.exe",
-        "sha256": "89707ee7f60408f40060f324c131eb695694e320da97b88f88272b464bc33e07"
-      },
-      "WIN_ARM64": {
-        "url": "https://edgedl.me.gvt1.com/edgedl/release2/j0qc3/antigravity/stable/1.22.2-5206900187463680/windows-arm64/Antigravity.exe",
-        "sha256": "7e715a473e98b4d6078faeb0d1be0e1420562ed415c9f09341a6709208e91986"
-      }
-    },
     "1.21.9": {
       "LINUX_X64": {
         "url": "https://edgedl.me.gvt1.com/edgedl/release2/j0qc3/antigravity/stable/1.21.9-4905428782546944/linux-x64/Antigravity.tar.gz",
