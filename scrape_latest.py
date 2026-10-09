@@ -70,7 +70,18 @@ def scrape_urls() -> Optional[Dict[str, Any]]:
         "antigravity": {},
         "ide": {},
         "cli": {},
-        "sdk": {"latest": "0.1.0", "versions": ["0.1.0"]}
+        "sdk": {"latest": "0.1.0", "versions": ["0.1.0"]},
+        "agy-box": old_data.get("agy-box", {
+            "v0.6.0": {
+                "url": "https://raw.githubusercontent.com/wtg-codes/agy-box/v0.6.0/agy-box-manager"
+            },
+            "v0.5.0": {
+                "url": "https://raw.githubusercontent.com/wtg-codes/agy-box/v0.5.0/agy-box-manager"
+            },
+            "v0.4.2": {
+                "url": "https://raw.githubusercontent.com/wtg-codes/agy-box/v0.4.2/agy-box-manager"
+            }
+        }) if isinstance(old_data, dict) else {}
     }
 
     # Step 2: Fetch IDE releases

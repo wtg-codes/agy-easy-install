@@ -24,7 +24,7 @@ DEFAULT_IDE_VERSION="1.23.2"
 DEFAULT_CLI_VERSION="1.3.2"
 DEFAULT_SDK_VERSION="0.1.21"
 DEFAULT_JULES_VERSION="latest"
-DEFAULT_AGY_BOX_VERSION="v0.5.0"
+DEFAULT_AGY_BOX_VERSION="v0.6.0"
 VERSIONS_JSON_URL="https://raw.githubusercontent.com/wtg-codes/agy-easy-install/main/versions.json"
 
 LINUX_X64_SHA256="5232a4048ff4fa15685d9a981ba4fba573e297f3efc9b76f638e794baf775725"
@@ -826,7 +826,7 @@ do_install_binary() {
         else
             platform_key="WIN_X64"
         fi
-    elif [ "$PLATFORM" = "Linux" ]; then
+    elif [ "$PLATFORM" = "Linux" ] || [ "$PLATFORM" = "Crostini" ]; then
         platform_key="LINUX_X64"
         install_type="tarball"
         file_ext="tar.gz"
@@ -1434,7 +1434,7 @@ ensure_node() {
                 node_dir_name="node-v20.11.1-darwin-x64"
             fi
             ;;
-        Linux)
+        Linux|Crostini)
             if [ "$ARCH" = "aarch64" ] || [ "$ARCH" = "arm64" ]; then
                 node_url="https://nodejs.org/dist/v20.11.1/node-v20.11.1-linux-arm64.tar.xz"
                 node_dir_name="node-v20.11.1-linux-arm64"
@@ -1575,6 +1575,26 @@ get_agy_box_release_url() {
     echo "$url"
 }
 
+install_vscode_ext() {
+    log_info "${C_MAG}🚀 Installing Google Antigravity VS Code Extension...${C_RESET}"
+    local installed=0
+    for cmd in code codium code-insiders; do
+        if command -v "$cmd" >/dev/null 2>&1; then
+            log_info "Found $cmd in PATH. Installing Google.antigravity extension..."
+            if "$cmd" --install-extension Google.antigravity --force; then
+                log_info "${C_GREEN}✅ Installed Google Antigravity extension for $cmd.${C_RESET}"
+                installed=1
+            fi
+        fi
+    done
+
+    if [ "$installed" -eq 0 ]; then
+        log_warn "Neither 'code' nor 'codium' was found in PATH."
+        echo -e "${C_YELLOW}💡 Install Visual Studio Code first (https://code.visualstudio.com), then re-run.${C_RESET}"
+        return 1
+    fi
+}
+
 install_agy_box() {
     log_info "Verifying container sandboxing prerequisites..."
 
@@ -1593,7 +1613,7 @@ install_agy_box() {
     # Check distrobox
     if ! command -v distrobox &>/dev/null; then
         log_warn "distrobox is not installed on the host."
-        if [ "$PLATFORM" = "Linux" ] && [ "${HAS_APT:-no}" = "yes" ]; then
+        if { [ "$PLATFORM" = "Linux" ] || [ "$PLATFORM" = "Crostini" ]; } && [ "${HAS_APT:-no}" = "yes" ]; then
             if [ "$AUTO" -eq 1 ]; then
                 log_info "Headless mode: automatically installing distrobox and podman..."
                 sudo apt update && sudo apt install -y distrobox podman
@@ -1618,7 +1638,13 @@ install_agy_box() {
                 fi
             fi
         else
-            if grep -qi "microsoft" /proc/version 2>/dev/null; then
+            if [ "$PLATFORM" = "Crostini" ]; then
+                log_error "distrobox is missing in your ChromeOS Crostini environment."
+                echo -e "${C_YELLOW}💡 Guidance: To run agy-box on ChromeOS (Crostini):${C_RESET}"
+                echo -e "  1. Open Terminal in ChromeOS."
+                echo -e "  2. Install distrobox and podman: ${C_BOLD}sudo apt update && sudo apt install -y distrobox podman${C_RESET}"
+                echo -e "  3. Re-run this installer once installed."
+            elif grep -qi "microsoft" /proc/version 2>/dev/null; then
                 log_error "distrobox is missing in your WSL2 environment."
                 echo -e "${C_YELLOW}💡 Guidance: To run agy-box on WSL2 (Windows):${C_RESET}"
                 echo -e "  1. Install Podman or Docker inside your WSL2 distro (e.g., Ubuntu)."
@@ -1634,7 +1660,7 @@ install_agy_box() {
     # Check podman/docker existence
     if ! command -v podman &>/dev/null && ! command -v docker &>/dev/null; then
         log_error "No container manager (podman or docker) detected."
-        if [ "$PLATFORM" = "Linux" ] && [ "${HAS_APT:-no}" = "yes" ]; then
+        if { [ "$PLATFORM" = "Linux" ] || [ "$PLATFORM" = "Crostini" ]; } && [ "${HAS_APT:-no}" = "yes" ]; then
             if [ "$AUTO" -eq 1 ]; then
                 log_info "Headless mode: automatically installing podman..."
                 sudo apt update && sudo apt install -y podman
@@ -1694,7 +1720,7 @@ install_agy_box() {
     # 3. Download and install agy-box-manager globally from tag version
     log_info "Fetching agy-box version details..."
     fetch_versions_json || true
-    local agy_ver="${DEFAULT_AGY_BOX_VERSION:-v0.5.0}"
+    local agy_ver="${DEFAULT_AGY_BOX_VERSION:-v0.6.0}"
     local remote_url
     remote_url=$(get_agy_box_release_url "$agy_ver")
     
@@ -1979,6 +2005,7 @@ install_submenu() {
         "Back"
         "Google Antigravity  →"
         "Antigravity IDE  →"
+        "Antigravity Extension (VS Code / VSCodium)  →"
         "Antigravity CLI (agy)  →"
         "Google Jules CLI (npm)  →"
         "Antigravity SDK (Python)  →"
@@ -1993,15 +2020,16 @@ install_submenu() {
         clear || true
         echo "Select a tool to install:"
         for i in "${!options[@]}"; do echo "$((i+1))) ${options[$i]}"; done
-        read -r -p "Select tool [1-7]: " num < /dev/tty
+        read -r -p "Select tool [1-8]: " num < /dev/tty
         case "$num" in
             1) CHOICE="Back" ;;
             2) CHOICE="Google Antigravity" ;;
             3) CHOICE="Antigravity IDE" ;;
-            4) CHOICE="Antigravity CLI" ;;
-            5) CHOICE="Google Jules CLI" ;;
-            6) CHOICE="Antigravity SDK" ;;
-            7) CHOICE="Antigravity Developer Sandbox" ;;
+            4) CHOICE="Antigravity Extension" ;;
+            5) CHOICE="Antigravity CLI" ;;
+            6) CHOICE="Google Jules CLI" ;;
+            7) CHOICE="Antigravity SDK" ;;
+            8) CHOICE="Antigravity Developer Sandbox" ;;
             *) CHOICE="Back" ;;
         esac
     fi
@@ -2010,6 +2038,7 @@ install_submenu() {
         "Back"*) choice="back" ;;
         *"Google Antigravity"*) choice="antigravity_menu" ;;
         *"IDE"*) choice="ide_menu" ;;
+        *"Extension"*) choice="vscode_ext" ;;
         *"CLI"*) choice="cli_menu" ;;
         *"Jules"*) choice="jules_menu" ;;
         *"SDK"*) choice="sdk_menu" ;;
@@ -2754,6 +2783,7 @@ for arg in "$@"; do
         --install-cli) ACTION="cli"; AUTO=1 ;;
         --install-jules) ACTION="jules"; AUTO=1 ;;
         --install-sdk) ACTION="sdk"; AUTO=1 ;;
+        --install-vscode|--install-extension) ACTION="vscode_ext"; AUTO=1 ;;
         --install-sandbox|--install-agy-box) ACTION="agy_box"; AUTO=1 ;;
         --fast-track) ACTION="fast_track"; AUTO=1 ;;
         --remove) ACTION="remove" ;;
@@ -3112,7 +3142,7 @@ run_interactive() {
                             continue
                         fi
                         in_install=false
-                    elif [ "$choice" = "agy_box" ]; then
+                    elif [ "$choice" = "vscode_ext" ] || [ "$choice" = "agy_box" ]; then
                         in_install=false
                     fi
                 done
@@ -3164,6 +3194,13 @@ run_interactive() {
                         post_install_menu
                         break
                         ;;
+                    vscode_ext)
+                        FAST_TRACK_PRODUCTS="vscode-ext"
+                        install_vscode_ext
+                        save_manager_locally
+                        post_install_menu
+                        break
+                        ;;
                     agy_box)
                         FAST_TRACK_PRODUCTS="agy-box"
                         install_agy_box
@@ -3207,6 +3244,7 @@ case "$ACTION" in
     cli) install_cli; save_manager_locally ;;
     jules) install_jules; save_manager_locally ;;
     sdk) install_sdk; save_manager_locally ;;
+    vscode_ext) install_vscode_ext; save_manager_locally ;;
     agy_box) install_agy_box; save_manager_locally ;;
     check) do_health_check ;;
     demo_ui) start_sandbox_mode ;;
