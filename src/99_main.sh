@@ -36,6 +36,7 @@ for arg in "$@"; do
         --install-cli) ACTION="cli"; AUTO=1 ;;
         --install-jules) ACTION="jules"; AUTO=1 ;;
         --install-sdk) ACTION="sdk"; AUTO=1 ;;
+        --install-vscode|--install-extension) ACTION="vscode_ext"; AUTO=1 ;;
         --install-sandbox|--install-agy-box) ACTION="agy_box"; AUTO=1 ;;
         --fast-track) ACTION="fast_track"; AUTO=1 ;;
         --remove) ACTION="remove" ;;
@@ -394,7 +395,7 @@ run_interactive() {
                             continue
                         fi
                         in_install=false
-                    elif [ "$choice" = "agy_box" ]; then
+                    elif [ "$choice" = "vscode_ext" ] || [ "$choice" = "agy_box" ]; then
                         in_install=false
                     fi
                 done
@@ -446,6 +447,13 @@ run_interactive() {
                         post_install_menu
                         break
                         ;;
+                    vscode_ext)
+                        FAST_TRACK_PRODUCTS="vscode-ext"
+                        install_vscode_ext
+                        save_manager_locally
+                        post_install_menu
+                        break
+                        ;;
                     agy_box)
                         FAST_TRACK_PRODUCTS="agy-box"
                         install_agy_box
@@ -489,6 +497,7 @@ case "$ACTION" in
     cli) install_cli; save_manager_locally ;;
     jules) install_jules; save_manager_locally ;;
     sdk) install_sdk; save_manager_locally ;;
+    vscode_ext) install_vscode_ext; save_manager_locally ;;
     agy_box) install_agy_box; save_manager_locally ;;
     check) do_health_check ;;
     demo_ui) start_sandbox_mode ;;

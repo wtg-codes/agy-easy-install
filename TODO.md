@@ -19,6 +19,9 @@
 - [x] `save_manager_locally()` — persist the manager script
 - [x] AGY detection at startup — check if Antigravity is already installed
 - [x] Chrome browser detection + auto-configuration prompt
+- [x] Official Google Antigravity VS Code Extension (`Google.antigravity`) support for VS Code / VSCodium / Code Insiders
+- [x] ChromeOS Crostini container support for sandbox prerequisites and tarball installation
+- [x] Upstream sync and version tracking for `agy-box` releases (v0.6.0) in scraper and config
 
 ### Terminal UI
 - [x] Ephemeral `gum` bootstrap (download → temp dir → cleanup)

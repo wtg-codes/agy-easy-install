@@ -220,7 +220,7 @@ do_install_binary() {
         else
             platform_key="WIN_X64"
         fi
-    elif [ "$PLATFORM" = "Linux" ]; then
+    elif [ "$PLATFORM" = "Linux" ] || [ "$PLATFORM" = "Crostini" ]; then
         platform_key="LINUX_X64"
         install_type="tarball"
         file_ext="tar.gz"
@@ -828,7 +828,7 @@ ensure_node() {
                 node_dir_name="node-v20.11.1-darwin-x64"
             fi
             ;;
-        Linux)
+        Linux|Crostini)
             if [ "$ARCH" = "aarch64" ] || [ "$ARCH" = "arm64" ]; then
                 node_url="https://nodejs.org/dist/v20.11.1/node-v20.11.1-linux-arm64.tar.xz"
                 node_dir_name="node-v20.11.1-linux-arm64"
@@ -969,6 +969,26 @@ get_agy_box_release_url() {
     echo "$url"
 }
 
+install_vscode_ext() {
+    log_info "${C_MAG}🚀 Installing Google Antigravity VS Code Extension...${C_RESET}"
+    local installed=0
+    for cmd in code codium code-insiders; do
+        if command -v "$cmd" >/dev/null 2>&1; then
+            log_info "Found $cmd in PATH. Installing Google.antigravity extension..."
+            if "$cmd" --install-extension Google.antigravity --force; then
+                log_info "${C_GREEN}✅ Installed Google Antigravity extension for $cmd.${C_RESET}"
+                installed=1
+            fi
+        fi
+    done
+
+    if [ "$installed" -eq 0 ]; then
+        log_warn "Neither 'code' nor 'codium' was found in PATH."
+        echo -e "${C_YELLOW}💡 Install Visual Studio Code first (https://code.visualstudio.com), then re-run.${C_RESET}"
+        return 1
+    fi
+}
+
 install_agy_box() {
     log_info "Verifying container sandboxing prerequisites..."
 
@@ -987,7 +1007,7 @@ install_agy_box() {
     # Check distrobox
     if ! command -v distrobox &>/dev/null; then
         log_warn "distrobox is not installed on the host."
-        if [ "$PLATFORM" = "Linux" ] && [ "${HAS_APT:-no}" = "yes" ]; then
+        if { [ "$PLATFORM" = "Linux" ] || [ "$PLATFORM" = "Crostini" ]; } && [ "${HAS_APT:-no}" = "yes" ]; then
             if [ "$AUTO" -eq 1 ]; then
                 log_info "Headless mode: automatically installing distrobox and podman..."
                 sudo apt update && sudo apt install -y distrobox podman
@@ -1012,7 +1032,13 @@ install_agy_box() {
                 fi
             fi
         else
-            if grep -qi "microsoft" /proc/version 2>/dev/null; then
+            if [ "$PLATFORM" = "Crostini" ]; then
+                log_error "distrobox is missing in your ChromeOS Crostini environment."
+                echo -e "${C_YELLOW}💡 Guidance: To run agy-box on ChromeOS (Crostini):${C_RESET}"
+                echo -e "  1. Open Terminal in ChromeOS."
+                echo -e "  2. Install distrobox and podman: ${C_BOLD}sudo apt update && sudo apt install -y distrobox podman${C_RESET}"
+                echo -e "  3. Re-run this installer once installed."
+            elif grep -qi "microsoft" /proc/version 2>/dev/null; then
                 log_error "distrobox is missing in your WSL2 environment."
                 echo -e "${C_YELLOW}💡 Guidance: To run agy-box on WSL2 (Windows):${C_RESET}"
                 echo -e "  1. Install Podman or Docker inside your WSL2 distro (e.g., Ubuntu)."
@@ -1028,7 +1054,7 @@ install_agy_box() {
     # Check podman/docker existence
     if ! command -v podman &>/dev/null && ! command -v docker &>/dev/null; then
         log_error "No container manager (podman or docker) detected."
-        if [ "$PLATFORM" = "Linux" ] && [ "${HAS_APT:-no}" = "yes" ]; then
+        if { [ "$PLATFORM" = "Linux" ] || [ "$PLATFORM" = "Crostini" ]; } && [ "${HAS_APT:-no}" = "yes" ]; then
             if [ "$AUTO" -eq 1 ]; then
                 log_info "Headless mode: automatically installing podman..."
                 sudo apt update && sudo apt install -y podman
@@ -1088,7 +1114,7 @@ install_agy_box() {
     # 3. Download and install agy-box-manager globally from tag version
     log_info "Fetching agy-box version details..."
     fetch_versions_json || true
-    local agy_ver="${DEFAULT_AGY_BOX_VERSION:-v0.5.0}"
+    local agy_ver="${DEFAULT_AGY_BOX_VERSION:-v0.6.0}"
     local remote_url
     remote_url=$(get_agy_box_release_url "$agy_ver")
     

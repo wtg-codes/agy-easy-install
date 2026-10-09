@@ -226,6 +226,7 @@ install_submenu() {
         "Back"
         "Google Antigravity  →"
         "Antigravity IDE  →"
+        "Antigravity Extension (VS Code / VSCodium)  →"
         "Antigravity CLI (agy)  →"
         "Google Jules CLI (npm)  →"
         "Antigravity SDK (Python)  →"
@@ -240,15 +241,16 @@ install_submenu() {
         clear || true
         echo "Select a tool to install:"
         for i in "${!options[@]}"; do echo "$((i+1))) ${options[$i]}"; done
-        read -r -p "Select tool [1-7]: " num < /dev/tty
+        read -r -p "Select tool [1-8]: " num < /dev/tty
         case "$num" in
             1) CHOICE="Back" ;;
             2) CHOICE="Google Antigravity" ;;
             3) CHOICE="Antigravity IDE" ;;
-            4) CHOICE="Antigravity CLI" ;;
-            5) CHOICE="Google Jules CLI" ;;
-            6) CHOICE="Antigravity SDK" ;;
-            7) CHOICE="Antigravity Developer Sandbox" ;;
+            4) CHOICE="Antigravity Extension" ;;
+            5) CHOICE="Antigravity CLI" ;;
+            6) CHOICE="Google Jules CLI" ;;
+            7) CHOICE="Antigravity SDK" ;;
+            8) CHOICE="Antigravity Developer Sandbox" ;;
             *) CHOICE="Back" ;;
         esac
     fi
@@ -257,6 +259,7 @@ install_submenu() {
         "Back"*) choice="back" ;;
         *"Google Antigravity"*) choice="antigravity_menu" ;;
         *"IDE"*) choice="ide_menu" ;;
+        *"Extension"*) choice="vscode_ext" ;;
         *"CLI"*) choice="cli_menu" ;;
         *"Jules"*) choice="jules_menu" ;;
         *"SDK"*) choice="sdk_menu" ;;
