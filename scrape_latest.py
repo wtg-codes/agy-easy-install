@@ -25,6 +25,18 @@ CLI_PLATFORMS = {
     "windows_arm64": ("windows-arm", "cli_windows_arm64.exe"),
 }
 
+DEFAULT_AGY_BOX = {
+    "v0.6.0": {
+        "url": "https://raw.githubusercontent.com/wtg-codes/agy-box/v0.6.0/agy-box-manager"
+    },
+    "v0.5.0": {
+        "url": "https://raw.githubusercontent.com/wtg-codes/agy-box/v0.5.0/agy-box-manager"
+    },
+    "v0.4.2": {
+        "url": "https://raw.githubusercontent.com/wtg-codes/agy-box/v0.4.2/agy-box-manager"
+    },
+}
+
 def compute_sha(url: str, hash_type: str = "sha256") -> str:
     """Stream downloads the URL and computes its hash (sha256 or sha512)."""
     h = hashlib.sha256() if hash_type == "sha256" else hashlib.sha512()
@@ -37,27 +49,35 @@ def compute_sha(url: str, hash_type: str = "sha256") -> str:
 def scrape_urls() -> Optional[Dict[str, Any]]:
     """Scrapes all available IDE, CLI, and SDK versions."""
     # Step 1: Load existing versions.json to cache already computed hashes
-    cache = {}
+    cache: Dict[str, str] = {}
+    old_data: Dict[str, Any] = {}
     try:
         with open("versions.json", "r") as f:
-            old_data = json.load(f)
+            content = f.read().strip()
+            if content:
+                loaded = json.loads(content)
+                if isinstance(loaded, dict):
+                    old_data = loaded
             # Handle new structure
             if isinstance(old_data, dict):
-                if "antigravity" in old_data:
+                if "antigravity" in old_data and isinstance(old_data["antigravity"], dict):
                     for ver, platforms in old_data["antigravity"].items():
-                        for plat, info in platforms.items():
-                            if isinstance(info, dict) and "url" in info and "sha256" in info:
-                                cache[info["url"]] = info["sha256"]
-                if "ide" in old_data:
+                        if isinstance(platforms, dict):
+                            for plat, info in platforms.items():
+                                if isinstance(info, dict) and "url" in info and "sha256" in info:
+                                    cache[info["url"]] = info["sha256"]
+                if "ide" in old_data and isinstance(old_data["ide"], dict):
                     for ver, platforms in old_data["ide"].items():
-                        for plat, info in platforms.items():
-                            if isinstance(info, dict) and "url" in info and "sha256" in info:
-                                cache[info["url"]] = info["sha256"]
-                if "cli" in old_data:
+                        if isinstance(platforms, dict):
+                            for plat, info in platforms.items():
+                                if isinstance(info, dict) and "url" in info and "sha256" in info:
+                                    cache[info["url"]] = info["sha256"]
+                if "cli" in old_data and isinstance(old_data["cli"], dict):
                     for ver, platforms in old_data["cli"].items():
-                        for plat, info in platforms.items():
-                            if isinstance(info, dict) and "url" in info and "sha512" in info:
-                                cache[info["url"]] = info["sha512"]
+                        if isinstance(platforms, dict):
+                            for plat, info in platforms.items():
+                                if isinstance(info, dict) and "url" in info and "sha512" in info:
+                                    cache[info["url"]] = info["sha512"]
                 # Handle old flat structure
                 if "antigravity" not in old_data and "ide" not in old_data and "cli" not in old_data:
                     for plat, info in old_data.items():
@@ -65,23 +85,18 @@ def scrape_urls() -> Optional[Dict[str, Any]]:
                             cache[info["url"]] = info["sha256"]
     except Exception as e:
         print(f"INFO: Could not load existing versions.json for caching: {e}", file=sys.stderr)
+        old_data = {}
+
+    agy_box_data = old_data.get("agy-box") if isinstance(old_data, dict) else None
+    if not isinstance(agy_box_data, dict) or not agy_box_data:
+        agy_box_data = DEFAULT_AGY_BOX
 
     results = {
         "antigravity": {},
         "ide": {},
         "cli": {},
         "sdk": {"latest": "0.1.0", "versions": ["0.1.0"]},
-        "agy-box": old_data.get("agy-box", {
-            "v0.6.0": {
-                "url": "https://raw.githubusercontent.com/wtg-codes/agy-box/v0.6.0/agy-box-manager"
-            },
-            "v0.5.0": {
-                "url": "https://raw.githubusercontent.com/wtg-codes/agy-box/v0.5.0/agy-box-manager"
-            },
-            "v0.4.2": {
-                "url": "https://raw.githubusercontent.com/wtg-codes/agy-box/v0.4.2/agy-box-manager"
-            }
-        }) if isinstance(old_data, dict) else {}
+        "agy-box": agy_box_data,
     }
 
     # Step 2: Fetch IDE releases
