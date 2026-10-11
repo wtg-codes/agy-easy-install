@@ -95,3 +95,39 @@ jobs:
             echo "### ℹ️ No changes" >> "$GITHUB_STEP_SUMMARY"
             echo "URL has not changed since last run." >> "$GITHUB_STEP_SUMMARY"
           fi
+
+      - name: Generate Checksums
+        run: |
+          sha256sum antigravity-manager.sh > SHA256SUMS
+
+      - name: Publish or update Nightly Pre-release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          git tag -f nightly
+          git push -f origin nightly
+          if gh release view nightly >/dev/null 2>&1; then
+            gh release upload nightly antigravity-manager.sh SHA256SUMS --clobber
+            gh release edit nightly --title "Nightly Build" --prerelease --latest=false --notes "Automated nightly build generated from \`main\` with the latest scraped Antigravity download URLs and SHA-512 hashes.
+
+          ### 🚀 Quick Install (Nightly Channel)
+          \`\`\`bash
+          curl -fSsL \"https://github.com/wtg-codes/agy-easy-install/releases/download/nightly/antigravity-manager.sh\" | bash
+          \`\`\`
+
+          *For the stable channel, see [Latest Release](https://github.com/wtg-codes/agy-easy-install/releases/latest).*"
+          else
+            gh release create nightly antigravity-manager.sh SHA256SUMS \
+              --title "Nightly Build" \
+              --prerelease \
+              --latest=false \
+              --notes "Automated nightly build generated from \`main\` with the latest scraped Antigravity download URLs and SHA-512 hashes.
+
+          ### 🚀 Quick Install (Nightly Channel)
+          \`\`\`bash
+          curl -fSsL \"https://github.com/wtg-codes/agy-easy-install/releases/download/nightly/antigravity-manager.sh\" | bash
+          \`\`\`
+
+          *For the stable channel, see [Latest Release](https://github.com/wtg-codes/agy-easy-install/releases/latest).*"
+          fi
+          echo "### 🌙 Nightly pre-release updated" >> "$GITHUB_STEP_SUMMARY"

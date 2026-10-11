@@ -1,4 +1,10 @@
 <p align="center">
+  <a href="https://github.com/wtg-codes/agy-easy-install/releases">
+    <img src="https://img.shields.io/github/v/release/wtg-codes/agy-easy-install?label=Latest%20Release&style=flat-square&color=blue" alt="Latest Release">
+  </a>
+  <a href="https://github.com/wtg-codes/agy-easy-install/releases/tag/nightly">
+    <img src="https://img.shields.io/badge/nightly-pre--release-orange?style=flat-square" alt="Nightly Pre-Release">
+  </a>
   <a href="https://github.com/wtg-codes/agy-easy-install/actions/workflows/ci.yml">
     <img src="https://img.shields.io/github/actions/workflow/status/wtg-codes/agy-easy-install/ci.yml?branch=main&label=CI%2FCD&style=flat-square" alt="CI/CD Status">
   </a>
@@ -33,9 +39,20 @@
 
 **Option B — Direct install**
 
-```bash
-curl -fSsL "https://raw.githubusercontent.com/wtg-codes/agy-easy-install/main/antigravity-manager.sh" | bash
-```
+- **Stable Channel (Recommended for classrooms & labs)**:
+  ```bash
+  curl -fSsL "https://github.com/wtg-codes/agy-easy-install/releases/latest/download/antigravity-manager.sh" | bash
+  ```
+
+- **Nightly Channel (Bleeding-edge upstream links)**:
+  ```bash
+  curl -fSsL "https://github.com/wtg-codes/agy-easy-install/releases/download/nightly/antigravity-manager.sh" | bash
+  ```
+
+- **From Source (`main` branch)**:
+  ```bash
+  curl -fSsL "https://raw.githubusercontent.com/wtg-codes/agy-easy-install/main/antigravity-manager.sh" | bash
+  ```
 
 **Option C — Advanced (Headless / Automation)**
 
