@@ -32,7 +32,7 @@ jobs:
       - name: Scrape latest URL
         id: scrape
         run: |
-          python scrape_latest.py > versions.json
+          python scrape_latest.py > versions.json.tmp && mv versions.json.tmp versions.json
           cat versions.json
           echo "### 🔍 Scraped Latest Versions" >> "$GITHUB_STEP_SUMMARY"
           echo '```json' >> "$GITHUB_STEP_SUMMARY"
