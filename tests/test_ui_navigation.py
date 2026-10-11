@@ -20,7 +20,8 @@ This catches:
 
 STRUCTURE
 =========
-Each "test_*" function drives one flow and returns (passed: bool, log: list).
+Each "_test_*_impl" function drives one flow and returns (passed: bool, log: list).
+Public "test_*" functions assert success for pytest (returning None).
 The test runner at the bottom prints a summary and exits non-zero on failure.
 
 KEYS
@@ -225,7 +226,7 @@ def assert_text_visible(session: TerminalSession, label: str,
 
 # ── Test flows ────────────────────────────────────────────────────────────────
 
-def test_main_menu_navigation() -> tuple[bool, list[str]]:
+def _test_main_menu_navigation_impl() -> tuple[bool, list[str]]:
     """
     Navigate the main menu top-to-bottom and back, verifying:
       - correct option is highlighted after each arrow press
@@ -277,7 +278,12 @@ def test_main_menu_navigation() -> tuple[bool, list[str]]:
     return passed, failures + session.log
 
 
-def test_install_submenu() -> tuple[bool, list[str]]:
+def test_main_menu_navigation():
+    passed, failures = _test_main_menu_navigation_impl()
+    assert passed, f"test_main_menu_navigation failed: {failures}"
+
+
+def _test_install_submenu_impl() -> tuple[bool, list[str]]:
     """Navigate into the install sub-menu, check all options, go back."""
     failures = []
     print("\n▶  test_install_submenu")
@@ -334,7 +340,12 @@ def test_install_submenu() -> tuple[bool, list[str]]:
     return passed, failures + session.log
 
 
-def test_cleanup_submenu() -> tuple[bool, list[str]]:
+def test_install_submenu():
+    passed, failures = _test_install_submenu_impl()
+    assert passed, f"test_install_submenu failed: {failures}"
+
+
+def _test_cleanup_submenu_impl() -> tuple[bool, list[str]]:
     """Navigate into the cleanup sub-menu, verify all options, go back."""
     failures = []
     print("\n▶  test_cleanup_submenu")
@@ -392,7 +403,12 @@ def test_cleanup_submenu() -> tuple[bool, list[str]]:
     return passed, failures + session.log
 
 
-def test_cancel_exits_cleanly() -> tuple[bool, list[str]]:
+def test_cleanup_submenu():
+    passed, failures = _test_cleanup_submenu_impl()
+    assert passed, f"test_cleanup_submenu failed: {failures}"
+
+
+def _test_cancel_exits_cleanly_impl() -> tuple[bool, list[str]]:
     """Select Cancel on the main menu, verify script exits cleanly (exit 0)."""
     failures = []
     print("\n▶  test_cancel_exits_cleanly")
@@ -425,7 +441,12 @@ def test_cancel_exits_cleanly() -> tuple[bool, list[str]]:
     return passed, failures + session.log
 
 
-def test_easter_egg() -> tuple[bool, list[str]]:
+def test_cancel_exits_cleanly():
+    passed, failures = _test_cancel_exits_cleanly_impl()
+    assert passed, f"test_cancel_exits_cleanly failed: {failures}"
+
+
+def _test_easter_egg_impl() -> tuple[bool, list[str]]:
     """
     Type 'Google' into the gum filter search box and confirm the Easter Egg
     option appears as the only match (we don't actually open the browser,
@@ -469,7 +490,12 @@ def test_easter_egg() -> tuple[bool, list[str]]:
     return passed, failures + session.log
 
 
-def test_banner_visible_on_main_menu() -> tuple[bool, list[str]]:
+def test_easter_egg():
+    passed, failures = _test_easter_egg_impl()
+    assert passed, f"test_easter_egg failed: {failures}"
+
+
+def _test_banner_visible_on_main_menu_impl() -> tuple[bool, list[str]]:
     """
     Assert the ASCII banner and version line are visible BEFORE the
     gum filter menu renders. Without a --height constraint, gum filter
@@ -505,7 +531,12 @@ def test_banner_visible_on_main_menu() -> tuple[bool, list[str]]:
     return passed, failures + session.log
 
 
-def test_back_returns_to_main_menu() -> tuple[bool, list[str]]:
+def test_banner_visible_on_main_menu():
+    passed, failures = _test_banner_visible_on_main_menu_impl()
+    assert passed, f"test_banner_visible_on_main_menu failed: {failures}"
+
+
+def _test_back_returns_to_main_menu_impl() -> tuple[bool, list[str]]:
     """
     In sandbox mode, selecting Back from either submenu must return to
     the main menu (show the banner + navigate hint again), not exit the script.
@@ -559,6 +590,11 @@ def test_back_returns_to_main_menu() -> tuple[bool, list[str]]:
     return passed, failures
 
 
+def test_back_returns_to_main_menu():
+    passed, failures = _test_back_returns_to_main_menu_impl()
+    assert passed, f"test_back_returns_to_main_menu failed: {failures}"
+
+
 # ── Runner ───────────────────────────────────────────────────────────────────
 
 def main():
@@ -569,13 +605,13 @@ def main():
     print("=" * 62)
 
     tests = [
-        test_main_menu_navigation,
-        test_install_submenu,
-        test_cleanup_submenu,
-        test_cancel_exits_cleanly,
-        test_easter_egg,
-        test_banner_visible_on_main_menu,
-        test_back_returns_to_main_menu,
+        _test_main_menu_navigation_impl,
+        _test_install_submenu_impl,
+        _test_cleanup_submenu_impl,
+        _test_cancel_exits_cleanly_impl,
+        _test_easter_egg_impl,
+        _test_banner_visible_on_main_menu_impl,
+        _test_back_returns_to_main_menu_impl,
     ]
 
     results = []
@@ -583,8 +619,9 @@ def main():
 
     for test_fn in tests:
         passed, log = test_fn()
-        results.append((test_fn.__name__, passed))
-        all_logs.append((test_fn.__name__, log))
+        name = test_fn.__name__.removeprefix("_").removesuffix("_impl")
+        results.append((name, passed))
+        all_logs.append((name, log))
 
     # ── Summary ──────────────────────────────────────────────────
     print("\n" + "=" * 62)
