@@ -4,6 +4,15 @@ This directory contains technical specifications, platform matrices, package des
 
 ---
 
+## 🎨 Interactive Visual Architecture
+
+Explore live, interactive topological models and animated signal flows powered by Archify:
+
+- 🚀 **[Explore Interactive Installer Architecture (Live Canvas)](https://wtg-codes.github.io/agy-easy-install/diagrams/interactive/installer-architecture.html)** — Multi-distribution packaging, runtime manager, and installation target dispatching.
+- 🚀 **[Explore Interactive Installation Flow (Live Canvas)](https://wtg-codes.github.io/agy-easy-install/diagrams/interactive/install-flow.html)** — End-to-end signal flow from curl intake through platform detection to verification.
+
+---
+
 ## 📑 Directory Index
 
 ### 1. Platform Specifications

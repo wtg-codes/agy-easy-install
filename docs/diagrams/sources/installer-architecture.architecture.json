@@ -1,0 +1,232 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "AGY Easy Install — Modular Multi-Distribution Architecture",
+    "subtitle": "Modular build pipeline, runtime manager, and cross-platform installation ecosystem",
+    "output": "docs/diagrams/interactive/installer-architecture.html",
+    "quality_profile": "showcase"
+  },
+  "components": [
+    {
+      "id": "src_modules",
+      "type": "frontend",
+      "label": "src/ Shell Fragments",
+      "sublabel": "00_config .. 99_main",
+      "tag": "modular source",
+      "pos": [40, 100],
+      "size": [180, 64]
+    },
+    {
+      "id": "bundler",
+      "type": "backend",
+      "label": "build.sh Bundler",
+      "sublabel": "inlines & checks syntax",
+      "tag": "compilation",
+      "pos": [40, 260],
+      "size": [180, 64]
+    },
+    {
+      "id": "ci_scraper",
+      "type": "cloud",
+      "label": "GitHub Actions CI",
+      "sublabel": "nightly scraper & 102 gates",
+      "tag": "automation",
+      "pos": [40, 420],
+      "size": [180, 64]
+    },
+    {
+      "id": "gum_tui",
+      "type": "frontend",
+      "label": "Ephemeral Gum TUI",
+      "sublabel": "auto-download to /tmp",
+      "tag": "zero-dep UI",
+      "pos": [360, 100],
+      "size": [220, 64]
+    },
+    {
+      "id": "manager_bundle",
+      "type": "backend",
+      "label": "antigravity-manager.sh",
+      "sublabel": "single-script bundle (v0.3.0)",
+      "tag": "standalone CLI",
+      "pos": [360, 240],
+      "size": [220, 160]
+    },
+    {
+      "id": "target_brew",
+      "type": "external",
+      "label": "Homebrew Installer",
+      "sublabel": "macOS & Linuxbrew cask",
+      "tag": "brew cask",
+      "pos": [720, 60],
+      "size": [200, 60]
+    },
+    {
+      "id": "target_repo",
+      "type": "external",
+      "label": "System Repo Installer",
+      "sublabel": "APT & DNF native packages",
+      "tag": "apt / dnf",
+      "pos": [720, 160],
+      "size": [200, 60]
+    },
+    {
+      "id": "target_tarball",
+      "type": "external",
+      "label": "Standalone Tarball",
+      "sublabel": "SHA-256 verified binary",
+      "tag": "direct download",
+      "pos": [720, 260],
+      "size": [200, 60]
+    },
+    {
+      "id": "target_agy_box",
+      "type": "cloud",
+      "label": "agy-box v0.6.0 Sandbox",
+      "sublabel": "distrobox & noVNC desktop",
+      "tag": "containerized",
+      "pos": [720, 360],
+      "size": [200, 60]
+    },
+    {
+      "id": "target_ide_ext",
+      "type": "frontend",
+      "label": "Companion IDE Exts",
+      "sublabel": "VS Code, JetBrains, Zed",
+      "tag": "developer tooling",
+      "pos": [720, 460],
+      "size": [200, 60]
+    }
+  ],
+  "boundaries": [
+    {
+      "kind": "region",
+      "label": "Build Pipeline & Sources",
+      "wraps": ["src_modules", "bundler", "ci_scraper"],
+      "pad": 20
+    },
+    {
+      "kind": "security-group",
+      "label": "Antigravity Manager Runtime",
+      "wraps": ["gum_tui", "manager_bundle"],
+      "pad": 20
+    },
+    {
+      "kind": "region",
+      "label": "Installation Targets & Ecosystem",
+      "wraps": ["target_brew", "target_repo", "target_tarball", "target_agy_box", "target_ide_ext"],
+      "pad": 20
+    }
+  ],
+  "connections": [
+    {
+      "id": "conn_concat",
+      "from": "src_modules",
+      "to": "bundler",
+      "label": "fragment concat",
+      "variant": "default"
+    },
+    {
+      "id": "conn_ci_test",
+      "from": "bundler",
+      "to": "ci_scraper",
+      "label": "102 phase gates",
+      "variant": "dashed"
+    },
+    {
+      "id": "conn_build_bundle",
+      "from": "bundler",
+      "to": "manager_bundle",
+      "label": "compilation flow",
+      "variant": "emphasis"
+    },
+    {
+      "id": "conn_dual_release",
+      "from": "ci_scraper",
+      "to": "manager_bundle",
+      "label": "dual channels (stable / nightly)",
+      "variant": "emphasis",
+      "fromSide": "right",
+      "toSide": "bottom"
+    },
+    {
+      "id": "conn_gum_boot",
+      "from": "manager_bundle",
+      "to": "gum_tui",
+      "label": "boots ephemeral UI",
+      "variant": "default"
+    },
+    {
+      "id": "conn_dispatch_brew",
+      "from": "manager_bundle",
+      "to": "target_brew",
+      "label": "dispatch: brew",
+      "variant": "default"
+    },
+    {
+      "id": "conn_dispatch_repo",
+      "from": "manager_bundle",
+      "to": "target_repo",
+      "label": "dispatch: apt/dnf",
+      "variant": "default"
+    },
+    {
+      "id": "conn_dispatch_tarball",
+      "from": "manager_bundle",
+      "to": "target_tarball",
+      "label": "dispatch: tarball",
+      "variant": "default"
+    },
+    {
+      "id": "conn_dispatch_sandbox",
+      "from": "manager_bundle",
+      "to": "target_agy_box",
+      "label": "dispatch: sandbox",
+      "variant": "emphasis"
+    },
+    {
+      "id": "conn_dispatch_ide",
+      "from": "manager_bundle",
+      "to": "target_ide_ext",
+      "label": "dispatch: IDEs",
+      "variant": "default"
+    },
+    {
+      "id": "conn_health_check",
+      "from": "target_tarball",
+      "to": "manager_bundle",
+      "label": "health checks",
+      "variant": "security"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "Bundler Architecture",
+      "items": [
+        "Modular source fragments in src/ (00_config through 99_main) compiled by build.sh into standalone antigravity-manager.sh",
+        "Zero mandatory dependencies: embeds pure POSIX shell logic and downloads ephemeral Gum TUI to temporary storage",
+        "102 automated phase gates validate shell safety, argument routing, and cross-platform installation logic"
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "Platform Coverage",
+      "items": [
+        "Native OS package managers: Debian/Ubuntu (APT) and Fedora/RHEL (DNF) with automated repository setup",
+        "macOS & Linux Homebrew: Cask installation with automatic dependency resolution and path updates",
+        "Direct Tarball fallback: SHA-256 integrity verification for isolated, non-root, and Crostini environments"
+      ]
+    },
+    {
+      "dot": "amber",
+      "title": "Container Sandbox Integration",
+      "items": [
+        "Seamless integration with agy-box v0.6.0 multi-arch OCI container image (ghcr.io/wtg-codes/agy-box)",
+        "Distrobox-managed immutable execution layer with isolated D-Bus keyring and noVNC graphical desktop",
+        "One-click IDE companion extensions for VS Code, JetBrains, and Zed to bridge containerized agents"
+      ]
+    }
+  ]
+}

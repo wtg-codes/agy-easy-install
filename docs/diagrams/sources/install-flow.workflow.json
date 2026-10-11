@@ -1,0 +1,260 @@
+{
+  "schema_version": 2,
+  "diagram_type": "workflow",
+  "meta": {
+    "title": "AGY Easy Install — Automated Installation Flow",
+    "subtitle": "Interactive terminal wizard, platform detection, package execution, and verification",
+    "output": "docs/diagrams/interactive/install-flow.html",
+    "animation": "trace",
+    "visual_preset": "signal-flow",
+    "quality_profile": "showcase"
+  },
+  "lanes": [
+    {
+      "id": "user_terminal",
+      "label": "User / Terminal"
+    },
+    {
+      "id": "platform_detect",
+      "label": "Platform Detection"
+    },
+    {
+      "id": "interactive_wizard",
+      "label": "Interactive Wizard"
+    },
+    {
+      "id": "execution_setup",
+      "label": "Execution & Setup"
+    },
+    {
+      "id": "verification_launch",
+      "label": "Verification & Launch"
+    }
+  ],
+  "phases": [
+    {
+      "id": "phase_intake",
+      "label": "Intake & Discovery",
+      "fromCol": 0,
+      "toCol": 1
+    },
+    {
+      "id": "phase_wizard",
+      "label": "Interactive Wizard",
+      "fromCol": 2,
+      "toCol": 2,
+      "variant": "emphasis"
+    },
+    {
+      "id": "phase_exec",
+      "label": "Execution & Integration",
+      "fromCol": 3,
+      "toCol": 4,
+      "variant": "emphasis"
+    },
+    {
+      "id": "phase_verify",
+      "label": "Verification & Launch",
+      "fromCol": 5,
+      "toCol": 5,
+      "variant": "dashed"
+    }
+  ],
+  "groups": [
+    {
+      "id": "grp_detect",
+      "label": "Host discovery",
+      "lane": "platform_detect",
+      "fromCol": 1,
+      "toCol": 1
+    },
+    {
+      "id": "grp_setup",
+      "label": "System installation",
+      "lane": "execution_setup",
+      "fromCol": 3,
+      "toCol": 4,
+      "variant": "emphasis"
+    },
+    {
+      "id": "grp_ready",
+      "label": "Post-install validation",
+      "lane": "verification_launch",
+      "fromCol": 5,
+      "toCol": 5,
+      "variant": "dashed"
+    }
+  ],
+  "mainPath": [
+    "curl_exec",
+    "os_detect",
+    "menu_selection",
+    "tool_install",
+    "desktop_entry",
+    "health_verify",
+    "completion_prompt"
+  ],
+  "nodes": [
+    {
+      "id": "curl_exec",
+      "lane": "user_terminal",
+      "col": 0,
+      "type": "external",
+      "label": "curl Execution",
+      "sublabel": "curl -fsSL ... | bash",
+      "tag": "one-liner intake",
+      "width": 140
+    },
+    {
+      "id": "os_detect",
+      "lane": "platform_detect",
+      "col": 1,
+      "type": "backend",
+      "label": "OS/Arch Detection",
+      "sublabel": "detects OS, CPU & pkg manager",
+      "tag": "auto-detection",
+      "width": 140
+    },
+    {
+      "id": "menu_selection",
+      "lane": "interactive_wizard",
+      "col": 2,
+      "type": "frontend",
+      "label": "Menu Selection",
+      "sublabel": "hierarchical TUI wizard",
+      "tag": "cancel-first",
+      "width": 140
+    },
+    {
+      "id": "cancel_exit",
+      "lane": "user_terminal",
+      "col": 3,
+      "type": "security",
+      "label": "Cancel / Safe Exit",
+      "sublabel": "clean trap exit without changes",
+      "tag": "safe default",
+      "width": 140
+    },
+    {
+      "id": "tool_install",
+      "lane": "execution_setup",
+      "col": 3,
+      "type": "backend",
+      "label": "Tool Installation",
+      "sublabel": "dispatch target & SHA-256 verify",
+      "tag": "idempotent",
+      "width": 140
+    },
+    {
+      "id": "desktop_entry",
+      "lane": "execution_setup",
+      "col": 4,
+      "type": "backend",
+      "label": "Desktop Entry Setup",
+      "sublabel": ".desktop shortcut & PATH export",
+      "tag": "system integration",
+      "width": 140
+    },
+    {
+      "id": "health_verify",
+      "lane": "verification_launch",
+      "col": 5,
+      "type": "security",
+      "label": "Health Verification",
+      "sublabel": "50_health.sh doctor suite",
+      "tag": "doctor checks",
+      "width": 140
+    },
+    {
+      "id": "completion_prompt",
+      "lane": "user_terminal",
+      "col": 5,
+      "type": "frontend",
+      "label": "Completion Prompt",
+      "sublabel": "ready-to-code launch banner",
+      "tag": "ready state",
+      "width": 140
+    }
+  ],
+  "edges": [
+    {
+      "id": "flow_intake",
+      "from": "curl_exec",
+      "to": "os_detect",
+      "label": "invokes script",
+      "variant": "default"
+    },
+    {
+      "id": "flow_platform",
+      "from": "os_detect",
+      "to": "menu_selection",
+      "label": "passes platform",
+      "variant": "emphasis"
+    },
+    {
+      "id": "flow_select",
+      "from": "menu_selection",
+      "to": "tool_install",
+      "label": "selects install target",
+      "variant": "emphasis"
+    },
+    {
+      "id": "flow_cancel",
+      "from": "menu_selection",
+      "to": "cancel_exit",
+      "label": "cancel / exit",
+      "variant": "dashed",
+      "role": "branch"
+    },
+    {
+      "id": "flow_integrate",
+      "from": "tool_install",
+      "to": "desktop_entry",
+      "label": "provisions binary",
+      "variant": "default"
+    },
+    {
+      "id": "flow_verify",
+      "from": "desktop_entry",
+      "to": "health_verify",
+      "label": "configures environment",
+      "variant": "default"
+    },
+    {
+      "id": "flow_complete",
+      "from": "health_verify",
+      "to": "completion_prompt",
+      "label": "all gates green",
+      "variant": "emphasis"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "Zero-Friction Bootstrap",
+      "items": [
+        "Single curl one-liner pipes into bash without installing permanent prerequisites",
+        "Automated platform detection discovers OS flavor, architecture, and container virtualization",
+        "Ephemeral Gum TUI binary unpacks into /tmp and guarantees clean trap exit removal"
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "Safe Interactive Wizard",
+      "items": [
+        "Cancel-first hierarchical menus default to safe exit on inadvertent Enter keystrokes",
+        "Displays real-time system banner, recommended installation method, and disk availability",
+        "Seamless target switching between Homebrew, Native Repos, Tarballs, agy-box, and IDEs"
+      ]
+    },
+    {
+      "dot": "violet",
+      "title": "Verification & Launch",
+      "items": [
+        "Idempotent package installation with strict SHA-256 cryptographic checksum matching",
+        "Creates freedesktop.org compliant .desktop files with high-res icon and application menu entry",
+        "Comprehensive 50_health.sh doctor gate checks binary presence, execution permissions, and CLI responsive status"
+      ]
+    }
+  ]
+}
