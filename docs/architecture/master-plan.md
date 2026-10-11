@@ -267,8 +267,8 @@ Replace `docs/index.html` with a minimal page that auto-redirects to the new sit
 
 #### Phase 5: Cross-Repo Reference Updates (Day 2–3)
 
-- [ ] Update `agy-box` references to `agy-easy-install` (if any exist in README, architecture docs, etc.)
-- [ ] Update any course materials or external docs that link to the old repo
+- [x] Update `agy-box` references to `agy-easy-install` (if any exist in README, architecture docs, etc.)
+- [x] Update any course materials or external docs that link to the old repo
 
 ### Timeline
 
@@ -298,14 +298,15 @@ Replace `docs/index.html` with a minimal page that auto-redirects to the new sit
 
 ### Current State
 
-The Bash variant of `agy-easy-install` already has **deep agy-box integration work in progress**:
+The integration of `agy-box` v0.6.0 into `agy-easy-install` is **fully completed and merged to `main`**:
 
-- Currently on branch `feature/agy-box-install`
+- Merged and validated on `main`
 - Full integration plan at [agy_box_integration_plan.md](agy_box_integration_plan.md)
-- agy-box appears as **Option 4** in the install menu (alongside Homebrew, APT/DNF, Official Binary)
-- Downloads `agy-box-manager` from `https://raw.githubusercontent.com/wtg-codes/agy-box/main/agy-box-manager`
-- CLI flag: `--install-sandbox` / `--install-agy-box`
-- Already referenced in README (line 53, line 101)
+- `agy-box` appears as **Option 4** in the install menu (alongside Homebrew, APT/DNF, Official Binary)
+- Downloads `agy-box-manager` pinned to release tag `v0.6.0` via `versions.json` resolution
+- CLI flags: `--install-sandbox` / `--install-agy-box`
+- Fully documented in README, landing page, and package specifications
+- Validated by Phase 6 automated test gates (6.G12 to 6.G19)
 
 ### Integration Architecture
 
@@ -337,44 +338,24 @@ graph TD
     Manager --> Container
 ```
 
-### Integration Points to Formalize
+### Integration Points Formalized
 
-| Integration Point | Current State | Needed Work |
-|-------------------|---------------|-------------|
-| **agy-box-manager download** | Curls from `raw.githubusercontent.com/wtg-codes/agy-box/main/agy-box-manager` | ✅ Works — but should pin to a release tag, not `main` |
-| **Version coordination** | agy-box is at `v0.5.0`, easy-install at `v0.2.15` | Need a shared `versions.json` or release-tag-based discovery |
-| **Prerequisite detection** | easy-install checks for distrobox + podman | ✅ Already implemented in the integration plan |
-| **Error handling** | ? | Need to handle: agy-box-manager download failure, container build failure, distrobox not supported on macOS |
-| **Shared branding** | Both use different color schemes and banner art | Standardize on the agy-box indigo/slate palette |
-| **Documentation cross-linking** | agy-box README doesn't mention easy-install; easy-install README mentions agy-box | Add bidirectional links |
+| Integration Point | Implementation Status | Notes |
+|-------------------|-----------------------|-------|
+| **agy-box-manager download** | ✅ Complete | Pinned to release tag `v0.6.0` via `DEFAULT_AGY_BOX_VERSION` & `versions.json` |
+| **Version coordination** | ✅ Complete | Tracked in `versions.json` with multi-arch OCI image `ghcr.io/wtg-codes/agy-box:v0.6.0` |
+| **Prerequisite detection** | ✅ Complete | Automated detection and optional auto-install for `distrobox` + `podman`/`docker` |
+| **Error handling** | ✅ Complete | Graceful fallbacks for missing sockets, unprivileged namespaces, and macOS guidance |
+| **Shared branding** | ✅ Complete | Aligned ASCII banners, color palette, and menu hierarchy |
+| **Documentation cross-linking** | ✅ Complete | Bidirectional architecture references in both repositories |
 
-### Proposed Integration Plan (for the NEW `agy-easy-install` repo)
+### Completed Milestones
 
-#### Branch Strategy
-- Carry over the `feature/agy-box-install` branch work into the new repo
-- Rebase onto `main` of the new `agy-easy-install` repo
-- Complete integration testing before merging
-
-#### Key Design Decisions Needed
-
-> [!WARNING]
-> These need answers before implementation:
-
-1. **Should agy-box-manager be pinned to a release tag or always pull `main`?**
-   - Release tag = stability, but requires manual version bumps
-   - `main` = always latest, but could break if agy-box pushes a bad commit
-
-2. **Should the easy-install `versions.json` track agy-box versions?**
-   - Currently `versions.json` tracks IDE/CLI/SDK versions
-   - Adding agy-box would let the nightly scraper auto-update the container image tag
-
-3. **Should easy-install offer agy-box on macOS?**
-   - Distrobox works on macOS via Lima/Colima but it's not well-tested
-   - Could show a warning instead of blocking
-
-4. **Should the agy-box-manager script be vendored or always fetched?**
-   - Vendoring = works offline, version-locked
-   - Fetching = always latest, smaller repo, but requires internet
+- [x] Merge `feature/agy-box-install` branch to `main`
+- [x] Implement release-tag pinning in `get_agy_box_release_url`
+- [x] Add `agy-box` release tracking to `versions.json`
+- [x] Support headless auto-installation (`--install-sandbox`, `--install-agy-box`, `--auto`)
+- [x] Update test suite with Phase 6 gates 6.G12–6.G19
 
 ---
 
