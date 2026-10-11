@@ -54,23 +54,23 @@
 
 | # | File | Lines | Type | Depicts | Complexity | Styled? |
 |---|------|-------|------|---------|------------|---------|
-| 1 | [architecture.md](file:///home/wtg/Repos/agy-box/docs/architecture.md#L11-L72) | 11–72 | `graph TD` | System Topology | HIGH (15 nodes, ~18 edges, 4 subgraphs) | ✅ 4 classDef |
-| 2 | [architecture.md](file:///home/wtg/Repos/agy-box/docs/architecture.md#L80-L151) | 80–151 | `sequenceDiagram` | Setup Assistant Flow | VERY HIGH (6 actors, ~30 msgs) | ✅ 5 style |
-| 3 | [architecture.md](file:///home/wtg/Repos/agy-box/docs/architecture.md#L161-L197) | 161–197 | `graph LR` | D-Bus Keyring Pipeline | MEDIUM (7 nodes, ~10 edges) | ✅ 3 classDef |
-| 4 | [architecture.md](file:///home/wtg/Repos/agy-box/docs/architecture.md#L219-L247) | 219–247 | `graph TD` | VDI Web Desktop | MEDIUM (7 nodes, ~6 edges) | ✅ 2 classDef |
-| 5 | [README.md](file:///home/wtg/Repos/agy-box/README.md#L80-L146) | 80–146 | `graph TD` | Layered Architecture | HIGH (16 nodes, ~20 edges) | ✅ 4 classDef |
-| 6 | [README.md](file:///home/wtg/Repos/agy-box/README.md#L154-L185) | 154–185 | `flowchart LR` | Suite Communication | MEDIUM (9 nodes, ~8 edges) | ✅ 2 classDef |
-| 7 | [index.html](file:///home/wtg/Repos/agy-box/docs/index.html#L274-L325) | 274–325 | `graph TD` (HTML) | Layered Arch (simplified) | HIGH (14 nodes) | ⚠️ JS theme only |
-| 8 | [index.html](file:///home/wtg/Repos/agy-box/docs/index.html#L336-L360) | 336–360 | `flowchart LR` (HTML) | Suite Comm (simplified) | MEDIUM (9 nodes) | ⚠️ JS theme only |
+| 1 | [architecture.md](https://github.com/wtg-codes/agy-box/blob/main/docs/architecture.md#L11-L72) | 11–72 | `graph TD` | System Topology | HIGH (15 nodes, ~18 edges, 4 subgraphs) | ✅ 4 classDef |
+| 2 | [architecture.md](https://github.com/wtg-codes/agy-box/blob/main/docs/architecture.md#L80-L151) | 80–151 | `sequenceDiagram` | Setup Assistant Flow | VERY HIGH (6 actors, ~30 msgs) | ✅ 5 style |
+| 3 | [architecture.md](https://github.com/wtg-codes/agy-box/blob/main/docs/architecture.md#L161-L197) | 161–197 | `graph LR` | D-Bus Keyring Pipeline | MEDIUM (7 nodes, ~10 edges) | ✅ 3 classDef |
+| 4 | [architecture.md](https://github.com/wtg-codes/agy-box/blob/main/docs/architecture.md#L219-L247) | 219–247 | `graph TD` | VDI Web Desktop | MEDIUM (7 nodes, ~6 edges) | ✅ 2 classDef |
+| 5 | [README.md](https://github.com/wtg-codes/agy-box/blob/main/README.md#L80-L146) | 80–146 | `graph TD` | Layered Architecture | HIGH (16 nodes, ~20 edges) | ✅ 4 classDef |
+| 6 | [README.md](https://github.com/wtg-codes/agy-box/blob/main/README.md#L154-L185) | 154–185 | `flowchart LR` | Suite Communication | MEDIUM (9 nodes, ~8 edges) | ✅ 2 classDef |
+| 7 | [index.html](https://github.com/wtg-codes/agy-box/blob/main/docs/index.html#L274-L325) | 274–325 | `graph TD` (HTML) | Layered Arch (simplified) | HIGH (14 nodes) | ⚠️ JS theme only |
+| 8 | [index.html](https://github.com/wtg-codes/agy-box/blob/main/docs/index.html#L336-L360) | 336–360 | `flowchart LR` (HTML) | Suite Comm (simplified) | MEDIUM (9 nodes) | ⚠️ JS theme only |
 
 #### agy-easy-install Diagrams (4 total — all unstyled)
 
 | # | File | Lines | Type | Depicts | Complexity | Styled? |
 |---|------|-------|------|---------|------------|---------|
-| 9 | [README.md](file:///home/wtg/Repos/agy-easy-install/README.md#L95-L102) | 95–102 | `graph TD` | Installer Overview | LOW (6 nodes) | ❌ None |
-| 10 | [platform-linux.md](file:///home/wtg/Repos/agy-easy-install/docs/architecture/platform-linux.md#L43-L56) | 43–56 | `graph TD` | Linux Recommendation | LOW-MED (9 nodes) | ❌ None |
-| 11 | [platform-linux-atomic.md](file:///home/wtg/Repos/agy-easy-install/docs/architecture/platform-linux-atomic.md#L56-L66) | 56–66 | `graph TD` | Atomic Install Hierarchy | LOW (6 nodes) | ❌ None |
-| 12 | [agy_box_integration_plan.md](file:///home/wtg/Repos/agy-easy-install/docs/architecture/agy_box_integration_plan.md#L12-L21) | 12–21 | `graph TD` | agy-box Integration | LOW-MED (8 nodes) | ❌ None |
+| 9 | [README.md](../../README.md#L95-L102) | 95–102 | `graph TD` | Installer Overview | LOW (6 nodes) | ❌ None |
+| 10 | [platform-linux.md](platform-linux.md#L43-L56) | 43–56 | `graph TD` | Linux Recommendation | LOW-MED (9 nodes) | ❌ None |
+| 11 | [platform-linux-atomic.md](platform-linux-atomic.md#L56-L66) | 56–66 | `graph TD` | Atomic Install Hierarchy | LOW (6 nodes) | ❌ None |
+| 12 | [agy_box_integration_plan.md](agy_box_integration_plan.md#L12-L21) | 12–21 | `graph TD` | agy-box Integration | LOW-MED (8 nodes) | ❌ None |
 
 ### Tooling Comparison Matrix
 
@@ -301,7 +301,7 @@ Replace `docs/index.html` with a minimal page that auto-redirects to the new sit
 The Bash variant of `agy-easy-install` already has **deep agy-box integration work in progress**:
 
 - Currently on branch `feature/agy-box-install`
-- Full integration plan at [agy_box_integration_plan.md](file:///home/wtg/Repos/agy-easy-install/docs/architecture/agy_box_integration_plan.md)
+- Full integration plan at [agy_box_integration_plan.md](agy_box_integration_plan.md)
 - agy-box appears as **Option 4** in the install menu (alongside Homebrew, APT/DNF, Official Binary)
 - Downloads `agy-box-manager` from `https://raw.githubusercontent.com/wtg-codes/agy-box/main/agy-box-manager`
 - CLI flag: `--install-sandbox` / `--install-agy-box`

@@ -36,6 +36,7 @@ Mechanisms used by `antigravity-manager.sh` to install and maintain tools:
 ---
 
 ### 4. System Integrations & Planning
+- **[Cross-Repository Master Plan](master-plan.md)** — Architectural synchronization, visual diagram compilation strategy, and cross-repository milestones between `agy-box` and `agy-easy-install`.
 - **[Container Sandbox (`agy-box`) Integration Plan](agy_box_integration_plan.md)** — How `agy-easy-install` launches, detects, and provisions the `agy-box` Distrobox container.
 - **[Implementation Plan & Milestone Roadmap](implementation_plan.md)** — Phased development history, test gates, and deliverables.
 - **[TUI Rendering Postmortem](ui-tearing-postmortem.md)** — Postmortem on terminal buffer rendering and PTY test verification.
