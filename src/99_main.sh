@@ -9,19 +9,23 @@ print_usage() {
     echo "  --install-cli     Headless Antigravity CLI install"
     echo "  --install-jules   Headless Google Jules CLI install"
     echo "  --install-sdk     Headless Antigravity Python SDK install"
-    echo "  --install-sandbox Headless Antigravity Developer Sandbox (agy-box) install"
-    echo "  --install-agy-box Headless Antigravity Developer Sandbox (agy-box) install"
-    echo "  --fast-track      Headless lab setup (IDE + CLI + Jules)"
-    echo "  --remove          Uninstall Antigravity"
-    echo "  --demo-ui         Test and view the UI layout without modifying the system"
-    echo "  --json            Output machine-readable JSON at end (disables prompts)"
-    echo "  --verbose         Enable verbose logging"
-    echo "  --quiet           Suppress non-error output"
-    echo "  --check           Verify existing installation health"
-    echo "  --update          Force update of this manager script"
-    echo "  --no-update       Skip checking for manager updates"
-    echo "  --version         Show version"
-    echo "  --help            Show this help"
+    echo "  --install-sandbox    Headless Antigravity Developer Sandbox (agy-box) install"
+    echo "  --install-agy-box    Headless Antigravity Developer Sandbox (agy-box) install"
+    echo "  --install-vscode     Headless VS Code Antigravity extension install"
+    echo "  --install-jetbrains  Headless JetBrains Antigravity plugin install"
+    echo "  --install-zed        Headless Zed Antigravity extension configuration"
+    echo "  --install-extensions Headless install of extensions for all detected IDEs"
+    echo "  --fast-track         Headless lab setup (IDE + CLI + Jules)"
+    echo "  --remove             Uninstall Antigravity"
+    echo "  --demo-ui            Test and view the UI layout without modifying the system"
+    echo "  --json               Output machine-readable JSON at end (disables prompts)"
+    echo "  --verbose            Enable verbose logging"
+    echo "  --quiet              Suppress non-error output"
+    echo "  --check              Verify existing installation health"
+    echo "  --update             Force update of this manager script"
+    echo "  --no-update          Skip checking for manager updates"
+    echo "  --version            Show version"
+    echo "  --help               Show this help"
 }
 
 # Parse CLI arguments
@@ -37,6 +41,9 @@ for arg in "$@"; do
         --install-jules) ACTION="jules"; AUTO=1 ;;
         --install-sdk) ACTION="sdk"; AUTO=1 ;;
         --install-vscode|--install-extension) ACTION="vscode_ext"; AUTO=1 ;;
+        --install-jetbrains) ACTION="jetbrains_ext"; AUTO=1 ;;
+        --install-zed) ACTION="zed_ext"; AUTO=1 ;;
+        --install-extensions) ACTION="all_extensions"; AUTO=1 ;;
         --install-sandbox|--install-agy-box) ACTION="agy_box"; AUTO=1 ;;
         --fast-track) ACTION="fast_track"; AUTO=1 ;;
         --remove) ACTION="remove" ;;
@@ -294,6 +301,13 @@ start_sandbox_mode() {
                             continue
                         fi
                         in_install=false
+                    elif [ "$choice" = "ide_extensions_menu" ]; then
+                        ide_extensions_submenu
+                        if [ "$choice" = "back" ]; then
+                            choice="back"
+                            continue
+                        fi
+                        in_install=false
                     elif [ "$choice" = "agy_box" ]; then
                         in_install=false
                     fi
@@ -395,6 +409,13 @@ run_interactive() {
                             continue
                         fi
                         in_install=false
+                    elif [ "$choice" = "ide_extensions_menu" ]; then
+                        ide_extensions_submenu
+                        if [ "$choice" = "back" ]; then
+                            choice="back"
+                            continue
+                        fi
+                        in_install=false
                     elif [ "$choice" = "vscode_ext" ] || [ "$choice" = "agy_box" ]; then
                         in_install=false
                     fi
@@ -447,9 +468,30 @@ run_interactive() {
                         post_install_menu
                         break
                         ;;
+                    all_extensions)
+                        FAST_TRACK_PRODUCTS="all-extensions"
+                        install_all_ide_extensions
+                        save_manager_locally
+                        post_install_menu
+                        break
+                        ;;
                     vscode_ext)
                         FAST_TRACK_PRODUCTS="vscode-ext"
                         install_vscode_ext
+                        save_manager_locally
+                        post_install_menu
+                        break
+                        ;;
+                    jetbrains_ext)
+                        FAST_TRACK_PRODUCTS="jetbrains-ext"
+                        install_jetbrains_ext
+                        save_manager_locally
+                        post_install_menu
+                        break
+                        ;;
+                    zed_ext)
+                        FAST_TRACK_PRODUCTS="zed-ext"
+                        install_zed_ext
                         save_manager_locally
                         post_install_menu
                         break
@@ -498,6 +540,9 @@ case "$ACTION" in
     jules) install_jules; save_manager_locally ;;
     sdk) install_sdk; save_manager_locally ;;
     vscode_ext) install_vscode_ext; save_manager_locally ;;
+    jetbrains_ext) install_jetbrains_ext; save_manager_locally ;;
+    zed_ext) install_zed_ext; save_manager_locally ;;
+    all_extensions) install_all_ide_extensions; save_manager_locally ;;
     agy_box) install_agy_box; save_manager_locally ;;
     check) do_health_check ;;
     demo_ui) start_sandbox_mode ;;

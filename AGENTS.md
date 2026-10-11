@@ -160,7 +160,7 @@ Before submitting any PR, the relevant phase gate(s) must pass.
 │       ├── package-antigravity-cli.md ← Antigravity CLI package architecture spec
 │       └── package-antigravity-sdk.md ← Antigravity SDK package architecture spec
 └── tests/
-    └── run_gates.sh                   ← Phase gate test runner (66 gates)
+    └── run_gates.sh                   ← Phase gate test runner (102 gates)
 ```
 
 ---

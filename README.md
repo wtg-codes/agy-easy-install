@@ -68,6 +68,10 @@ bash antigravity-manager.sh --install-binary
 bash antigravity-manager.sh --install-cli      # Headless Antigravity CLI install
 bash antigravity-manager.sh --install-sdk      # Headless Antigravity Python SDK install
 bash antigravity-manager.sh --install-sandbox  # Headless agy-box sandbox container install
+bash antigravity-manager.sh --install-vscode   # Headless VS Code / VSCodium extension install
+bash antigravity-manager.sh --install-jetbrains # Headless JetBrains Antigravity plugin install
+bash antigravity-manager.sh --install-zed      # Headless Zed Antigravity extension config
+bash antigravity-manager.sh --install-extensions # Install extensions for all detected IDEs
 
 # Additional options
 bash antigravity-manager.sh --verbose  # Print detailed logs

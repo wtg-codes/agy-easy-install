@@ -970,6 +970,7 @@ get_agy_box_release_url() {
 }
 
 install_vscode_ext() {
+    JSON_METHOD="vscode_ext"
     log_info "${C_MAG}🚀 Installing Google Antigravity VS Code Extension...${C_RESET}"
     local installed=0
     for cmd in code codium code-insiders; do
@@ -983,10 +984,288 @@ install_vscode_ext() {
     done
 
     if [ "$installed" -eq 0 ]; then
-        log_warn "Neither 'code' nor 'codium' was found in PATH."
+        log_warn "None of 'code', 'codium', or 'code-insiders' was found in PATH."
         echo -e "${C_YELLOW}💡 Install Visual Studio Code first (https://code.visualstudio.com), then re-run.${C_RESET}"
         return 1
     fi
+    return 0
+}
+
+install_jetbrains_ext() {
+    JSON_METHOD="jetbrains_ext"
+    log_info "${C_MAG}🚀 Installing Google Antigravity JetBrains Plugin...${C_RESET}"
+
+    local jb_commands=("idea" "pycharm" "webstorm" "goland" "clion" "rider" "rustrover" "studio")
+    local found_executables=()
+
+    # 1. Check commands in PATH
+    for cmd in "${jb_commands[@]}"; do
+        if command -v "$cmd" >/dev/null 2>&1; then
+            local full_path
+            full_path=$(command -v "$cmd")
+            found_executables+=("$full_path")
+        fi
+    done
+
+    # 2. Check Toolbox script paths
+    local toolbox_script_dirs=(
+        "$HOME/.local/share/JetBrains/Toolbox/scripts"
+        "$HOME/Library/Application Support/JetBrains/Toolbox/scripts"
+    )
+    for dir in "${toolbox_script_dirs[@]}"; do
+        if [ -d "$dir" ]; then
+            for cmd in "${jb_commands[@]}"; do
+                if [ -x "$dir/$cmd" ]; then
+                    found_executables+=("$dir/$cmd")
+                fi
+            done
+        fi
+    done
+
+    # 3. Check Toolbox application directories
+    local toolbox_app_dirs=(
+        "$HOME/.local/share/JetBrains/Toolbox/apps"
+        "$HOME/Library/Application Support/JetBrains/Toolbox/apps"
+    )
+    for app_dir in "${toolbox_app_dirs[@]}"; do
+        if [ -d "$app_dir" ]; then
+            while IFS= read -r bin_file; do
+                if [ -n "$bin_file" ] && [ -x "$bin_file" ]; then
+                    found_executables+=("$bin_file")
+                fi
+            done < <(find "$app_dir" -maxdepth 5 -type f \( -name "idea" -o -name "idea.sh" -o -name "pycharm" -o -name "pycharm.sh" -o -name "webstorm" -o -name "webstorm.sh" -o -name "goland" -o -name "goland.sh" -o -name "clion" -o -name "clion.sh" -o -name "rider" -o -name "rider.sh" -o -name "rustrover" -o -name "rustrover.sh" -o -name "studio" -o -name "studio.sh" \) 2>/dev/null || true)
+        fi
+    done
+
+    # 4. Check macOS /Applications bundle binaries
+    if [ "$PLATFORM" = "Darwin" ]; then
+        while IFS= read -r mac_bin; do
+            if [ -n "$mac_bin" ] && [ -x "$mac_bin" ]; then
+                found_executables+=("$mac_bin")
+            fi
+        done < <(find /Applications -maxdepth 4 -path "*Contents/MacOS/*" -type f \( -name "idea" -o -name "pycharm" -o -name "webstorm" -o -name "goland" -o -name "clion" -o -name "rider" -o -name "rustrover" -o -name "studio" \) 2>/dev/null || true)
+    fi
+
+    # Deduplicate discovered executables
+    local unique_executables=()
+    local seen_paths=" "
+    for exe in "${found_executables[@]}"; do
+        local real_exe
+        real_exe=$(readlink -f "$exe" 2>/dev/null || echo "$exe")
+        if [[ "$seen_paths" != *" $real_exe "* ]]; then
+            seen_paths="${seen_paths}${real_exe} "
+            unique_executables+=("$exe")
+        fi
+    done
+
+    if [ ${#unique_executables[@]} -eq 0 ]; then
+        log_warn "No JetBrains IDE commands or Toolbox installations detected."
+        echo -e "${C_YELLOW}💡 Guidance:${C_RESET}"
+        echo -e "  To manually install the Google Antigravity plugin in JetBrains:"
+        echo -e "  1. Open your JetBrains IDE (IntelliJ IDEA, PyCharm, WebStorm, etc.)."
+        echo -e "  2. Go to ${C_BOLD}Settings / Preferences -> Plugins -> Marketplace${C_RESET}."
+        echo -e "  3. Search for ${C_BOLD}Antigravity${C_RESET} and click ${C_BOLD}Install${C_RESET}."
+        echo -e "  4. Optionally configure via ${C_BOLD}Settings -> Tools -> AI -> Agents${C_RESET}."
+        return 1
+    fi
+
+    log_info "Detected ${#unique_executables[@]} JetBrains IDE installation(s)."
+    local installed=0
+    for exe in "${unique_executables[@]}"; do
+        local ide_name
+        ide_name=$(basename "$exe")
+        log_info "Installing Antigravity plugin for $ide_name ($exe)..."
+        if "$exe" installPlugins Antigravity; then
+            log_info "${C_GREEN}✅ Successfully installed Antigravity plugin for $ide_name.${C_RESET}"
+            installed=1
+        else
+            log_warn "Command '$exe installPlugins Antigravity' encountered an issue."
+            echo -e "${C_YELLOW}💡 Note: If $ide_name is currently running, close the IDE and retry.${C_RESET}"
+            echo -e "${C_YELLOW}   Alternatively, install via Settings -> Plugins -> Marketplace -> 'Antigravity'.${C_RESET}"
+        fi
+    done
+
+    echo ""
+    log_info "${C_BLUE}ℹ️  JetBrains Plugin Guidance:${C_RESET}"
+    log_info "  - If your IDE was running during installation, restart it to activate the plugin."
+    log_info "  - Manual install or agent configuration: ${C_BOLD}Settings -> AI -> Agents${C_RESET}."
+
+    if [ "$installed" -eq 1 ]; then
+        return 0
+    else
+        return 1
+    fi
+}
+
+install_zed_ext() {
+    JSON_METHOD="zed_ext"
+    log_info "${C_MAG}🚀 Configuring Google Antigravity Zed Extension...${C_RESET}"
+
+    local zed_dir=""
+    if [ "$PLATFORM" = "Darwin" ]; then
+        if [ -d "$HOME/Library/Application Support/Zed" ]; then
+            zed_dir="$HOME/Library/Application Support/Zed"
+        elif [ -d "$HOME/.config/zed" ]; then
+            zed_dir="$HOME/.config/zed"
+        else
+            zed_dir="$HOME/Library/Application Support/Zed"
+        fi
+    else
+        zed_dir="$HOME/.config/zed"
+    fi
+
+    mkdir -p "$zed_dir"
+    local settings_file="$zed_dir/settings.json"
+    log_info "Targeting Zed configuration: $settings_file"
+
+    local configured=0
+    if command -v python3 >/dev/null 2>&1; then
+        if python3 -c '
+import sys, os, json, re
+
+path = sys.argv[1]
+data = {}
+if os.path.exists(path) and os.path.getsize(path) > 0:
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            content = f.read()
+        try:
+            data = json.loads(content)
+        except Exception:
+            cleaned = re.sub(r"//.*?\n", "\n", content)
+            cleaned = re.sub(r"/\*.*?\*/", "", cleaned, flags=re.DOTALL)
+            cleaned = re.sub(r",\s*([}\]])", r"\1", cleaned)
+            data = json.loads(cleaned)
+    except Exception as e:
+        print(f"Warning: Could not parse existing JSON: {e}", file=sys.stderr)
+        data = {}
+
+if not isinstance(data, dict):
+    data = {}
+
+if "auto_install_extensions" not in data or not isinstance(data["auto_install_extensions"], dict):
+    data["auto_install_extensions"] = {}
+
+data["auto_install_extensions"]["antigravity"] = True
+
+with open(path, "w", encoding="utf-8") as f:
+    json.dump(data, f, indent=2)
+    f.write("\n")
+print("OK")
+' "$settings_file" 2>/dev/null | grep -q "OK"; then
+            configured=1
+        fi
+    elif command -v jq >/dev/null 2>&1; then
+        if [ -f "$settings_file" ] && [ -s "$settings_file" ]; then
+            local tmp_file
+            tmp_file=$(mktemp)
+            if jq '.auto_install_extensions.antigravity = true' "$settings_file" > "$tmp_file" 2>/dev/null; then
+                mv "$tmp_file" "$settings_file"
+                configured=1
+            else
+                rm -f "$tmp_file"
+            fi
+        else
+            echo '{"auto_install_extensions": {"antigravity": true}}' | jq '.' > "$settings_file"
+            configured=1
+        fi
+    fi
+
+    if [ "$configured" -eq 1 ]; then
+        log_info "${C_GREEN}✅ Configured Zed settings for Antigravity in $settings_file.${C_RESET}"
+        log_info "  ${C_CYAN}▸${C_RESET} Zed will auto-install 'antigravity' extension on startup."
+        return 0
+    else
+        log_error "Failed to update $settings_file (python3 or jq required)."
+        return 1
+    fi
+}
+
+install_all_ide_extensions() {
+    JSON_METHOD="all_extensions"
+    log_info "${C_MAG}🔍 Scanning for supported IDEs (VS Code, JetBrains, Zed)...${C_RESET}"
+    local detected_any=0
+    local vscode_present=0
+    local jetbrains_present=0
+    local zed_present=0
+
+    # 1. Detect VS Code / VSCodium
+    for cmd in code codium code-insiders; do
+        if command -v "$cmd" >/dev/null 2>&1; then
+            vscode_present=1
+            break
+        fi
+    done
+
+    # 2. Detect JetBrains IDEs
+    local jb_commands=("idea" "pycharm" "webstorm" "goland" "clion" "rider" "rustrover" "studio")
+    for cmd in "${jb_commands[@]}"; do
+        if command -v "$cmd" >/dev/null 2>&1; then
+            jetbrains_present=1
+            break
+        fi
+    done
+    if [ "$jetbrains_present" -eq 0 ]; then
+        local toolbox_dirs=(
+            "$HOME/.local/share/JetBrains/Toolbox"
+            "$HOME/Library/Application Support/JetBrains/Toolbox"
+        )
+        for td in "${toolbox_dirs[@]}"; do
+            if [ -d "$td" ]; then
+                jetbrains_present=1
+                break
+            fi
+        done
+    fi
+
+    # 3. Detect Zed
+    local zed_dirs=(
+        "$HOME/.config/zed"
+        "$HOME/Library/Application Support/Zed"
+    )
+    if command -v zed >/dev/null 2>&1 || command -v zed-editor >/dev/null 2>&1 || [ -d "/Applications/Zed.app" ]; then
+        zed_present=1
+    else
+        for zd in "${zed_dirs[@]}"; do
+            if [ -d "$zd" ]; then
+                zed_present=1
+                break
+            fi
+        done
+    fi
+
+    if [ "$vscode_present" -eq 1 ]; then
+        log_info "Found VS Code / VSCodium environment."
+        install_vscode_ext || true
+        detected_any=1
+        echo ""
+    fi
+
+    if [ "$jetbrains_present" -eq 1 ]; then
+        log_info "Found JetBrains environment."
+        install_jetbrains_ext || true
+        detected_any=1
+        echo ""
+    fi
+
+    if [ "$zed_present" -eq 1 ]; then
+        log_info "Found Zed environment."
+        install_zed_ext || true
+        detected_any=1
+        echo ""
+    fi
+
+    if [ "$detected_any" -eq 0 ]; then
+        log_warn "No supported IDEs (VS Code, JetBrains, Zed) detected on this host."
+        echo -e "${C_YELLOW}💡 You can install extensions individually once your IDE is installed:${C_RESET}"
+        echo -e "  - VS Code:    ${C_BOLD}$0 --install-vscode${C_RESET}"
+        echo -e "  - JetBrains:  ${C_BOLD}$0 --install-jetbrains${C_RESET}"
+        echo -e "  - Zed:        ${C_BOLD}$0 --install-zed${C_RESET}"
+        return 1
+    fi
+
+    log_info "${C_GREEN}${C_BOLD}🎉 Completed IDE extension configuration for all detected editors!${C_RESET}"
+    return 0
 }
 
 install_agy_box() {
