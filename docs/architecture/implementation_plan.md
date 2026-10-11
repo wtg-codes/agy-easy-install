@@ -52,9 +52,9 @@
 
 ---
 
-## Completed Phases (0–6)
+## Completed Phases (0–7)
 
-All phases (0–6) are complete and validated by the 85-gate test suite.
+All phases (0–7) are complete and validated by the 102-gate test suite.
 
 | Phase | Name | Gates | Status |
 |---|---|---|---|
@@ -65,7 +65,8 @@ All phases (0–6) are complete and validated by the 85-gate test suite.
 | 4 | Docs & Polish | 13 | ✅ Complete |
 | 5 | Bundler & Tooling | 14 | ✅ Complete |
 | 6 | Jules CLI & Bootstrapping | 19 | ✅ Complete |
-| **Total** | | **85** | ✅ All passing |
+| 7 | IDE Extensions Support | 17 | ✅ Complete |
+| **Total** | | **102** | ✅ All passing |
 
 ### Gate Runner
 
@@ -74,7 +75,7 @@ All phases (0–6) are complete and validated by the 85-gate test suite.
 bash tests/run_gates.sh --phase all
 
 # Run a specific phase
-bash tests/run_gates.sh --phase 6
+bash tests/run_gates.sh --phase 7
 ```
 
 ---
@@ -107,6 +108,7 @@ bash tests/run_gates.sh --phase 6
 - `requirements.txt` used, URL validation (`raise_for_status`), `shellcheck` in CI
 - Safe `sed` delimiter (`#`), SHA-256 sync step (`update_config.py`)
 - Scraper: compiles, has docstring, type hints, stderr error reporting
+- Scraper error reporting on stderr
 
 ### Phase 4 — Docs & Polish (13 gates)
 - Landing page: Lucide pinned, meta tags, OG tags, favicon, aria labels
@@ -131,6 +133,14 @@ bash tests/run_gates.sh --phase 6
 - `agy-box` v0.6.0 multi-arch container orchestration (`DEFAULT_AGY_BOX_VERSION`, `install_agy_box()`, `uninstall_agy_box()`)
 - `versions.json` entry and tracking for `agy-box` releases
 
+### Phase 7 — IDE Extensions Support (17 gates)
+- Syntax validation (`bash -n`) and `shellcheck` clean
+- CLI flags: `--install-vscode`, `--install-jetbrains`, `--install-zed`, `--install-extensions` with comprehensive `--help` output
+- Extension installer functions: `install_vscode_ext()`, `install_jetbrains_ext()`, `install_zed_ext()`
+- VS Code Insiders / VSCodium compatibility in `install_vscode_ext()`
+- Unified multi-editor installer: `install_all_ide_extensions()`
+- Interactive TUI menu integration: `ide_extensions_submenu()` in `antigravity-manager.sh`
+
 ---
 
 ## Release & Distribution Model
@@ -150,7 +160,7 @@ The project employs a dual-channel release architecture:
 2. **Nightly Rolling Channel (`nightly`)**:
    - Scheduled daily workflow ([`.github/workflows/nightly-update.yml`](../../.github/workflows/nightly-update.yml)) executes at 06:00 UTC.
    - Scrapes Google's latest download endpoints for Antigravity IDE, CLI, and SDK binaries and computes verified SHA-512/SHA-256 hashes.
-   - Automatically runs full 85-gate test suite, compiles manager, and validates shell scripts.
+   - Automatically runs full 102-gate test suite, compiles manager, and validates shell scripts.
    - Updates the rolling `nightly` pre-release tag with new checksums.
    - Install URL:
      ```bash
@@ -160,6 +170,24 @@ The project employs a dual-channel release architecture:
 3. **Containerized Sandbox (`agy-box` v0.6.0)**:
    - Deep integration with downstream multi-arch container image `ghcr.io/wtg-codes/agy-box:v0.6.0` (and `:latest`).
    - Supports distrobox, Podman, and Docker container environments across Linux (amd64, arm64) and Windows WSL2.
+
+---
+
+## Cross-Repository Master Plan Milestones
+
+Implementation status for cross-repository milestones defined in [`master-plan.md`](master-plan.md):
+
+* **Workstream 1: agy-box Documentation & GH Pages** — ✅ Completed
+  - Full documentation coverage, settings schema reference, User Guide, and GitHub Pages site.
+* **Workstream 2: Visual Diagram Enhancement** — ✅ Completed
+  - Mermaid diagram compilation workflow (`compile-diagrams.yml`) generating high-fidelity SVG/PNG assets.
+* **Workstream 3: Repository Rename Migration (`agv` → `agy`)** — ✅ Completed
+  - Clean migration to `wtg-codes/agy-easy-install`, old repositories deprecated and archived, all internal URLs and banners redirected.
+* **Workstream 4: Downstream Integration (`agy-box` ↔ `agy-easy-install`)** — ✅ Completed
+  - Pinned `agy-box` v0.6.0 multi-arch container image via `versions.json`.
+  - Full configuration schema support (`config.env`: `AGY_CONTAINER_MANAGER`, `AGY_KEYRING_MODE`, `AGY_AUTH_METHOD`, `AGY_DEFAULT_IDE`).
+  - New manager commands (`wizard`, `check`, `update`, `backup`, `restore`).
+  - Seamless companion extension integration across VS Code, Zed, and JetBrains IDEs.
 
 ---
 

@@ -190,7 +190,7 @@
 - [x] Review and update screenshots when menu text changes — verified all menu text matches between `src/40_ui.sh` and `docs/images/render.html`
 - [x] Keep landing page screenshots in sync with `render.html` — landing page (`docs/index.html`) references `main_menu.png`, `install_submenu.png`, `cleanup_submenu.png`; README references all 4 PNGs
 - [x] Regenerate screenshots: ran `python3 docs/images/capture.py` — 4 PNGs updated
-- [x] Gate count in implementation plan — verified: 85 gates across 7 phases
+- [x] Gate count in implementation plan — verified: 102 gates across 8 phases (Phases 0–7)
 - [x] Architecture Documentation Deep-Dive — researched and enhanced all 10 platform and install architecture documents with tool skills and background logic.
 
 ---

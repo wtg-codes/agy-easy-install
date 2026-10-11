@@ -8,3 +8,7 @@ __pycache__/
 *.swo
 .env
 venv/
+
+# Test artifacts
+tests/screenshots/*.png
+!tests/screenshots/.gitkeep
