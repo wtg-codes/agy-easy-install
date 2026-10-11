@@ -5,6 +5,17 @@ Format follows [Keep a Changelog](https://keepachangelog.com/).
 
 ---
 
+## [0.3.1] — 2026-10-10
+
+### Added
+- **Multi-IDE Extension Support:** Added dedicated installer functions and CLI flags for installing and configuring Google Antigravity extensions across VS Code, JetBrains IDEs, and Zed:
+  - `--install-vscode`: Enhanced to support `code`, `codium`, and `code-insiders`.
+  - `--install-jetbrains`: Scans PATH and standard JetBrains Toolbox directories for IDEs (`idea`, `pycharm`, `webstorm`, `goland`, `clion`, `rider`, `rustrover`, `studio`), executes CLI plugin installation, and provides running-IDE guidance.
+  - `--install-zed`: Auto-configures Zed's `settings.json` (`~/.config/zed` or macOS Application Support) to auto-install the `antigravity` extension idempotently without settings corruption.
+  - `--install-extensions`: Detects all installed IDEs on the host system and configures extensions in one command.
+- **Interactive Extensions Submenu:** Updated install menu item [4] to `Install IDE Extensions (VS Code, JetBrains, Zed)` with dedicated submenu for granular or unified extension setup.
+- **Phase 7 Gate Tests:** Added automated Phase 7 gate checks in `tests/run_gates.sh` verifying all extension flags, functions, menu options, and linter compliance.
+
 ## [0.3.0] — 2026-10-10
 
 ### Added

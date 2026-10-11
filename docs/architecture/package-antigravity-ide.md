@@ -53,6 +53,13 @@ Antigravity operates via Chrome Developer Protocol (CDP) and requires a modern G
 - **Homebrew Cask:** Automatically forces a dependency on the `google-chrome` cask.
 - **Tarball / System Repo:** The installer automatically scans for valid Chrome paths on the system (including flatpak/snap packages) and saves the mapping to the configuration directory (`~/.config/Antigravity`).
 
+### Companion IDE Extensions & Plugins
+The installer toolkit provides automated extension setup across popular editors:
+- **VS Code / VSCodium / Code Insiders:** Installs `Google.antigravity` via CLI (`code --install-extension Google.antigravity --force`).
+- **JetBrains IDEs (IntelliJ IDEA, PyCharm, WebStorm, etc.):** Scans PATH and JetBrains Toolbox directories, installing via `<ide> installPlugins Antigravity`.
+- **Zed:** Configures `auto_install_extensions.antigravity = true` inside `~/.config/zed/settings.json` (or macOS Application Support) idempotently.
+- **Unified Installer:** `--install-extensions` discovers all supported IDEs installed on the system and configures their plugins simultaneously.
+
 ---
 
 ## Maintenance & Version Rules

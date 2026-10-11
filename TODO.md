@@ -20,6 +20,8 @@
 - [x] AGY detection at startup — check if Antigravity is already installed
 - [x] Chrome browser detection + auto-configuration prompt
 - [x] Official Google Antigravity VS Code Extension (`Google.antigravity`) support for VS Code / VSCodium / Code Insiders
+- [x] Multi-IDE extension installers: JetBrains plugin CLI installation, Zed settings.json configuration, unified host IDE detection
+- [x] CLI flags for IDE extensions: `--install-vscode`, `--install-jetbrains`, `--install-zed`, `--install-extensions`
 - [x] ChromeOS Crostini container support for sandbox prerequisites and tarball installation
 - [x] Upstream sync and version tracking for `agy-box` releases (v0.6.0) in scraper and config
 
@@ -64,13 +66,15 @@
 - [x] Package architecture specifications (`package-antigravity-*.md`) for IDE, CLI, and SDK
 
 ### Testing
-- [x] 77-gate test suite across 7 phases
+- [x] 102-gate test suite across 8 phases
 - [x] Phase 0: Documentation bootstrap
 - [x] Phase 1: Scaffolding & hygiene
 - [x] Phase 2: Shell hardening + Homebrew
 - [x] Phase 3: Pipeline fixes
 - [x] Phase 4: Docs & polish
 - [x] Phase 5: Bundler & tooling
+- [x] Phase 6: Jules CLI & Bootstrapping
+- [x] Phase 7: IDE Extensions Support (VS Code, JetBrains, Zed)
 
 ---
 

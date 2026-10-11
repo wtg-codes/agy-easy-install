@@ -225,6 +225,45 @@ gate_6() {
 }
 
 # =============================================================================
+# Phase 7 — IDE Extensions Support (VS Code, JetBrains, Zed)
+# =============================================================================
+gate_7() {
+    echo -e "\n${CYAN}${BOLD}=== Phase 7 Gate: IDE Extensions Support ===${RESET}"
+
+    local SCRIPT="antigravity-manager.sh"
+
+    # Make sure we compiled the script
+    ./build.sh > /dev/null 2>&1
+
+    # Verify syntax & lint
+    check "7.G1  Bash syntax valid"              "bash -n $SCRIPT"
+    check "7.G2  Shellcheck clean"               "shellcheck -e SC1091,SC2162 $SCRIPT"
+
+    # CLI flag updates
+    check "7.G3  --install-vscode flag exists"   "grep -q -- '--install-vscode' $SCRIPT"
+    check "7.G4  --install-jetbrains flag exists" "grep -q -- '--install-jetbrains' $SCRIPT"
+    check "7.G5  --install-zed flag exists"      "grep -q -- '--install-zed' $SCRIPT"
+    check "7.G6  --install-extensions flag exists" "grep -q -- '--install-extensions' $SCRIPT"
+
+    # Help output
+    check "7.G7  --help lists --install-vscode"  "bash $SCRIPT --help 2>&1 | grep -- '--install-vscode' >/dev/null"
+    check "7.G8  --help lists --install-jetbrains" "bash $SCRIPT --help 2>&1 | grep -- '--install-jetbrains' >/dev/null"
+    check "7.G9  --help lists --install-zed"     "bash $SCRIPT --help 2>&1 | grep -- '--install-zed' >/dev/null"
+    check "7.G10 --help lists --install-extensions" "bash $SCRIPT --help 2>&1 | grep -- '--install-extensions' >/dev/null"
+
+    # Functions exist
+    check "7.G11 install_vscode_ext() exists"    "grep -q 'install_vscode_ext()' $SCRIPT"
+    check "7.G12 install_vscode_ext() has code-insiders" "grep -q 'code-insiders' $SCRIPT"
+    check "7.G13 install_jetbrains_ext() exists" "grep -q 'install_jetbrains_ext()' $SCRIPT"
+    check "7.G14 install_zed_ext() exists"       "grep -q 'install_zed_ext()' $SCRIPT"
+    check "7.G15 install_all_ide_extensions() exists" "grep -q 'install_all_ide_extensions()' $SCRIPT"
+
+    # Menu items
+    check "7.G16 IDE Extensions in menu"         "grep -q 'Install IDE Extensions (VS Code, JetBrains, Zed)' $SCRIPT"
+    check "7.G17 ide_extensions_submenu() exists" "grep -q 'ide_extensions_submenu()' $SCRIPT"
+}
+
+# =============================================================================
 # Runner
 # =============================================================================
 print_summary() {
@@ -241,7 +280,7 @@ print_summary() {
 }
 
 usage() {
-    echo "Usage: $0 --phase <0|1|2|3|4|5|6|all>"
+    echo "Usage: $0 --phase <0|1|2|3|4|5|6|7|all>"
     echo ""
     echo "Runs phase gate tests for the agy-easy-install fix-up."
     echo ""
@@ -253,6 +292,7 @@ usage() {
     echo "  --phase 4     Run Phase 4 gate (Docs & Polish)"
     echo "  --phase 5     Run Phase 5 gate (Bundler & Tooling)"
     echo "  --phase 6     Run Phase 6 gate (Jules CLI & Bootstrapping)"
+    echo "  --phase 7     Run Phase 7 gate (IDE Extensions Support)"
     echo "  --phase all   Run all gates sequentially"
     exit 1
 }
@@ -275,7 +315,7 @@ echo -e "${BOLD}agy-easy-install — Phase Gate Runner${RESET}"
 echo -e "Working directory: ${REPO_DIR}"
 
 if [ "$PHASE" = "all" ]; then
-    for p in 0 1 2 3 4 5 6; do
+    for p in 0 1 2 3 4 5 6 7; do
         gate_"$p"
     done
 else

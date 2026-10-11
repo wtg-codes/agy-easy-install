@@ -226,7 +226,7 @@ install_submenu() {
         "Back"
         "Google Antigravity  →"
         "Antigravity IDE  →"
-        "Antigravity Extension (VS Code / VSCodium)  →"
+        "Install IDE Extensions (VS Code, JetBrains, Zed)  →"
         "Antigravity CLI (agy)  →"
         "Google Jules CLI (npm)  →"
         "Antigravity SDK (Python)  →"
@@ -246,7 +246,7 @@ install_submenu() {
             1) CHOICE="Back" ;;
             2) CHOICE="Google Antigravity" ;;
             3) CHOICE="Antigravity IDE" ;;
-            4) CHOICE="Antigravity Extension" ;;
+            4) CHOICE="Install IDE Extensions (VS Code, JetBrains, Zed)" ;;
             5) CHOICE="Antigravity CLI" ;;
             6) CHOICE="Google Jules CLI" ;;
             7) CHOICE="Antigravity SDK" ;;
@@ -258,12 +258,53 @@ install_submenu() {
     case "$CHOICE" in
         "Back"*) choice="back" ;;
         *"Google Antigravity"*) choice="antigravity_menu" ;;
-        *"IDE"*) choice="ide_menu" ;;
-        *"Extension"*) choice="vscode_ext" ;;
+        *"IDE Extensions"*|*"Extension"*) choice="ide_extensions_menu" ;;
+        *"Antigravity IDE"*|*"IDE"*) choice="ide_menu" ;;
         *"CLI"*) choice="cli_menu" ;;
         *"Jules"*) choice="jules_menu" ;;
         *"SDK"*) choice="sdk_menu" ;;
         *"Sandbox"*|*"agy-box"*) choice="agy_box" ;;
+        *) choice="back" ;;
+    esac
+}
+
+# ── Wizard Step 2b-ext: IDE Extensions Submenu ─────────────────
+ide_extensions_submenu() {
+    clear || true
+    echo ""
+    local options=(
+        "Back"
+        "Install all detected IDE extensions (VS Code, JetBrains, Zed)"
+        "VS Code / VSCodium Extension"
+        "JetBrains Antigravity Plugin"
+        "Zed Antigravity Extension"
+    )
+
+    if command -v gum >/dev/null 2>&1; then
+        local cheader
+        cheader=$(get_compact_header "Select IDE extension to configure")
+        CHOICE=$(gum choose --header="$cheader" "${options[@]}") || CHOICE="Back"
+    else
+        clear || true
+        echo "Select IDE extension to configure:"
+        for i in "${!options[@]}"; do echo "$((i+1))) ${options[$i]}"; done
+        read -r -p "Select option [1-5]: " num < /dev/tty
+        case "$num" in
+            1) CHOICE="Back" ;;
+            2) CHOICE="all" ;;
+            3) CHOICE="vscode" ;;
+            4) CHOICE="jetbrains" ;;
+            5) CHOICE="zed" ;;
+            *) CHOICE="Back" ;;
+        esac
+    fi
+
+    case "$CHOICE" in
+        "Back"*) choice="back" ;;
+        *"all detected"*|"all") choice="all_extensions" ;;
+        *"VS Code"*|"vscode") choice="vscode_ext" ;;
+        *"JetBrains"*|"jetbrains") choice="jetbrains_ext" ;;
+        *"Zed"*|"zed") choice="zed_ext" ;;
         *) choice="back" ;;
     esac
 }
@@ -738,6 +779,31 @@ run_mock_action() {
             run_cmd_ui "Removing global wrappers..." sleep 1
             echo ""
             log_info "✅ agy-box uninstalled successfully (Mock)."
+            ;;
+        all_extensions)
+            log_info "${C_MAG}🚀 Starting mock installation of all detected IDE extensions...${C_RESET}"
+            run_cmd_ui "Scanning for installed IDEs..." sleep 1
+            run_cmd_ui "Configuring extensions for VS Code, JetBrains, and Zed..." sleep 1.5
+            echo ""
+            log_info "${C_GREEN}${C_BOLD}🎉 Mock Installation Complete!${C_RESET}"
+            ;;
+        vscode_ext)
+            log_info "${C_MAG}🚀 Starting mock installation of VS Code extension...${C_RESET}"
+            run_cmd_ui "Installing Google.antigravity in VS Code / VSCodium..." sleep 1
+            echo ""
+            log_info "${C_GREEN}${C_BOLD}🎉 Mock Installation Complete!${C_RESET}"
+            ;;
+        jetbrains_ext)
+            log_info "${C_MAG}🚀 Starting mock installation of JetBrains plugin...${C_RESET}"
+            run_cmd_ui "Installing Antigravity plugin in JetBrains IDEs..." sleep 1
+            echo ""
+            log_info "${C_GREEN}${C_BOLD}🎉 Mock Installation Complete!${C_RESET}"
+            ;;
+        zed_ext)
+            log_info "${C_MAG}🚀 Starting mock configuration of Zed extension...${C_RESET}"
+            run_cmd_ui "Configuring settings.json in Zed config directory..." sleep 1
+            echo ""
+            log_info "${C_GREEN}${C_BOLD}🎉 Mock Installation Complete!${C_RESET}"
             ;;
         fast_track_go)
             local method_label="Homebrew"

@@ -299,17 +299,23 @@ def test_install_submenu() -> tuple[bool, list[str]]:
         failures += assert_no_tearing(session, "install submenu initial")
         failures += assert_text_visible(session, "install submenu", "Google Antigravity")
         failures += assert_text_visible(session, "install submenu", "Antigravity IDE")
+        failures += assert_text_visible(session, "install submenu", "Install IDE Extensions")
         failures += assert_text_visible(session, "install submenu", "Antigravity CLI (agy)")
 
         # Navigate down through all install options
-        for i, expected in enumerate(["Google Antigravity  →", "Antigravity IDE  →", "Antigravity CLI (agy)  →"]):
+        for i, expected in enumerate([
+            "Google Antigravity  →",
+            "Antigravity IDE  →",
+            "Install IDE Extensions (VS Code, JetBrains, Zed)  →",
+            "Antigravity CLI (agy)  →"
+        ]):
             session.send(KEY_DOWN, settle=0.4)
             session.snapshot_label(f"install submenu DOWN #{i+1}")
             failures += assert_no_tearing(session, f"install submenu DOWN #{i+1}")
             failures += assert_option_highlighted(session, f"install submenu DOWN #{i+1}", expected)
 
         # Go back up to "Back" and press Enter
-        for _ in range(3):
+        for _ in range(4):
             session.send(KEY_UP, settle=0.3)
         session.send(KEY_ENTER, settle=1.5)
 
