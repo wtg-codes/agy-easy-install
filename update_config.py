@@ -1,6 +1,7 @@
 import sys
 import json
 import re
+import os
 
 def main():
     if len(sys.argv) < 3:
@@ -94,6 +95,18 @@ def main():
 
     with open(sys.argv[2], "w") as f:
         f.write(config)
+
+    # 6. Keep Archify diagram sources in sync with latest component versions
+    diagram_source = "docs/diagrams/sources/installer-architecture.architecture.json"
+    if os.path.exists(diagram_source):
+        with open(diagram_source, "r") as f:
+            diag_content = f.read()
+        box_data = data.get("agy-box", {})
+        if box_data:
+            latest_box = box_data.get("latest", "v0.6.0")
+            diag_content = re.sub(r'agy-box v[0-9.]+(?:-[a-zA-Z0-9.]+)?', f'agy-box {latest_box}', diag_content)
+        with open(diagram_source, "w") as f:
+            f.write(diag_content)
 
     print(f"Updated {sys.argv[2]} successfully with IDE {latest_ide_ver}.")
 
