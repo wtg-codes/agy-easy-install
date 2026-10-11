@@ -1,6 +1,6 @@
 # TODO — AGY Easy Install
 
-> **Last updated:** 2026-05-20 · Branch: `feature/jules-and-bootstrapping`
+> **Last updated:** 2026-10-10 · Branch: `main`
 > This file is the single source of truth for all pending work.
 > It MUST be updated at the end of every coding session.
 
@@ -24,6 +24,8 @@
 - [x] CLI flags for IDE extensions: `--install-vscode`, `--install-jetbrains`, `--install-zed`, `--install-extensions`
 - [x] ChromeOS Crostini container support for sandbox prerequisites and tarball installation
 - [x] Upstream sync and version tracking for `agy-box` releases (v0.6.0) in scraper and config
+- [x] Jules CLI bootstrapping (`--install-jules`) with zero-dependency Node.js and Homebrew setup
+- [x] `agy-box` v0.6.0 multi-arch container integration (`--install-agy-box`, `--install-sandbox`)
 
 ### Terminal UI
 - [x] Ephemeral `gum` bootstrap (download → temp dir → cleanup)
@@ -38,6 +40,7 @@
 - [x] `--version`, `--help`, `--remove`, `--verbose`, `--quiet`, `--json`
 - [x] `--auto` headless auto-install (CI/provisioning)
 - [x] `--install-brew`, `--install-repo`, `--install-tarball`, `--install-cli` direct flags
+- [x] `--install-jules`, `--install-sandbox`, `--install-agy-box` flags
 - [x] `--demo-ui` sandbox mode
 
 ### Security & Integrity
@@ -46,10 +49,12 @@
 - [x] `curl -fSsL` everywhere (never swallows HTTP errors)
 - [x] `textContent` only in landing page (no `innerHTML` XSS risk)
 - [x] `trap ... EXIT` cleanup for all temp files
+- [x] Contributor Covenant 2.1 Code of Conduct (`CODE_OF_CONDUCT.md`)
 
 ### CI/CD
 - [x] `nightly-update.yml` — scrape URL, validate, update script, lint, commit
 - [x] Fix nightly scraper to handle semantic versioning and 'Antigravity IDE' filename matching for version 2+
+- [x] Dual Release Distribution Channels: Stable `v0.3.0` and rolling `nightly` pre-release with checksums and `.github/workflows/release.yml`
 - [x] `deploy-pages.yml` — GitHub Pages from `docs/`
 - [x] Pinned action versions (`checkout@v4`, `setup-python@v5`)
 - [x] `sed` uses `#` delimiter (safe for URLs)
@@ -64,17 +69,19 @@
 - [x] CONTRIBUTING.md with `src/` → `build.sh` workflow
 - [x] CHANGELOG.md
 - [x] Package architecture specifications (`package-antigravity-*.md`) for IDE, CLI, and SDK
+- [x] Platform architecture guides (`platform-linux.md`, `platform-macos.md`, `platform-crostini.md`, `platform-windows.md`)
+- [x] Platform & binary installation matrix (`platform-binary-matrix.md`)
 
 ### Testing
-- [x] 102-gate test suite across 8 phases
-- [x] Phase 0: Documentation bootstrap
-- [x] Phase 1: Scaffolding & hygiene
-- [x] Phase 2: Shell hardening + Homebrew
-- [x] Phase 3: Pipeline fixes
-- [x] Phase 4: Docs & polish
-- [x] Phase 5: Bundler & tooling
-- [x] Phase 6: Jules CLI & Bootstrapping
-- [x] Phase 7: IDE Extensions Support (VS Code, JetBrains, Zed)
+- [x] 102-gate test suite across 8 phases (all verified)
+- [x] Phase 0: Documentation bootstrap (5 gates)
+- [x] Phase 1: Scaffolding & hygiene (9 gates)
+- [x] Phase 2: Shell hardening + Homebrew (14 gates)
+- [x] Phase 3: Pipeline fixes (11 gates)
+- [x] Phase 4: Docs & polish (13 gates)
+- [x] Phase 5: Bundler & tooling (14 gates)
+- [x] Phase 6: Jules CLI & Bootstrapping (19 gates)
+- [x] Phase 7: IDE Extensions Support (VS Code, JetBrains, Zed - 17 gates)
 
 ---
 
@@ -170,8 +177,10 @@
 - [x] **Antigravity CLI Support (`agy`)**: Add helper functions and UI/headless flags to install/uninstall the new command-line helper tool.
 - [x] **Gemini CLI Support**: Rebranded and transitioned to Antigravity CLI (`agy`) as per developers blog post.
 - [x] **Multi-Product Re-Imagining**: Offer Google Antigravity IDE, CLI, and SDK in the install helper with version checking and custom version choosing.
-- [x] **Jules-cli Support**: Add installer support for the Jules-cli developer tool.
+- [x] **Jules-cli Support**: Add installer support for the Jules-cli developer tool (`--install-jules`).
 - [x] **Dependency Bootstrapping**: Automated Homebrew and Node.js/NPM bootstrapping for zero-dependency execution.
+- [x] **VS Code Extension Installer**: Automated installation of `Google.antigravity` extension across VS Code, VSCodium, and Code Insiders.
+- [x] **`agy-box` Sandbox Integration**: Multi-arch container image orchestration (`v0.6.0`) with `--install-agy-box` and `--install-sandbox`.
 - [ ] Localization / i18n (stretch goal)
 
 ---
@@ -181,7 +190,7 @@
 - [x] Review and update screenshots when menu text changes — verified all menu text matches between `src/40_ui.sh` and `docs/images/render.html`
 - [x] Keep landing page screenshots in sync with `render.html` — landing page (`docs/index.html`) references `main_menu.png`, `install_submenu.png`, `cleanup_submenu.png`; README references all 4 PNGs
 - [x] Regenerate screenshots: ran `python3 docs/images/capture.py` — 4 PNGs updated
-- [x] Gate count in implementation plan — verified: 77 gates across 7 phases
+- [x] Gate count in implementation plan — verified: 85 gates across 7 phases
 - [x] Architecture Documentation Deep-Dive — researched and enhanced all 10 platform and install architecture documents with tool skills and background logic.
 
 ---
@@ -189,17 +198,16 @@
 ## 🗺️ Master Plan Workstreams (Active Plan)
 
 ### Workstream 3: Repo Rename Migration (agv -> agy)
-- [ ] Create new GitHub repo `wtg-codes/agy-easy-install`
-- [ ] Sync git history and push to the new repository
-- [ ] Run bulk URL and string replacements across all script files (replace `agy-easy-install` with `agy-easy-install`)
-- [ ] Update documentation references and self-updater check URLs
-- [ ] Configure new GitHub Pages and trigger test CI run
-- [ ] Add deprecation warning banners to the old `agy-easy-install` and `agy-easy-install-ink` README files
-- [ ] Set up minimal redirect page in `docs/index.html` on the old repository, then archive the old repositories
+- [x] Create new GitHub repo `wtg-codes/agy-easy-install`
+- [x] Sync git history and push to the new repository
+- [x] Run bulk URL and string replacements across all script files (replace `agv-easy-install` with `agy-easy-install`)
+- [x] Update documentation references and self-updater check URLs
+- [x] Configure new GitHub Pages and trigger test CI run
+- [x] Add deprecation warning banners to the old `agv-easy-install` and `agv-easy-install-ink` README files
+- [x] Set up minimal redirect page in `docs/index.html` on the old repository, then archive the old repositories
 
 ### Workstream 4: Downstream Integration (agy-box)
 - [x] Rebase and finish integration testing on branch `feature/agy-box-install`
 - [x] Implement `agy-box-manager` script download lock strategy (pin to release tag vs fetching `main`)
 - [x] Integrate agy-box version tracking inside `versions.json`
 - [x] Implement error handling for Docker/Podman install failures, missing dependencies, or unsupported macOS environment blocks
-
