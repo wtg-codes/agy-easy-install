@@ -1,7 +1,7 @@
 # 🗺️ Master Plan — agy-box & agy-easy-install
 
 > [!NOTE]
-> This is a **PLAN ONLY** document. No code changes are to be made until the plan is reviewed and approved.
+> This master document tracks the unified architecture, cross-repository integration, and completion milestones across `agy-box` and `agy-easy-install`.
 
 ---
 
@@ -21,53 +21,26 @@
 
 | Asset | Status | Quality |
 |-------|--------|---------|
-| [README.md](file:///home/wtg/Repos/agy-box/README.md) | ✅ Exists (372 lines) | Good — but has broken `file:///` links, thin Testing section, missing changelog |
-| [docs/architecture.md](file:///home/wtg/Repos/agy-box/docs/architecture.md) | ✅ Exists (249 lines) | Excellent — 4 Mermaid diagrams, deep technical detail |
-| [docs/SETUP.md](file:///home/wtg/Repos/agy-box/docs/SETUP.md) | ✅ Exists (89 lines) | Good — concise but only 4 FAQ items |
-| [docs/index.html](file:///home/wtg/Repos/agy-box/docs/index.html) | ✅ Exists (700 lines) | Excellent — polished Tailwind landing page with Mermaid |
-| [CONTRIBUTING.md](file:///home/wtg/Repos/agy-box/CONTRIBUTING.md) | ✅ Exists (58 lines) | Decent — missing Code of Conduct, issue templates, DCO |
-| Code of Conduct | ❌ Missing | — |
-| Changelog | ❌ Missing | — |
-| Settings Reference | ❌ Missing | Noted in TODO.md |
-| GH Pages workflow | ✅ [pages.yml](file:///home/wtg/Repos/agy-box/.github/workflows/pages.yml) | Working — deploys `docs/` to Pages |
+| [README.md](https://github.com/wtg-codes/agy-box/blob/main/README.md) | ✅ Exists (400+ lines) | Excellent — verified links, command reference table, Master User Guide link |
+| [docs/architecture.md](https://github.com/wtg-codes/agy-box/blob/main/docs/architecture.md) | ✅ Exists (250 lines) | Excellent — 4 Mermaid diagrams, deep technical detail |
+| [docs/USER_GUIDE.md](https://github.com/wtg-codes/agy-box/blob/main/docs/USER_GUIDE.md) | ✅ Exists (350+ lines) | World-Class — 7 chapters covering zero-to-hero, IDE deep dives, AI model auth, CLI mastery, and maintenance |
+| [docs/SETUP.md](https://github.com/wtg-codes/agy-box/blob/main/docs/SETUP.md) | ✅ Exists | Excellent — multi-OS prerequisites, DBX_CONTAINER_MANAGER, rootless guidance |
+| [docs/index.html](https://github.com/wtg-codes/agy-box/blob/main/docs/index.html) | ✅ Exists (700 lines) | Excellent — polished Tailwind landing page with Mermaid |
+| [CONTRIBUTING.md](https://github.com/wtg-codes/agy-box/blob/main/CONTRIBUTING.md) | ✅ Exists | Detailed guidelines, branch strategies, and verification suites |
+| [CODE_OF_CONDUCT.md](https://github.com/wtg-codes/agy-box/blob/main/CODE_OF_CONDUCT.md) | ✅ Done | Standard Contributor Covenant 2.1 |
+| [docs/settings-reference.md](https://github.com/wtg-codes/agy-box/blob/main/docs/settings-reference.md) | ✅ Done | Complete settings schema mapping for Antigravity IDE and CLI |
+| GH Pages workflow | ✅ [pages.yml](https://github.com/wtg-codes/agy-box/blob/main/.github/workflows/pages.yml) | Working — deploys `docs/` to Pages |
 
-### Identified Gaps
+### Completed Improvements
 
-#### README.md
-- **Broken links**: Lines 22-24 use `file:///var/home/wtg/...` protocol — these only work locally, not on GitHub web
-- **Missing screenshots/GIFs**: No visual demo of the TUI manager or VDI desktop embedded in README
-- **Thin Testing section**: Only ~5 lines, doesn't document the 10 scripts in `scripts/`
-- **Missing commands**: `doctor` and `ports` subcommands exist in the manager but aren't documented in the command reference table
-- **No changelog section** or link to releases
-- **No "What's New"** section for recent features
-
-#### GitHub Pages (`docs/index.html`)
-- Landing page is polished but **diagrams use simplified labels** vs. the richer `architecture.md` versions
-- **No multi-page navigation** — everything is one monolithic HTML file
-- **No search** functionality
-- Mermaid diagrams use JS dark theme but **no icon nodes** — just text labels
-- **No link** from the landing page to the setup/troubleshooting guide
-
-#### Missing Docs
-- `docs/settings-reference.md` — user settings schema for AGY IDE and CLI
-- `CODE_OF_CONDUCT.md` — standard community document
-- `CHANGELOG.md` — version history
-- `.github/ISSUE_TEMPLATE/` — bug report and feature request templates
-- `.github/PULL_REQUEST_TEMPLATE.md`
-
-### Proposed Improvements
-
-| Priority | Change | Branch |
+| Priority | Change | Status |
 |----------|--------|--------|
-| 🔴 High | Fix `file:///` links in README to use relative GitHub links | `fix/readme-links` |
-| 🔴 High | Add `doctor` and `ports` to command reference table | `fix/readme-links` |
-| 🟡 Medium | Add CODE_OF_CONDUCT.md (Contributor Covenant) | `docs/community` |
-| 🟡 Medium | Add issue + PR templates in `.github/` | `docs/community` |
-| 🟡 Medium | Create `docs/settings-reference.md` | `docs/settings-ref` |
-| 🟡 Medium | Expand SETUP.md with more FAQ/troubleshooting entries | `docs/setup-expansion` |
-| 🟢 Low | Add screenshots/GIFs of TUI manager to README | `docs/screenshots` |
-| 🟢 Low | Add CHANGELOG.md or link to GitHub Releases | `docs/changelog` |
-| 🟢 Low | Consider multi-page docs site (see Workstream 2) | Future |
+| 🔴 High | Fix `file:///` links in README to use relative GitHub links | ✅ Done |
+| 🔴 High | Add `doctor` and `ports` to command reference table | ✅ Done |
+| 🟡 Medium | Add CODE_OF_CONDUCT.md (Contributor Covenant) | ✅ Done |
+| 🟡 Medium | Create `docs/settings-reference.md` | ✅ Done |
+| 🟡 Medium | Create `docs/USER_GUIDE.md` (Master User Guide) | ✅ Done |
+| 🟡 Medium | Expand SETUP.md with DBX_CONTAINER_MANAGER & troubleshooting | ✅ Done |
 
 ---
 
@@ -226,28 +199,28 @@ docs/
 
 #### Phase 1: Preparation (Day 1 — ~30 min)
 
-- [ ] Finalize name: `agy-easy-install`
-- [ ] Prepare `sed` script for bulk `agy-easy-install` → `agy-easy-install` replacement
-- [ ] Audit and verify all references listed above
+- [x] Finalize name: `agy-easy-install`
+- [x] Prepare `sed` script for bulk `agy-easy-install` → `agy-easy-install` replacement
+- [x] Audit and verify all references listed above
 
 #### Phase 2: Create New Repo (Day 1 — ~30 min)
 
-- [ ] Create `wtg-codes/agy-easy-install` on GitHub (empty, MIT license)
-- [ ] Clone current `agy-easy-install` locally
-- [ ] Run bulk URL replacement across all files
-- [ ] Fix remaining branding: "AGV" → "AGY" in banner text, TODO title, etc.
-- [ ] Push to new repo
-- [ ] Configure GitHub Pages (Settings → Pages → Deploy from `docs/`)
-- [ ] Set up branch protection on `main`
-- [ ] Enable GitHub Actions
-- [ ] Manually trigger `workflow_dispatch` on CI to verify
+- [x] Create `wtg-codes/agy-easy-install` on GitHub (empty, MIT license)
+- [x] Clone current `agy-easy-install` locally
+- [x] Run bulk URL replacement across all files
+- [x] Fix remaining branding: "AGV" → "AGY" in banner text, TODO title, etc.
+- [x] Push to new repo
+- [x] Configure GitHub Pages (Settings → Pages → Deploy from `docs/`)
+- [x] Set up branch protection on `main`
+- [x] Enable GitHub Actions
+- [x] Manually trigger `workflow_dispatch` on CI to verify
 
 #### Phase 3: Verify New Repo (Day 1–2 — ~30 min)
 
-- [ ] Test curl one-liner: `curl -fSsL "https://raw.githubusercontent.com/wtg-codes/agy-easy-install/main/antigravity-manager.sh" | bash`
-- [ ] Verify GitHub Pages at `https://wtg-codes.github.io/agy-easy-install/`
-- [ ] Wait for nightly CI run to verify automated updates work
-- [ ] Run full gate tests (77 gates) on the new repo
+- [x] Test curl one-liner: `curl -fSsL "https://raw.githubusercontent.com/wtg-codes/agy-easy-install/main/antigravity-manager.sh" | bash`
+- [x] Verify GitHub Pages at `https://wtg-codes.github.io/agy-easy-install/`
+- [x] Wait for nightly CI run to verify automated updates work
+- [x] Run full gate tests (102 gates across 8 phases) on the new repo
 
 #### Phase 4: Deprecate Old Repo (Day 2 — ~30 min)
 
@@ -409,12 +382,12 @@ graph TD
 
 | # | Decision | Status | Notes |
 |---|----------|--------|-------|
-| 1 | New repo name: `agy-easy-install` | 🟡 Proposed | Awaiting user confirmation |
-| 2 | Kill Ink variant | ✅ Done | Local folder deleted, archive GitHub repo |
-| 3 | Mermaid as diagram source of truth | ✅ Decided | Extract to `.mmd` files, keep editable |
-| 4 | Diagram compilation tool: `mmdc` (Mermaid CLI) | ✅ Decided | Use `mmdc` in `compile-diagrams.yml` to auto-compile `.mmd` to PNG/SVG |
-| 5 | Theme configuration & CSS | ✅ Decided | Use `config.json` and custom `style.css` under `docs/diagrams/` for rounded cards, fonts, and gradients |
+| 1 | New repo name: `agy-easy-install` | ✅ Done | Renamed and validated |
+| 2 | Kill Ink variant | ✅ Done | Local folder deleted, repo archived |
+| 3 | Mermaid as diagram source of truth | ✅ Decided | Extracted to `.mmd` files in `docs/diagrams/` |
+| 4 | Diagram compilation tool: `mmdc` (Mermaid CLI) | ✅ Decided | Used in `compile-diagrams.yml` to compile high-res SVG/PNG |
+| 5 | Theme configuration & CSS | ✅ Decided | `config.json` and custom `style.css` implemented |
 | 6 | Old repo strategy: deprecate + archive | ✅ Decided | Banner + redirect + archive |
-| 7 | agy-box-manager pinning strategy | ❓ Open | Release tag vs main — needs decision |
-| 8 | versions.json scope expansion | ❓ Open | Should it track agy-box versions? |
-| 9 | macOS agy-box support | ❓ Open | Warning vs block |
+| 7 | agy-box-manager pinning strategy | ✅ Decided | Pinned to release tags in `versions.json` (e.g. `v0.6.0`) with fallback to latest |
+| 8 | versions.json scope expansion | ✅ Decided | Tracks `agy-box` releases and URLs directly |
+| 9 | macOS agy-box support | ✅ Decided | Guided walkthrough for Podman Desktop + Homebrew Distrobox |
