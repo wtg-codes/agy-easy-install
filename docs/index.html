@@ -426,6 +426,65 @@
                     </a>
                 </div>
 
+                <!-- Interactive Diagrams (Archify) -->
+                <div class="bg-slate-950/60 border border-slate-700/80 rounded-2xl overflow-hidden p-4 sm:p-5 space-y-4">
+                    <div class="flex items-center justify-between flex-wrap gap-3">
+                        <div class="flex items-center gap-2">
+                            <span class="inline-flex items-center justify-center p-1.5 bg-indigo-500/20 text-indigo-400 rounded-lg">
+                                <i data-lucide="network" class="w-4 h-4"></i>
+                            </span>
+                            <div>
+                                <h4 class="text-sm font-bold text-white flex items-center gap-2">
+                                    Interactive Architectural Models
+                                    <span class="text-[10px] uppercase font-semibold px-2 py-0.5 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded-full">Archify Live</span>
+                                </h4>
+                                <p class="text-slate-400 text-xs">Explore deep system topology, execution flow, and component relationships in real time.</p>
+                            </div>
+                        </div>
+
+                        <!-- Top actions: Fullscreen / New Tab & agy-box Cross-link -->
+                        <div class="flex items-center gap-2">
+                            <a id="diagram-fullscreen-btn" href="diagrams/interactive/installer-architecture.html" target="_blank" rel="noopener noreferrer" class="no-print inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-200 hover:text-white bg-slate-800 hover:bg-slate-700 border border-slate-600 rounded-lg transition-colors" aria-label="Explore Active Diagram in Fullscreen or New Tab">
+                                <i data-lucide="maximize-2" class="w-3.5 h-3.5 text-indigo-400"></i>
+                                <span>Fullscreen / New Tab</span>
+                            </a>
+                            <a href="https://wtg-codes.github.io/agy-box/diagrams/interactive/system-topology.html" target="_blank" rel="noopener noreferrer" class="no-print inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-amber-300 hover:text-amber-200 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 rounded-lg transition-colors" aria-label="Explore agy-box Live Interactive Diagram">
+                                <i data-lucide="box" class="w-3.5 h-3.5 text-amber-400"></i>
+                                <span class="hidden sm:inline">agy-box Live Topology</span>
+                                <i data-lucide="external-link" class="w-3 h-3 text-amber-400/80"></i>
+                            </a>
+                        </div>
+                    </div>
+
+                    <!-- Diagram Switcher Tabs -->
+                    <div class="flex items-center gap-2 border-b border-slate-800 pb-2">
+                        <button id="tab-arch" onclick="switchDiagram('installer-architecture')" class="px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors flex items-center gap-1.5 bg-indigo-600 text-white shadow-sm" aria-label="Switch to Installer Architecture Diagram">
+                            <i data-lucide="layers" class="w-3.5 h-3.5"></i>
+                            <span>Installer Architecture</span>
+                        </button>
+                        <button id="tab-flow" onclick="switchDiagram('install-flow')" class="px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors flex items-center gap-1.5 text-slate-400 hover:text-slate-200 hover:bg-slate-800/80" aria-label="Switch to Installation Flow Workflow Diagram">
+                            <i data-lucide="git-commit" class="w-3.5 h-3.5"></i>
+                            <span>Installation Flow</span>
+                        </button>
+                    </div>
+
+                    <!-- Interactive Diagram Frame Container -->
+                    <div class="relative w-full rounded-xl overflow-hidden border border-slate-700/60 bg-slate-900/90 shadow-inner h-[520px]">
+                        <iframe id="diagram-frame" src="diagrams/interactive/installer-architecture.html?embed=1" title="Interactive Archify Diagram" class="w-full h-full border-0" loading="lazy"></iframe>
+                    </div>
+
+                    <div class="flex items-center justify-between text-[11px] text-slate-500 pt-1">
+                        <div class="flex items-center gap-1.5">
+                            <i data-lucide="mouse-pointer" class="w-3.5 h-3.5 text-indigo-400"></i>
+                            <span>Pan, zoom, and click nodes to view specifications and source evidence.</span>
+                        </div>
+                        <a href="https://github.com/wtg-codes/agy-easy-install/tree/main/docs/diagrams/sources" target="_blank" rel="noopener noreferrer" class="hover:text-slate-400 inline-flex items-center gap-1">
+                            <span>View Archify JSON Sources</span>
+                            <i data-lucide="external-link" class="w-3 h-3"></i>
+                        </a>
+                    </div>
+                </div>
+
                 <!-- Strategic Architecture & Plans -->
                 <div>
                     <h4 class="text-xs uppercase tracking-wider font-semibold text-indigo-400 mb-3 flex items-center gap-2">
@@ -674,6 +733,28 @@
             } catch (err) {
                 sourceEl.textContent = 'Error loading source code. Please visit GitHub to view it.';
                 console.error(err);
+            }
+        }
+
+        function switchDiagram(type) {
+            const frame = document.getElementById('diagram-frame');
+            const fullBtn = document.getElementById('diagram-fullscreen-btn');
+            const tabArch = document.getElementById('tab-arch');
+            const tabFlow = document.getElementById('tab-flow');
+
+            if (type === 'installer-architecture') {
+                frame.src = 'diagrams/interactive/installer-architecture.html?embed=1';
+                fullBtn.href = 'diagrams/interactive/installer-architecture.html';
+                tabArch.className = 'px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors flex items-center gap-1.5 bg-indigo-600 text-white shadow-sm';
+                tabFlow.className = 'px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors flex items-center gap-1.5 text-slate-400 hover:text-slate-200 hover:bg-slate-800/80';
+            } else {
+                frame.src = 'diagrams/interactive/install-flow.html?embed=1';
+                fullBtn.href = 'diagrams/interactive/install-flow.html';
+                tabFlow.className = 'px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors flex items-center gap-1.5 bg-indigo-600 text-white shadow-sm';
+                tabArch.className = 'px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors flex items-center gap-1.5 text-slate-400 hover:text-slate-200 hover:bg-slate-800/80';
+            }
+            if (window.lucide) {
+                window.lucide.createIcons();
             }
         }
     </script>

@@ -113,6 +113,9 @@ The installer uses a hierarchical menu system — pick a category, then choose y
 
 ## 🏗️ Architecture
 
+> 🚀 **[Explore Interactive Installer Architecture (Live Canvas)](https://wtg-codes.github.io/agy-easy-install/diagrams/interactive/installer-architecture.html)**  
+> 🚀 **[Explore Interactive Installation Flow (Live Canvas)](https://wtg-codes.github.io/agy-easy-install/diagrams/interactive/install-flow.html)**
+
 ```mermaid
 graph TD
     A["🖥️ User Terminal"] -->|"curl \| bash"| B("antigravity-manager.sh")

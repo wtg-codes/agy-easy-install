@@ -28,6 +28,9 @@ The containerized sandbox utilizes an immutable OCI image published to the GitHu
 
 ## Architecture Flow
 
+> 🚀 **[Explore Interactive Installer Architecture (Live Canvas)](https://wtg-codes.github.io/agy-easy-install/diagrams/interactive/installer-architecture.html)**  
+> 🚀 **[Explore Interactive Installation Flow (Live Canvas)](https://wtg-codes.github.io/agy-easy-install/diagrams/interactive/install-flow.html)**
+
 The following diagram illustrates how `antigravity-manager.sh` orchestrates prerequisite detection, downloads the release-pinned manager, provisions the container, and bootstraps configuration:
 
 ```mermaid

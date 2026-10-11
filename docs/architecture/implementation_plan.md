@@ -8,6 +8,9 @@
 
 ## Architecture Overview
 
+> 🚀 **[Explore Interactive Installer Architecture (Live Canvas)](https://wtg-codes.github.io/agy-easy-install/diagrams/interactive/installer-architecture.html)**  
+> 🚀 **[Explore Interactive Installation Flow (Live Canvas)](https://wtg-codes.github.io/agy-easy-install/diagrams/interactive/install-flow.html)**
+
 ```
 ┌─────────────────────────────────────────────────────┐
 │  src/                                               │
