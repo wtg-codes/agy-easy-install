@@ -5,6 +5,20 @@ Format follows [Keep a Changelog](https://keepachangelog.com/).
 
 ---
 
+## [0.3.0] — 2026-10-10
+
+### Added
+- **Dual Release Distribution Channels:** Introduced official Stable releases on `v*` tags (`releases/latest`) alongside automated rolling Nightly pre-releases (`releases/download/nightly/`) with SHA-256 integrity checksums.
+- **Release Automation Workflow (`.github/workflows/release.yml`):** Automatically executes all 85 phase gates, bundles `antigravity-manager.sh`, generates `SHA256SUMS`, and publishes GitHub Releases on `v*` tags.
+- **Nightly Pre-Release Deployment:** Enhanced `nightly-update.yml` to automatically publish and update the rolling `nightly` pre-release with newly scraped Google Antigravity binary URLs and hashes.
+- **Jules CLI Bootstrapping:** Added `--install-jules` argument and interactive wizard integration to bootstrap the Jules CLI agent orchestrator with automatic Homebrew/Node.js dependencies.
+- **`agy-box` Sandbox Integration:** Added `--install-sandbox` and `--install-agy-box` flags to provision the multi-arch `ghcr.io/wtg-codes/agy-box` Distrobox developer sandbox.
+- **ChromeOS Crostini Compatibility:** Added detection and specialized terminal/desktop path support for ChromeOS Linux containers.
+- **VS Code Extension Installer:** Added automated detection and installation of Antigravity IDE and companion VS Code extensions.
+
+### Fixed
+- **Nightly Scraper Cache Truncation:** Fixed shell output redirection `>` truncating `versions.json` before Python could read cached hashes, and handled uninitialized `old_data` safely.
+
 ## [0.2.14] — 2026-05-20
 
 ### Added
