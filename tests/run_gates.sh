@@ -150,6 +150,12 @@ gate_4() {
     check "4.G11 Roadmap"                      "grep -qi 'roadmap' README.md"
     check "4.G12 Scope claim fixed"            "! grep -qi 'exclusively on Ubuntu' README.md"
     check "4.G13 Changelog"                    "grep -qi 'changelog' README.md"
+
+    # Interactive Archify Diagrams & CI
+    check "4.G14 Archify JSON sources exist"   "test -f docs/diagrams/sources/installer-architecture.architecture.json && test -f docs/diagrams/sources/install-flow.workflow.json"
+    check "4.G15 Archify HTML bundles exist"   "test -s docs/diagrams/interactive/installer-architecture.html && test -s docs/diagrams/interactive/install-flow.html"
+    check "4.G16 Archify embedded in landing"  "grep -q 'installer-architecture.html?embed=1' $PAGE && grep -q 'install-flow.html?embed=1' $PAGE"
+    check "4.G17 Diagram compile CI exists"    "test -f .github/workflows/compile-diagrams.yml"
 }
 
 # =============================================================================

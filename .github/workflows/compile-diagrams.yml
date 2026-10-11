@@ -1,0 +1,40 @@
+name: Compile Diagrams
+
+on:
+  push:
+    paths:
+      - 'docs/diagrams/sources/**'
+      - '.github/workflows/compile-diagrams.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  compile:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Create interactive output directory
+        run: mkdir -p docs/diagrams/interactive
+
+      - name: Render Archify Diagrams
+        run: |
+          if [ ! -d /tmp/archify ]; then
+            git clone --depth 1 https://github.com/tt-a1i/archify /tmp/archify
+          fi
+          node /tmp/archify/archify/bin/archify.mjs render architecture docs/diagrams/sources/installer-architecture.architecture.json docs/diagrams/interactive/installer-architecture.html
+          node /tmp/archify/archify/bin/archify.mjs render workflow docs/diagrams/sources/install-flow.workflow.json docs/diagrams/interactive/install-flow.html
+
+      - name: Commit and push changes
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "chore: auto-compile diagrams to interactive HTML [skip ci]"
+          file_pattern: "docs/diagrams/interactive/*"

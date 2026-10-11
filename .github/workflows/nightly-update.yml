@@ -78,11 +78,25 @@ jobs:
       - name: Lint script
         run: shellcheck -e SC1091,SC2162 antigravity-manager.sh
 
+      - name: Set up Node.js for diagram compilation
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Recompile Archify Diagrams
+        run: |
+          if [ ! -d /tmp/archify ]; then
+            git clone --depth 1 https://github.com/tt-a1i/archify /tmp/archify
+          fi
+          mkdir -p docs/diagrams/interactive
+          node /tmp/archify/archify/bin/archify.mjs render architecture docs/diagrams/sources/installer-architecture.architecture.json docs/diagrams/interactive/installer-architecture.html
+          node /tmp/archify/archify/bin/archify.mjs render workflow docs/diagrams/sources/install-flow.workflow.json docs/diagrams/interactive/install-flow.html
+
       - name: Commit and push changes
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
-          git add src/00_config.sh antigravity-manager.sh README.md docs/index.html versions.json
+          git add src/00_config.sh antigravity-manager.sh README.md docs/index.html versions.json docs/diagrams/sources/ docs/diagrams/interactive/
           if ! git diff --cached --quiet; then
             git commit -m "chore: nightly update of Antigravity download URL
 
