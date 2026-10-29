@@ -114,6 +114,28 @@
     }
   },
   "cli": {
+    "1.4.9": {
+      "linux_amd64": {
+        "url": "https://storage.googleapis.com/antigravity-public/antigravity-cli/1.4.9-4962164969177088/linux-x64/cli_linux_x64.tar.gz",
+        "sha512": "96a259b7475ae70a5b002ea8a83b804bba9b6ad2171af0cd0839b3959d9e6046ba36e181bc2d5597522aeceaacc06023564c46232fdb958f26f8c72267d9f0fd"
+      },
+      "darwin_arm64": {
+        "url": "https://storage.googleapis.com/antigravity-public/antigravity-cli/1.4.9-4962164969177088/darwin-arm/cli_mac_arm64.tar.gz",
+        "sha512": "d7d83634b0c236659ee530f448e9aa1c5dc00a010631edd72bf11a920006892b319be7e51c8defae226f204660544e4d915bb5e733f1ceb50c065f4cbe45d3d0"
+      },
+      "darwin_amd64": {
+        "url": "https://storage.googleapis.com/antigravity-public/antigravity-cli/1.4.9-4962164969177088/darwin-x64/cli_mac_x64.tar.gz",
+        "sha512": "cd4df27844a6585da9af155fef02b344deb18213910cff27ddb7ea54411358318a50901a3d348997f67744c31e64fdda7ead3ab48e2c66fc10510b4d8ae9843f"
+      },
+      "windows_amd64": {
+        "url": "https://storage.googleapis.com/antigravity-public/antigravity-cli/1.4.9-4962164969177088/windows-x64/cli_windows_x64.exe",
+        "sha512": "d36b8104371fc07b6850f064f882e1ff4851d511305cc540178627884546de54f7a665903376a7e61e2df78741837dba96af280b99e0b747ed5a1d036ca8fde7"
+      },
+      "windows_arm64": {
+        "url": "https://storage.googleapis.com/antigravity-public/antigravity-cli/1.4.9-4962164969177088/windows-arm/cli_windows_arm64.exe",
+        "sha512": "a094ce005692f26244b2019f6c58a0c1f01b9a8999fba843189b3dca87b6922f388a164e916134221456896f53ed9116d057a36973ee5d4fb3ab64ae2e32ec88"
+      }
+    },
     "1.4.8": {
       "linux_amd64": {
         "url": "https://storage.googleapis.com/antigravity-public/antigravity-cli/1.4.8-5447777392656384/linux-x64/cli_linux_x64.tar.gz",
@@ -201,32 +223,10 @@
         "url": "https://storage.googleapis.com/antigravity-public/antigravity-cli/1.4.5-4952523841339392/windows-arm/cli_windows_arm64.exe",
         "sha512": "2d002da52a693746c33243e247663aefd68a9609cc89fb066b4b65471ac464f3e8e05c7b951d2eeaebcd9f7ee2dddba996343952ad35fe99a591bcefa9807dc3"
       }
-    },
-    "1.4.4": {
-      "linux_amd64": {
-        "url": "https://storage.googleapis.com/antigravity-public/antigravity-cli/1.4.4-4783783166214144/linux-x64/cli_linux_x64.tar.gz",
-        "sha512": "7ce149d350344c1046c7b59b6659bcc5d659f351bf3a07c6c085887d93427ceb89d927752e4ccd0844b53ffb91d33d6a49f72835ceb276c7cffdd13cfb8023b8"
-      },
-      "darwin_arm64": {
-        "url": "https://storage.googleapis.com/antigravity-public/antigravity-cli/1.4.4-4783783166214144/darwin-arm/cli_mac_arm64.tar.gz",
-        "sha512": "cd12c4609b8b44aa94c2fe50eed8f3884f1ace506584630cbffcff428b0d557b883db0cc5fb9cfcc92528829c519857829070590c15ed6d673adf1916e609111"
-      },
-      "darwin_amd64": {
-        "url": "https://storage.googleapis.com/antigravity-public/antigravity-cli/1.4.4-4783783166214144/darwin-x64/cli_mac_x64.tar.gz",
-        "sha512": "aec91417bde35e690d55af4e1ae4ff621fdd67d6b68a7a9ab50ebb506bf99d6b8a3b40395a385a42f8cf97109df22febb67dbde5ca498e75cbbca57a0dadc9ac"
-      },
-      "windows_amd64": {
-        "url": "https://storage.googleapis.com/antigravity-public/antigravity-cli/1.4.4-4783783166214144/windows-x64/cli_windows_x64.exe",
-        "sha512": "40d73598e36919f4a5c0abf15a1ce7677cbd7854b3eaa10d77be1d1354ce9730a54feee6d04ad311d27597561f952d65fa0bbf156131e72f4cc528c22ab05462"
-      },
-      "windows_arm64": {
-        "url": "https://storage.googleapis.com/antigravity-public/antigravity-cli/1.4.4-4783783166214144/windows-arm/cli_windows_arm64.exe",
-        "sha512": "6160ebce6faecbf3ed84471ba850978e66e9336700579c1f116d36c681d820a1948309bdf176d0ff24dceb4a7e941215c61697555a928ec4b0d6454bdc8cefa3"
-      }
     }
   },
   "sdk": {
-    "latest": "0.1.22",
+    "latest": "0.1.23",
     "versions": [
       "0.1.9",
       "0.1.8",
@@ -235,6 +235,7 @@
       "0.1.5",
       "0.1.4",
       "0.1.3",
+      "0.1.23",
       "0.1.22",
       "0.1.21",
       "0.1.20",
