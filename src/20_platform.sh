@@ -216,6 +216,12 @@ detect_platform() {
             local MILESTONE=""
             MILESTONE=$(cat /dev/.cros_milestone 2>/dev/null || echo "Unknown")
             DISTRO_PRETTY="ChromeOS Crostini M${MILESTONE} (${DISTRO_PRETTY})"
+        elif [ -d /mnt/shared ] && { [ "$(whoami 2>/dev/null)" = "droid" ] || grep -qi "avf" /proc/version /proc/cmdline 2>/dev/null; }; then
+            PLATFORM="GoogleBook"
+            DISTRO_PRETTY="GoogleBook Android 16 AVF (${DISTRO_PRETTY})"
+        elif [ "$ARCH" = "aarch64" ] && grep -qiE "DGX Spark|Grace Blackwell|GB10" /proc/device-tree/model /sys/devices/virtual/dmi/id/product_name /etc/os-release 2>/dev/null; then
+            PLATFORM="DGX-Spark"
+            DISTRO_PRETTY="NVIDIA DGX Spark GB10 (${DISTRO_PRETTY})"
         fi
 
         if command -v apt >/dev/null 2>&1; then HAS_APT="yes"; fi
