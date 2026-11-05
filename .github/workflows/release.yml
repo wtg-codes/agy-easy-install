@@ -12,20 +12,15 @@ permissions:
 jobs:
   publish-release:
     name: Build & Publish Release
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, Linux, ARM64, dgx-spark, agy-easy-install]
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Setup Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.12'
-
       - name: Install dependencies
         run: |
-          pip install -r requirements.txt
-          sudo apt-get update && sudo apt-get install -y shellcheck
+          python3 -m pip install --user --break-system-packages -r requirements.txt 2>/dev/null || pip3 install -r requirements.txt || true
+          command -v shellcheck >/dev/null 2>&1 || (sudo -n apt-get update && sudo -n apt-get install -y shellcheck) || true
 
       - name: Run Phase Gate Tests
         run: bash tests/run_gates.sh --phase all

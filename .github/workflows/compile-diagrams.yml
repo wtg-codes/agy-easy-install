@@ -12,7 +12,7 @@ permissions:
 
 jobs:
   compile:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, Linux, ARM64, dgx-spark, agy-easy-install]
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4

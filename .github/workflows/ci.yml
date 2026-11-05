@@ -8,28 +8,15 @@ on:
 
 jobs:
   gate-tests:
-    name: Run Phase Gates (${{ matrix.os }})
-    runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        os: [ubuntu-latest, macos-latest]
-    
+    name: Run Phase Gates (DGX Spark ARM64 Self-Hosted)
+    runs-on: [self-hosted, Linux, ARM64, dgx-spark, agy-easy-install]
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Setup Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.12'
-
-      - name: Install shellcheck (Ubuntu)
-        if: runner.os == 'Linux'
-        run: sudo apt-get update && sudo apt-get install -y shellcheck
-
-      - name: Install shellcheck (macOS)
-        if: runner.os == 'macOS'
-        run: brew install shellcheck || true
+      - name: Install shellcheck
+        run: command -v shellcheck >/dev/null 2>&1 || (sudo -n apt-get update && sudo -n apt-get install -y shellcheck) || true
 
       - name: Run build script
         run: ./build.sh

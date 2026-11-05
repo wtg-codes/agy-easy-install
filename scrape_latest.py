@@ -19,6 +19,7 @@ IDE_TARGETS = ["LINUX_X64", "MAC_X64", "MAC_ARM64", "WIN_X64", "WIN_ARM64"]
 
 CLI_PLATFORMS = {
     "linux_amd64": ("linux-x64", "cli_linux_x64.tar.gz"),
+    "linux_arm64": ("linux-arm", "cli_linux_arm64.tar.gz"),
     "darwin_arm64": ("darwin-arm", "cli_mac_arm64.tar.gz"),
     "darwin_amd64": ("darwin-x64", "cli_mac_x64.tar.gz"),
     "windows_amd64": ("windows-x64", "cli_windows_x64.exe"),
@@ -26,6 +27,9 @@ CLI_PLATFORMS = {
 }
 
 DEFAULT_AGY_BOX = {
+    "nightly": {
+        "url": "https://raw.githubusercontent.com/wtg-codes/agy-box/main/agy-box-manager"
+    },
     "v0.6.0": {
         "url": "https://raw.githubusercontent.com/wtg-codes/agy-box/v0.6.0/agy-box-manager"
     },

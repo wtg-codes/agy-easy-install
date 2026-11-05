@@ -10,7 +10,7 @@ permissions:
 
 jobs:
   update-url:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, Linux, ARM64, dgx-spark, agy-easy-install]
     env:
       LATEST_URL: ''
       NEW_SHA: ''
@@ -19,20 +19,15 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.x'
-
       - name: Install dependencies
         run: |
-          pip install -r requirements.txt
-          sudo apt-get update -qq && sudo apt-get install -y -qq shellcheck
+          python3 -m pip install --user --break-system-packages -r requirements.txt 2>/dev/null || pip3 install -r requirements.txt || true
+          command -v shellcheck >/dev/null 2>&1 || (sudo -n apt-get update -qq && sudo -n apt-get install -y -qq shellcheck) || true
 
       - name: Scrape latest URL
         id: scrape
         run: |
-          python scrape_latest.py > versions.json.tmp && mv versions.json.tmp versions.json
+          python3 scrape_latest.py > versions.json.tmp && mv versions.json.tmp versions.json
           cat versions.json
           echo "### 🔍 Scraped Latest Versions" >> "$GITHUB_STEP_SUMMARY"
           echo '```json' >> "$GITHUB_STEP_SUMMARY"
@@ -46,7 +41,7 @@ jobs:
           echo "OLD_URL=$OLD_URL" >> "$GITHUB_ENV"
           
           # Patch config and rebuild
-          python update_config.py versions.json src/00_config.sh
+          python3 update_config.py versions.json src/00_config.sh
           ./build.sh
           
           # Extract URLs for patching
