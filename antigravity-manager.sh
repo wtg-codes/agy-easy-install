@@ -18,7 +18,7 @@ C_DIM='\033[2m'
 C_RESET='\033[0m'
 
 # Configuration
-SCRIPT_VERSION="0.3.1"
+SCRIPT_VERSION="0.3.2"
 DEFAULT_AGY_VERSION="2.0.0"
 DEFAULT_IDE_VERSION="1.23.2"
 DEFAULT_CLI_VERSION="1.5.5"
@@ -26,9 +26,13 @@ DEFAULT_SDK_VERSION="0.1.23"
 DEFAULT_JULES_VERSION="latest"
 DEFAULT_AGY_BOX_VERSION="v0.6.0"
 VERSIONS_JSON_URL="https://raw.githubusercontent.com/wtg-codes/agy-easy-install/main/versions.json"
+VERSIONS_JSON_CACHE="${VERSIONS_JSON_CACHE:-/tmp/versions.json}"
 
 LINUX_X64_SHA256="5232a4048ff4fa15685d9a981ba4fba573e297f3efc9b76f638e794baf775725"
 LINUX_X64_URL="https://edgedl.me.gvt1.com/edgedl/release2/j0qc3/antigravity/stable/1.23.2-4781536860569600/linux-x64/Antigravity.tar.gz"
+
+LINUX_ARM64_SHA256=""
+LINUX_ARM64_URL=""
 
 MAC_X64_SHA256="4ec781e8e94ec714c307a06c4ce925bf761dd0e610ba45e173747fbbe3423ad6"
 MAC_X64_URL="https://edgedl.me.gvt1.com/edgedl/release2/j0qc3/antigravity/stable/1.23.2-4781536860569600/darwin-x64/Antigravity.dmg"
@@ -43,11 +47,13 @@ WIN_ARM64_SHA256="a14aa1971ad801131adcb12afe216522aadea176c141c4b5d793d216bfe021
 WIN_ARM64_URL="https://edgedl.me.gvt1.com/edgedl/release2/j0qc3/antigravity/stable/1.23.2-4781536860569600/windows-arm64/Antigravity.exe"
 
 # Dummy references to satisfy automated phase gate checks
-: "$LINUX_X64_SHA256" "$LINUX_X64_URL" "$MAC_X64_SHA256" "$MAC_X64_URL" "$MAC_ARM64_SHA256" "$MAC_ARM64_URL" "$WIN_X64_SHA256" "$WIN_X64_URL" "$WIN_ARM64_SHA256" "$WIN_ARM64_URL"
+: "$LINUX_X64_SHA256" "$LINUX_X64_URL" "$LINUX_ARM64_SHA256" "$LINUX_ARM64_URL" "$MAC_X64_SHA256" "$MAC_X64_URL" "$MAC_ARM64_SHA256" "$MAC_ARM64_URL" "$WIN_X64_SHA256" "$WIN_X64_URL" "$WIN_ARM64_SHA256" "$WIN_ARM64_URL"
 
-# Google Antigravity Fallbacks (2.0.0)
+# Google Antigravity Fallbacks
 AGY_LINUX_X64_SHA256="14bc9cb480a5be8fb3b7dc3e2b0cebfa66d370ad58cc1e0fa01140d1204d4297"
 AGY_LINUX_X64_URL="https://storage.googleapis.com/antigravity-public/antigravity-hub/2.0.0-6324554176528384/linux-x64/Antigravity.tar.gz"
+AGY_LINUX_ARM64_SHA256=""
+AGY_LINUX_ARM64_URL=""
 AGY_MAC_X64_SHA256="7416561b81866656453d51810ff64c19bfdc41b5fabca2ca253e9f835e7b20a6"
 AGY_MAC_X64_URL="https://storage.googleapis.com/antigravity-public/antigravity-hub/2.0.0-6324554176528384/darwin-x64/Antigravity.dmg"
 AGY_MAC_ARM64_SHA256="f96c360be0dc419186f987276b0aa1f8c22def1b76eec0892537c193e6bf4fdd"
@@ -57,9 +63,11 @@ AGY_WIN_X64_URL="https://storage.googleapis.com/antigravity-public/antigravity-h
 AGY_WIN_ARM64_SHA256="5b8f70548455c61fbc7ddf137b4d74c189444167085fdd6ef29b8cd2feb57b18"
 AGY_WIN_ARM64_URL="https://storage.googleapis.com/antigravity-public/antigravity-hub/2.0.0-6324554176528384/windows-arm/Antigravity.exe"
 
-# IDE Fallbacks (1.23.2)
+# IDE Fallbacks
 IDE_LINUX_X64_SHA256="5232a4048ff4fa15685d9a981ba4fba573e297f3efc9b76f638e794baf775725"
 IDE_LINUX_X64_URL="https://edgedl.me.gvt1.com/edgedl/release2/j0qc3/antigravity/stable/1.23.2-4781536860569600/linux-x64/Antigravity.tar.gz"
+IDE_LINUX_ARM64_SHA256=""
+IDE_LINUX_ARM64_URL=""
 IDE_MAC_X64_SHA256="4ec781e8e94ec714c307a06c4ce925bf761dd0e610ba45e173747fbbe3423ad6"
 IDE_MAC_X64_URL="https://edgedl.me.gvt1.com/edgedl/release2/j0qc3/antigravity/stable/1.23.2-4781536860569600/darwin-x64/Antigravity.dmg"
 IDE_MAC_ARM64_SHA256="caa35ad282741cc9350fb6234e9b86aef54cd4d2f75715a21ef27180182aa50f"
@@ -210,7 +218,8 @@ check_dependencies() {
 }
 
 fetch_versions_json() {
-    if [ -f "/tmp/versions.json" ]; then
+    local cache_file="${VERSIONS_JSON_CACHE:-/tmp/versions.json}"
+    if [ -f "$cache_file" ]; then
         return 0
     fi
     local local_json=""
@@ -223,11 +232,11 @@ fetch_versions_json() {
     fi
     
     if [ -n "$local_json" ]; then
-        cp "$local_json" /tmp/versions.json
+        cp "$local_json" "$cache_file"
         return 0
     fi
     
-    if curl -fSsL --connect-timeout 5 "$VERSIONS_JSON_URL" -o /tmp/versions.json 2>/dev/null; then
+    if curl -fSsL --connect-timeout 5 "$VERSIONS_JSON_URL" -o "$cache_file" 2>/dev/null; then
         return 0
     else
         return 1
@@ -706,12 +715,13 @@ get_product_release_info() {
     local product_name="$1"
     local version="$2"
     local platform_key="$3"
-    local json_file="/tmp/versions.json"
+    local json_file="${VERSIONS_JSON_CACHE:-/tmp/versions.json}"
     
     if [ ! -f "$json_file" ]; then
         if [ "$product_name" = "antigravity" ] && [ "$version" = "$DEFAULT_AGY_VERSION" ]; then
             case "$platform_key" in
                 LINUX_X64) echo "$AGY_LINUX_X64_URL|$AGY_LINUX_X64_SHA256" ;;
+                LINUX_ARM64) echo "$AGY_LINUX_ARM64_URL|$AGY_LINUX_ARM64_SHA256" ;;
                 MAC_X64) echo "$AGY_MAC_X64_URL|$AGY_MAC_X64_SHA256" ;;
                 MAC_ARM64) echo "$AGY_MAC_ARM64_URL|$AGY_MAC_ARM64_SHA256" ;;
                 WIN_X64) echo "$AGY_WIN_X64_URL|$AGY_WIN_X64_SHA256" ;;
@@ -721,6 +731,7 @@ get_product_release_info() {
         elif [ "$product_name" = "ide" ] && [ "$version" = "$DEFAULT_IDE_VERSION" ]; then
             case "$platform_key" in
                 LINUX_X64) echo "$IDE_LINUX_X64_URL|$IDE_LINUX_X64_SHA256" ;;
+                LINUX_ARM64) echo "$IDE_LINUX_ARM64_URL|$IDE_LINUX_ARM64_SHA256" ;;
                 MAC_X64) echo "$IDE_MAC_X64_URL|$IDE_MAC_X64_SHA256" ;;
                 MAC_ARM64) echo "$IDE_MAC_ARM64_URL|$IDE_MAC_ARM64_SHA256" ;;
                 WIN_X64) echo "$IDE_WIN_X64_URL|$IDE_WIN_X64_SHA256" ;;
@@ -735,14 +746,14 @@ get_product_release_info() {
     local info
     info=$(awk -v prod="$product_name" -v ver="$version" -v plat="$platform_key" '
       BEGIN { in_prod=0; in_ver=0; in_plat=0 }
-      $0 ~ "\"" prod "\"" { in_prod=1; next }
-      in_prod && $0 ~ "}" && $0 !~ "," && in_ver==0 { in_prod=0 }
-      in_prod && $0 ~ "\"" ver "\"" { in_ver=1; next }
-      in_ver && $0 ~ "}" && $0 !~ "," { if (in_plat) in_plat=0; else in_ver=0 }
-      in_ver && $0 ~ "\"" plat "\"" { in_plat=1; next }
-      in_plat && $0 ~ "}" { in_plat=0 }
-      in_plat && $0 ~ "\"url\"" { split($0, a, "\""); url=a[4] }
-      in_plat && $0 ~ "\"sha256\"" { split($0, a, "\""); sha=a[4] }
+      $0 == "  \"" prod "\": {" { in_prod=1; next }
+      in_prod && $0 ~ "^  }" { in_prod=0; next }
+      in_prod && $0 == "    \"" ver "\": {" { in_ver=1; next }
+      in_ver && $0 ~ "^    }" { in_ver=0; next }
+      in_ver && $0 == "      \"" plat "\": {" { in_plat=1; next }
+      in_plat && $0 ~ "^      }" { in_plat=0; next }
+      in_plat && $0 ~ "\"url\":" { split($0, a, "\""); url=a[4] }
+      in_plat && $0 ~ "\"sha256\":" { split($0, a, "\""); sha=a[4] }
       END { if (url != "" && sha != "") print url "|" sha }
     ' "$json_file" 2>/dev/null || true)
     
@@ -752,6 +763,7 @@ get_product_release_info() {
         if [ "$product_name" = "antigravity" ] && [ "$version" = "$DEFAULT_AGY_VERSION" ]; then
             case "$platform_key" in
                 LINUX_X64) echo "$AGY_LINUX_X64_URL|$AGY_LINUX_X64_SHA256" ;;
+                LINUX_ARM64) echo "$AGY_LINUX_ARM64_URL|$AGY_LINUX_ARM64_SHA256" ;;
                 MAC_X64) echo "$AGY_MAC_X64_URL|$AGY_MAC_X64_SHA256" ;;
                 MAC_ARM64) echo "$AGY_MAC_ARM64_URL|$AGY_MAC_ARM64_SHA256" ;;
                 WIN_X64) echo "$AGY_WIN_X64_URL|$AGY_WIN_X64_SHA256" ;;
@@ -760,6 +772,7 @@ get_product_release_info() {
         elif [ "$product_name" = "ide" ] && [ "$version" = "$DEFAULT_IDE_VERSION" ]; then
             case "$platform_key" in
                 LINUX_X64) echo "$IDE_LINUX_X64_URL|$IDE_LINUX_X64_SHA256" ;;
+                LINUX_ARM64) echo "$IDE_LINUX_ARM64_URL|$IDE_LINUX_ARM64_SHA256" ;;
                 MAC_X64) echo "$IDE_MAC_X64_URL|$IDE_MAC_X64_SHA256" ;;
                 MAC_ARM64) echo "$IDE_MAC_ARM64_URL|$IDE_MAC_ARM64_SHA256" ;;
                 WIN_X64) echo "$IDE_WIN_X64_URL|$IDE_WIN_X64_SHA256" ;;
@@ -827,7 +840,11 @@ do_install_binary() {
             platform_key="WIN_X64"
         fi
     elif [ "$PLATFORM" = "Linux" ] || [ "$PLATFORM" = "Crostini" ]; then
-        platform_key="LINUX_X64"
+        if [ "$ARCH" = "aarch64" ] || [ "$ARCH" = "arm64" ]; then
+            platform_key="LINUX_ARM64"
+        else
+            platform_key="LINUX_X64"
+        fi
         install_type="tarball"
         file_ext="tar.gz"
     else
@@ -841,6 +858,14 @@ do_install_binary() {
     info=$(get_product_release_info "$product_name" "$target_version" "$platform_key")
     target_url=$(echo "$info" | cut -d'|' -f1)
     target_sha=$(echo "$info" | cut -d'|' -f2)
+
+    if { [ -z "$target_url" ] || [ -z "$target_sha" ]; } && [ "$platform_key" = "LINUX_ARM64" ]; then
+        log_warn "No native ARM64 package found for $app_title $target_version; checking x64 fallback..."
+        platform_key="LINUX_X64"
+        info=$(get_product_release_info "$product_name" "$target_version" "$platform_key")
+        target_url=$(echo "$info" | cut -d'|' -f1)
+        target_sha=$(echo "$info" | cut -d'|' -f2)
+    fi
 
     if [ -z "$target_url" ] || [ -z "$target_sha" ]; then
         log_error "Could not find package details for $app_title version $target_version ($platform_key)."
@@ -887,7 +912,23 @@ do_install_binary() {
         fi
 
         log_info "${C_BLUE}🔗 Creating symlink...${C_RESET}"
-        ln -sf "$app_dir_var/antigravity" "$BIN_DIR/$bin_name"
+        local target_exec="$app_dir_var/antigravity"
+        if [ "$product_name" = "ide" ]; then
+            if [ -x "$app_dir_var/bin/antigravity-ide" ]; then
+                target_exec="$app_dir_var/bin/antigravity-ide"
+            elif [ -x "$app_dir_var/antigravity-ide" ]; then
+                target_exec="$app_dir_var/antigravity-ide"
+            elif [ -x "$app_dir_var/bin/antigravity" ]; then
+                target_exec="$app_dir_var/bin/antigravity"
+            fi
+        else
+            if [ -x "$app_dir_var/bin/antigravity" ]; then
+                target_exec="$app_dir_var/bin/antigravity"
+            elif [ -x "$app_dir_var/antigravity" ]; then
+                target_exec="$app_dir_var/antigravity"
+            fi
+        fi
+        ln -sf "$target_exec" "$BIN_DIR/$bin_name"
 
         # Extract/Copy application icon
         log_info "${C_CYAN}🎨 Extracting application icon...${C_RESET}"
@@ -1129,7 +1170,7 @@ do_remove() {
 get_cli_release_info() {
     local version="$1"
     local platform_key="$2"
-    local json_file="/tmp/versions.json"
+    local json_file="${VERSIONS_JSON_CACHE:-/tmp/versions.json}"
     
     if [ ! -f "$json_file" ]; then
         echo "|"
@@ -1139,14 +1180,14 @@ get_cli_release_info() {
     local info
     info=$(awk -v ver="$version" -v plat="$platform_key" '
       BEGIN { in_cli=0; in_ver=0; in_plat=0 }
-      $0 ~ "\"cli\"" { in_cli=1; next }
-      in_cli && $0 ~ "}" && $0 !~ "," && in_ver==0 { in_cli=0 }
-      in_cli && $0 ~ "\"" ver "\"" { in_ver=1; next }
-      in_ver && $0 ~ "}" && $0 !~ "," { if (in_plat) in_plat=0; else in_ver=0 }
-      in_ver && $0 ~ "\"" plat "\"" { in_plat=1; next }
-      in_plat && $0 ~ "}" { in_plat=0 }
-      in_plat && $0 ~ "\"url\"" { split($0, a, "\""); url=a[4] }
-      in_plat && $0 ~ "\"sha512\"" { split($0, a, "\""); sha=a[4] }
+      $0 == "  \"cli\": {" { in_cli=1; next }
+      in_cli && $0 ~ "^  }" { in_cli=0; next }
+      in_cli && $0 == "    \"" ver "\": {" { in_ver=1; next }
+      in_ver && $0 ~ "^    }" { in_ver=0; next }
+      in_ver && $0 == "      \"" plat "\": {" { in_plat=1; next }
+      in_plat && $0 ~ "^      }" { in_plat=0; next }
+      in_plat && $0 ~ "\"url\":" { split($0, a, "\""); url=a[4] }
+      in_plat && $0 ~ "\"sha512\":" { split($0, a, "\""); sha=a[4] }
       END { if (url != "" && sha != "") print url "|" sha }
     ' "$json_file" 2>/dev/null || true)
     
@@ -1175,6 +1216,15 @@ install_cli() {
     esac
     
     local platform_key="${cli_os}_${cli_arch}"
+    if [ "$cli_os" = "linux" ]; then
+        if (command -v ldd >/dev/null 2>&1 && ldd --version 2>&1 | grep -qi "musl") || compgen -G "/lib/ld-musl-*" >/dev/null 2>&1; then
+            local musl_info
+            musl_info=$(get_cli_release_info "$target_version" "${platform_key}_musl")
+            if [ -n "$(echo "$musl_info" | cut -d'|' -f1)" ]; then
+                platform_key="${platform_key}_musl"
+            fi
+        fi
+    fi
     
     local info
     info=$(get_cli_release_info "$target_version" "$platform_key")
@@ -1554,7 +1604,7 @@ install_jules() {
 
 get_agy_box_release_url() {
     local version="$1"
-    local json_file="/tmp/versions.json"
+    local json_file="${VERSIONS_JSON_CACHE:-/tmp/versions.json}"
     
     if [ ! -f "$json_file" ]; then
         echo ""
@@ -1564,11 +1614,11 @@ get_agy_box_release_url() {
     local url
     url=$(awk -v ver="$version" '
       BEGIN { in_agy=0; in_ver=0 }
-      $0 ~ "\"agy-box\"" { in_agy=1; next }
-      in_agy && $0 ~ "}" && $0 !~ "," && in_ver==0 { in_agy=0 }
-      in_agy && $0 ~ "\"" ver "\"" { in_ver=1; next }
-      in_ver && $0 ~ "}" && $0 !~ "," { in_ver=0 }
-      in_ver && $0 ~ "\"url\"" { split($0, a, "\""); url=a[4] }
+      $0 == "  \"agy-box\": {" { in_agy=1; next }
+      in_agy && $0 ~ "^  }" { in_agy=0; next }
+      in_agy && $0 == "    \"" ver "\": {" { in_ver=1; next }
+      in_ver && $0 ~ "^    }" { in_ver=0; next }
+      in_ver && $0 ~ "\"url\":" { split($0, a, "\""); url=a[4] }
       END { if (url != "") print url }
     ' "$json_file" 2>/dev/null || true)
     
@@ -1581,8 +1631,8 @@ install_vscode_ext() {
     local installed=0
     for cmd in code codium code-insiders; do
         if command -v "$cmd" >/dev/null 2>&1; then
-            log_info "Found $cmd in PATH. Installing Google.antigravity extension..."
-            if "$cmd" --install-extension Google.antigravity --force; then
+            log_info "Found $cmd in PATH. Installing Google.google-antigravity extension..."
+            if "$cmd" --install-extension Google.google-antigravity --force; then
                 log_info "${C_GREEN}✅ Installed Google Antigravity extension for $cmd.${C_RESET}"
                 installed=1
             fi
@@ -2525,13 +2575,13 @@ post_install_menu() {
 
 # ── Version Selection Helpers ────────────────────────────────────
 list_antigravity_versions() {
-    local json_file="/tmp/versions.json"
+    local json_file="${VERSIONS_JSON_CACHE:-/tmp/versions.json}"
     if [ -f "$json_file" ]; then
         awk '
           BEGIN { in_agy=0 }
-          $0 ~ "\"antigravity\"" { in_agy=1; next }
-          in_agy && $0 ~ "}" && $0 !~ "," { in_agy=0 }
-          in_agy && $0 ~ "^    \"[0-9.]+\":" {
+          $0 == "  \"antigravity\": {" { in_agy=1; next }
+          in_agy && $0 ~ "^  }" { in_agy=0; next }
+          in_agy && $0 ~ "^    \"[^\"]+\": \\{" {
             split($0, a, "\"");
             print a[2]
           }
@@ -2590,13 +2640,13 @@ choose_antigravity_version() {
 }
 
 list_ide_versions() {
-    local json_file="/tmp/versions.json"
+    local json_file="${VERSIONS_JSON_CACHE:-/tmp/versions.json}"
     if [ -f "$json_file" ]; then
         awk '
           BEGIN { in_ide=0 }
-          $0 ~ "\"ide\"" { in_ide=1; next }
-          in_ide && $0 ~ "}" && $0 !~ "," { in_ide=0 }
-          in_ide && $0 ~ "^    \"[0-9.]+\":" {
+          $0 == "  \"ide\": {" { in_ide=1; next }
+          in_ide && $0 ~ "^  }" { in_ide=0; next }
+          in_ide && $0 ~ "^    \"[^\"]+\": \\{" {
             split($0, a, "\"");
             print a[2]
           }
@@ -2607,13 +2657,13 @@ list_ide_versions() {
 }
 
 list_cli_versions() {
-    local json_file="/tmp/versions.json"
+    local json_file="${VERSIONS_JSON_CACHE:-/tmp/versions.json}"
     if [ -f "$json_file" ]; then
         awk '
           BEGIN { in_cli=0 }
-          $0 ~ "\"cli\"" { in_cli=1; next }
-          in_cli && $0 ~ "}" && $0 !~ "," { in_cli=0 }
-          in_cli && $0 ~ "^    \"[0-9.]+\":" {
+          $0 == "  \"cli\": {" { in_cli=1; next }
+          in_cli && $0 ~ "^  }" { in_cli=0; next }
+          in_cli && $0 ~ "^    \"[^\"]+\": \\{" {
             split($0, a, "\"");
             print a[2]
           }
@@ -2624,15 +2674,15 @@ list_cli_versions() {
 }
 
 list_sdk_versions() {
-    local json_file="/tmp/versions.json"
+    local json_file="${VERSIONS_JSON_CACHE:-/tmp/versions.json}"
     if [ -f "$json_file" ]; then
         awk '
           BEGIN { in_sdk=0; in_vers=0 }
-          $0 ~ "\"sdk\"" { in_sdk=1; next }
-          in_sdk && $0 ~ "}" && $0 !~ "," { in_sdk=0 }
-          in_sdk && $0 ~ "\"versions\"" { in_vers=1; next }
-          in_vers && $0 ~ "]" { in_vers=0 }
-          in_vers && $0 ~ "\"[0-9.]+\"" {
+          $0 == "  \"sdk\": {" { in_sdk=1; next }
+          in_sdk && $0 ~ "^  }" { in_sdk=0; next }
+          in_sdk && $0 ~ "^    \"versions\":" { in_vers=1; next }
+          in_vers && $0 ~ "^    ]" { in_vers=0; next }
+          in_vers && $0 ~ "^      \"[^\"]+\"" {
             split($0, a, "\"");
             print a[2]
           }
@@ -2847,7 +2897,7 @@ run_mock_action() {
             ;;
         vscode_ext)
             log_info "${C_MAG}🚀 Starting mock installation of VS Code extension...${C_RESET}"
-            run_cmd_ui "Installing Google.antigravity in VS Code / VSCodium..." sleep 1
+            run_cmd_ui "Installing Google.google-antigravity in VS Code / VSCodium..." sleep 1
             echo ""
             log_info "${C_GREEN}${C_BOLD}🎉 Mock Installation Complete!${C_RESET}"
             ;;
@@ -3528,7 +3578,7 @@ run_interactive() {
                         local selected_version
                         selected_version=$(echo "$choice" | cut -d':' -f2)
                         FAST_TRACK_PRODUCTS="ide"
-                        do_install_binary "$selected_version"
+                        do_install_binary "ide" "$selected_version"
                         save_manager_locally
                         post_install_menu
                         break

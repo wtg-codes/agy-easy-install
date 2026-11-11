@@ -1,6 +1,6 @@
 # TODO — AGY Easy Install
 
-> **Last updated:** 2026-10-10 · Branch: `main`
+> **Last updated:** 2026-11-11 · Branch: `main`
 > This file is the single source of truth for all pending work.
 > It MUST be updated at the end of every coding session.
 
@@ -19,7 +19,9 @@
 - [x] `save_manager_locally()` — persist the manager script
 - [x] AGY detection at startup — check if Antigravity is already installed
 - [x] Chrome browser detection + auto-configuration prompt
-- [x] Official Google Antigravity VS Code Extension (`Google.antigravity`) support for VS Code / VSCodium / Code Insiders
+- [x] Official Google Antigravity VS Code Extension (`Google.google-antigravity`) support for VS Code / VSCodium / Code Insiders
+- [x] Multi-IDE extension installers & version tracking: VS Code, Visual Studio, JetBrains, Zed, Xcode, and Eclipse
+- [x] Linux ARM64 (`LINUX_ARM64`) binary support for Google Antigravity Hub & Antigravity IDE, plus musl Linux CLI builds
 - [x] Multi-IDE extension installers: JetBrains plugin CLI installation, Zed settings.json configuration, unified host IDE detection
 - [x] CLI flags for IDE extensions: `--install-vscode`, `--install-jetbrains`, `--install-zed`, `--install-extensions`
 - [x] ChromeOS Crostini container support for sandbox prerequisites and tarball installation
@@ -53,7 +55,8 @@
 
 ### CI/CD
 - [x] `nightly-update.yml` — scrape URL, validate, update script, lint, commit
-- [x] Fix nightly scraper to handle semantic versioning and 'Antigravity IDE' filename matching for version 2+
+- [x] Fix nightly scraper to query split Hub (`antigravity-hub-auto-updater`), IDE (`antigravity-ide-auto-updater`), and CLI (`antigravity-cli-auto-updater`) Cloud Run endpoints, track all 6 IDE extensions, sort versions semantically, and hash binaries in parallel
+- [x] Fix shell JSON `awk` parsers for multi-version `versions.json` and IDE 2.x `antigravity-ide` binary symlink
 - [x] Dual Release Distribution Channels: Stable `v0.3.0` and rolling `nightly` pre-release with checksums and `.github/workflows/release.yml`
 - [x] `deploy-pages.yml` — GitHub Pages from `docs/`
 - [x] Pinned action versions (`checkout@v4`, `setup-python@v5`)

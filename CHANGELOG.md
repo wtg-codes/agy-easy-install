@@ -5,6 +5,21 @@ Format follows [Keep a Changelog](https://keepachangelog.com/).
 
 ---
 
+## [0.3.2] — 2026-11-11
+
+### Added
+- **Full Multi-Product Nightly Scraping (`scrape_latest.py`):**
+  - Migrated to Google's dedicated auto-updater APIs for **Google Antigravity Hub** (`antigravity-hub-auto-updater`, `v2.31.0`), **Antigravity IDE** (`antigravity-ide-auto-updater`, `v2.6.0`), and **Antigravity CLI** (`antigravity-cli-auto-updater`, `v1.5.5` + `/manifests/*.json` fast-path SHA-512 lookup).
+  - Added native **Linux ARM64 (`LINUX_ARM64`)** support across Hub, IDE, `src/00_config.sh`, `update_config.py`, and `do_install_binary()`, plus **musl Linux (`linux_amd64_musl`, `linux_arm64_musl`)** support for `agy` CLI.
+  - Added **`extensions`** version and marketplace tracking in `versions.json` for all 6 official editor integrations (`vscode`, `visual-studio`, `jetbrains`, `zed`, `xcode`, `eclipse`), plus dynamic `agy-box` release tag syncing and parallel SHA computation.
+- **Scraper & Shell Parser Test Suite (`tests/test_scraper.py`):** Added unit and shell integration tests enforced in `tests/run_gates.sh` (`3.G12`) and `.github/workflows/nightly-update.yml`.
+
+### Fixed
+- **Hub vs. IDE 2.x Misrouting & Filenames:** Removed legacy `version.startswith("2.")` bucket split that blocked IDE 2.x (`Antigravity IDE.{tar.gz,dmg,exe}`) and fixed Hub `>2.0.0` Windows installer filenames (`Antigravity-x64.exe`, `Antigravity-arm64.exe`).
+- **SDK & Release Semantic Version Sorting:** Fixed lexicographical sorting (`"0.1.9"` sorting above `"0.1.23"`) across Hub, IDE, CLI, SDK, and `update_config.py`.
+- **Multi-Version `awk` JSON Parsers:** Fixed trailing-comma state bleed in `get_product_release_info()`, `get_cli_release_info()`, `get_agy_box_release_url()`, and `list_*_versions()`.
+- **VS Code Extension ID & IDE Binary Symlink:** Updated `install_vscode_ext()` to install the official `Google.google-antigravity` extension ID, fixed interactive IDE version dispatch (`do_install_binary "ide" "$selected_version"`), and linked IDE 2.x's extracted `antigravity-ide` binary accurately.
+
 ## [0.3.1] — 2026-10-10
 
 ### Added

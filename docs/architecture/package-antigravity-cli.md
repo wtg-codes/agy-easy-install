@@ -1,7 +1,7 @@
 # Package Specification: Antigravity CLI
 
 > **Status:** ✅ Active
-> **Last updated:** 2026-05-20
+> **Last updated:** 2026-11-11
 > **Parent:** [implementation_plan.md](implementation_plan.md)
 
 ---
@@ -19,7 +19,7 @@ The **Antigravity CLI** (`agy`) is a command-line utility used to interface with
 | **Package Name** | `antigravity-cli` |
 | **Binary Name** | `agy` |
 | **Execution** | Native pre-compiled Go/Rust executable |
-| **Distribution** | Standalone direct binary download |
+| **Distribution** | Standalone direct binary download (`linux_amd64`, `linux_arm64`, `linux_amd64_musl`, `linux_arm64_musl`, `darwin_arm64`, `darwin_amd64`, `windows_amd64`, `windows_arm64`) |
 
 ---
 

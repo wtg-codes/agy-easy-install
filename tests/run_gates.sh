@@ -124,6 +124,7 @@ gate_3() {
     check "3.G9  scraper has docstring"        "python3 -c \"import ast; m=ast.parse(open('scrape_latest.py').read()); assert ast.get_docstring(m)\""
     check "3.G10 scraper has type hints"       "grep -qE 'def scrape_url.*->.*:' scrape_latest.py"
     check "3.G11 errors to stderr"             "grep -q 'stderr' scrape_latest.py"
+    check "3.G12 scraper unit tests pass"      "python3 -m unittest tests/test_scraper.py"
 }
 
 # =============================================================================

@@ -1,7 +1,7 @@
 # Package Specification: Antigravity IDE & Modern Editor Extensions
 
 > **Status:** ✅ Active & Expanded  
-> **Last updated:** 2026-10-10  
+> **Last updated:** 2026-11-11  
 > **Parent:** [implementation_plan.md](implementation_plan.md) · [master-plan.md](master-plan.md)
 
 ---
@@ -23,11 +23,11 @@ The Antigravity development experience operates across a dual-track architecture
 
 | Property | Value / Description |
 |---|---|
-| **Package Name** | `google-antigravity` (generic), `antigravity` (Homebrew/System Repos) |
-| **Binary Name** | `antigravity` |
+| **Package Name** | `google-antigravity` (Hub), `antigravity` (Homebrew/System Repos), `antigravity-ide` (Standalone IDE 2.x) |
+| **Binary Name** | `antigravity` (Hub / Repo / Brew), `antigravity-ide` (Standalone IDE 2.x tarball) |
 | **Target Audience** | Students, educational institutions, managed lab environments |
 | **GUI Framework** | Electron / Native Web Shell |
-| **Release Stream** | Google Cloud Storage releases (`antigravity-linux-x64-*.tar.gz`, macOS `.dmg`, Windows `.exe`) |
+| **Release Stream** | Hub GCS (`antigravity-hub/{ver}-{id}/.../Antigravity.*`) & IDE EdgeDL (`edgedl/.../stable/{ver}-{id}/.../Antigravity%20IDE.*`) across Linux (`x64`/`arm64`), macOS (`x64`/`arm64`), and Windows (`x64`/`arm64`) |
 
 ### Target Installation Directories
 
@@ -63,7 +63,7 @@ Rather than forcing users into a standalone IDE shell, `agy-easy-install` provid
 ```mermaid
 graph TD
     A["agy-easy-install (--install-extensions / menu)"] --> B{"Host IDE Discovery"}
-    B -->|VS Code / VSCodium / Insiders| C["code --install-extension Google.antigravity"]
+    B -->|VS Code / VSCodium / Insiders| C["code --install-extension Google.google-antigravity"]
     B -->|Zed Editor| D["Inject settings.json<br/>auto_install_extensions.antigravity"]
     B -->|JetBrains Family| E["<ide> installPlugins Antigravity<br/>(Toolbox & PATH scan)"]
 ```
@@ -71,13 +71,15 @@ graph TD
 ### 1. Visual Studio Code & Variants
 
 * **Target Editors:** Visual Studio Code (`code`), VS Code Insiders (`code-insiders`), and VSCodium (`codium`).
-* **Extension Identifier:** `Google.antigravity`
+* **Extension Identifier:** `Google.google-antigravity`
 * **Installation Mechanism:**
   ```bash
-  code --install-extension Google.antigravity --force
+  code --install-extension Google.google-antigravity --force
   ```
 * **CLI Flag:** `--install-vscode`
 * **Features:** Full agent canvas side panel, interactive diff reviews, MCP tool integration, and workspace telemetry.
+
+> **Note:** `versions.json` also tracks official upstream extension releases for **Visual Studio** (`Google.GoogleAntigravity`), **Xcode**, and **Eclipse** (`google-antigravity`) alongside VS Code, JetBrains, and Zed.
 
 ### 2. Zed Editor
 

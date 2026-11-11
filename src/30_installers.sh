@@ -100,12 +100,13 @@ get_product_release_info() {
     local product_name="$1"
     local version="$2"
     local platform_key="$3"
-    local json_file="/tmp/versions.json"
+    local json_file="${VERSIONS_JSON_CACHE:-/tmp/versions.json}"
     
     if [ ! -f "$json_file" ]; then
         if [ "$product_name" = "antigravity" ] && [ "$version" = "$DEFAULT_AGY_VERSION" ]; then
             case "$platform_key" in
                 LINUX_X64) echo "$AGY_LINUX_X64_URL|$AGY_LINUX_X64_SHA256" ;;
+                LINUX_ARM64) echo "$AGY_LINUX_ARM64_URL|$AGY_LINUX_ARM64_SHA256" ;;
                 MAC_X64) echo "$AGY_MAC_X64_URL|$AGY_MAC_X64_SHA256" ;;
                 MAC_ARM64) echo "$AGY_MAC_ARM64_URL|$AGY_MAC_ARM64_SHA256" ;;
                 WIN_X64) echo "$AGY_WIN_X64_URL|$AGY_WIN_X64_SHA256" ;;
@@ -115,6 +116,7 @@ get_product_release_info() {
         elif [ "$product_name" = "ide" ] && [ "$version" = "$DEFAULT_IDE_VERSION" ]; then
             case "$platform_key" in
                 LINUX_X64) echo "$IDE_LINUX_X64_URL|$IDE_LINUX_X64_SHA256" ;;
+                LINUX_ARM64) echo "$IDE_LINUX_ARM64_URL|$IDE_LINUX_ARM64_SHA256" ;;
                 MAC_X64) echo "$IDE_MAC_X64_URL|$IDE_MAC_X64_SHA256" ;;
                 MAC_ARM64) echo "$IDE_MAC_ARM64_URL|$IDE_MAC_ARM64_SHA256" ;;
                 WIN_X64) echo "$IDE_WIN_X64_URL|$IDE_WIN_X64_SHA256" ;;
@@ -129,14 +131,14 @@ get_product_release_info() {
     local info
     info=$(awk -v prod="$product_name" -v ver="$version" -v plat="$platform_key" '
       BEGIN { in_prod=0; in_ver=0; in_plat=0 }
-      $0 ~ "\"" prod "\"" { in_prod=1; next }
-      in_prod && $0 ~ "}" && $0 !~ "," && in_ver==0 { in_prod=0 }
-      in_prod && $0 ~ "\"" ver "\"" { in_ver=1; next }
-      in_ver && $0 ~ "}" && $0 !~ "," { if (in_plat) in_plat=0; else in_ver=0 }
-      in_ver && $0 ~ "\"" plat "\"" { in_plat=1; next }
-      in_plat && $0 ~ "}" { in_plat=0 }
-      in_plat && $0 ~ "\"url\"" { split($0, a, "\""); url=a[4] }
-      in_plat && $0 ~ "\"sha256\"" { split($0, a, "\""); sha=a[4] }
+      $0 == "  \"" prod "\": {" { in_prod=1; next }
+      in_prod && $0 ~ "^  }" { in_prod=0; next }
+      in_prod && $0 == "    \"" ver "\": {" { in_ver=1; next }
+      in_ver && $0 ~ "^    }" { in_ver=0; next }
+      in_ver && $0 == "      \"" plat "\": {" { in_plat=1; next }
+      in_plat && $0 ~ "^      }" { in_plat=0; next }
+      in_plat && $0 ~ "\"url\":" { split($0, a, "\""); url=a[4] }
+      in_plat && $0 ~ "\"sha256\":" { split($0, a, "\""); sha=a[4] }
       END { if (url != "" && sha != "") print url "|" sha }
     ' "$json_file" 2>/dev/null || true)
     
@@ -146,6 +148,7 @@ get_product_release_info() {
         if [ "$product_name" = "antigravity" ] && [ "$version" = "$DEFAULT_AGY_VERSION" ]; then
             case "$platform_key" in
                 LINUX_X64) echo "$AGY_LINUX_X64_URL|$AGY_LINUX_X64_SHA256" ;;
+                LINUX_ARM64) echo "$AGY_LINUX_ARM64_URL|$AGY_LINUX_ARM64_SHA256" ;;
                 MAC_X64) echo "$AGY_MAC_X64_URL|$AGY_MAC_X64_SHA256" ;;
                 MAC_ARM64) echo "$AGY_MAC_ARM64_URL|$AGY_MAC_ARM64_SHA256" ;;
                 WIN_X64) echo "$AGY_WIN_X64_URL|$AGY_WIN_X64_SHA256" ;;
@@ -154,6 +157,7 @@ get_product_release_info() {
         elif [ "$product_name" = "ide" ] && [ "$version" = "$DEFAULT_IDE_VERSION" ]; then
             case "$platform_key" in
                 LINUX_X64) echo "$IDE_LINUX_X64_URL|$IDE_LINUX_X64_SHA256" ;;
+                LINUX_ARM64) echo "$IDE_LINUX_ARM64_URL|$IDE_LINUX_ARM64_SHA256" ;;
                 MAC_X64) echo "$IDE_MAC_X64_URL|$IDE_MAC_X64_SHA256" ;;
                 MAC_ARM64) echo "$IDE_MAC_ARM64_URL|$IDE_MAC_ARM64_SHA256" ;;
                 WIN_X64) echo "$IDE_WIN_X64_URL|$IDE_WIN_X64_SHA256" ;;
@@ -221,7 +225,11 @@ do_install_binary() {
             platform_key="WIN_X64"
         fi
     elif [ "$PLATFORM" = "Linux" ] || [ "$PLATFORM" = "Crostini" ]; then
-        platform_key="LINUX_X64"
+        if [ "$ARCH" = "aarch64" ] || [ "$ARCH" = "arm64" ]; then
+            platform_key="LINUX_ARM64"
+        else
+            platform_key="LINUX_X64"
+        fi
         install_type="tarball"
         file_ext="tar.gz"
     else
@@ -235,6 +243,14 @@ do_install_binary() {
     info=$(get_product_release_info "$product_name" "$target_version" "$platform_key")
     target_url=$(echo "$info" | cut -d'|' -f1)
     target_sha=$(echo "$info" | cut -d'|' -f2)
+
+    if { [ -z "$target_url" ] || [ -z "$target_sha" ]; } && [ "$platform_key" = "LINUX_ARM64" ]; then
+        log_warn "No native ARM64 package found for $app_title $target_version; checking x64 fallback..."
+        platform_key="LINUX_X64"
+        info=$(get_product_release_info "$product_name" "$target_version" "$platform_key")
+        target_url=$(echo "$info" | cut -d'|' -f1)
+        target_sha=$(echo "$info" | cut -d'|' -f2)
+    fi
 
     if [ -z "$target_url" ] || [ -z "$target_sha" ]; then
         log_error "Could not find package details for $app_title version $target_version ($platform_key)."
@@ -281,7 +297,23 @@ do_install_binary() {
         fi
 
         log_info "${C_BLUE}🔗 Creating symlink...${C_RESET}"
-        ln -sf "$app_dir_var/antigravity" "$BIN_DIR/$bin_name"
+        local target_exec="$app_dir_var/antigravity"
+        if [ "$product_name" = "ide" ]; then
+            if [ -x "$app_dir_var/bin/antigravity-ide" ]; then
+                target_exec="$app_dir_var/bin/antigravity-ide"
+            elif [ -x "$app_dir_var/antigravity-ide" ]; then
+                target_exec="$app_dir_var/antigravity-ide"
+            elif [ -x "$app_dir_var/bin/antigravity" ]; then
+                target_exec="$app_dir_var/bin/antigravity"
+            fi
+        else
+            if [ -x "$app_dir_var/bin/antigravity" ]; then
+                target_exec="$app_dir_var/bin/antigravity"
+            elif [ -x "$app_dir_var/antigravity" ]; then
+                target_exec="$app_dir_var/antigravity"
+            fi
+        fi
+        ln -sf "$target_exec" "$BIN_DIR/$bin_name"
 
         # Extract/Copy application icon
         log_info "${C_CYAN}🎨 Extracting application icon...${C_RESET}"
@@ -523,7 +555,7 @@ do_remove() {
 get_cli_release_info() {
     local version="$1"
     local platform_key="$2"
-    local json_file="/tmp/versions.json"
+    local json_file="${VERSIONS_JSON_CACHE:-/tmp/versions.json}"
     
     if [ ! -f "$json_file" ]; then
         echo "|"
@@ -533,14 +565,14 @@ get_cli_release_info() {
     local info
     info=$(awk -v ver="$version" -v plat="$platform_key" '
       BEGIN { in_cli=0; in_ver=0; in_plat=0 }
-      $0 ~ "\"cli\"" { in_cli=1; next }
-      in_cli && $0 ~ "}" && $0 !~ "," && in_ver==0 { in_cli=0 }
-      in_cli && $0 ~ "\"" ver "\"" { in_ver=1; next }
-      in_ver && $0 ~ "}" && $0 !~ "," { if (in_plat) in_plat=0; else in_ver=0 }
-      in_ver && $0 ~ "\"" plat "\"" { in_plat=1; next }
-      in_plat && $0 ~ "}" { in_plat=0 }
-      in_plat && $0 ~ "\"url\"" { split($0, a, "\""); url=a[4] }
-      in_plat && $0 ~ "\"sha512\"" { split($0, a, "\""); sha=a[4] }
+      $0 == "  \"cli\": {" { in_cli=1; next }
+      in_cli && $0 ~ "^  }" { in_cli=0; next }
+      in_cli && $0 == "    \"" ver "\": {" { in_ver=1; next }
+      in_ver && $0 ~ "^    }" { in_ver=0; next }
+      in_ver && $0 == "      \"" plat "\": {" { in_plat=1; next }
+      in_plat && $0 ~ "^      }" { in_plat=0; next }
+      in_plat && $0 ~ "\"url\":" { split($0, a, "\""); url=a[4] }
+      in_plat && $0 ~ "\"sha512\":" { split($0, a, "\""); sha=a[4] }
       END { if (url != "" && sha != "") print url "|" sha }
     ' "$json_file" 2>/dev/null || true)
     
@@ -569,6 +601,15 @@ install_cli() {
     esac
     
     local platform_key="${cli_os}_${cli_arch}"
+    if [ "$cli_os" = "linux" ]; then
+        if (command -v ldd >/dev/null 2>&1 && ldd --version 2>&1 | grep -qi "musl") || compgen -G "/lib/ld-musl-*" >/dev/null 2>&1; then
+            local musl_info
+            musl_info=$(get_cli_release_info "$target_version" "${platform_key}_musl")
+            if [ -n "$(echo "$musl_info" | cut -d'|' -f1)" ]; then
+                platform_key="${platform_key}_musl"
+            fi
+        fi
+    fi
     
     local info
     info=$(get_cli_release_info "$target_version" "$platform_key")
@@ -948,7 +989,7 @@ install_jules() {
 
 get_agy_box_release_url() {
     local version="$1"
-    local json_file="/tmp/versions.json"
+    local json_file="${VERSIONS_JSON_CACHE:-/tmp/versions.json}"
     
     if [ ! -f "$json_file" ]; then
         echo ""
@@ -958,11 +999,11 @@ get_agy_box_release_url() {
     local url
     url=$(awk -v ver="$version" '
       BEGIN { in_agy=0; in_ver=0 }
-      $0 ~ "\"agy-box\"" { in_agy=1; next }
-      in_agy && $0 ~ "}" && $0 !~ "," && in_ver==0 { in_agy=0 }
-      in_agy && $0 ~ "\"" ver "\"" { in_ver=1; next }
-      in_ver && $0 ~ "}" && $0 !~ "," { in_ver=0 }
-      in_ver && $0 ~ "\"url\"" { split($0, a, "\""); url=a[4] }
+      $0 == "  \"agy-box\": {" { in_agy=1; next }
+      in_agy && $0 ~ "^  }" { in_agy=0; next }
+      in_agy && $0 == "    \"" ver "\": {" { in_ver=1; next }
+      in_ver && $0 ~ "^    }" { in_ver=0; next }
+      in_ver && $0 ~ "\"url\":" { split($0, a, "\""); url=a[4] }
       END { if (url != "") print url }
     ' "$json_file" 2>/dev/null || true)
     
@@ -975,8 +1016,8 @@ install_vscode_ext() {
     local installed=0
     for cmd in code codium code-insiders; do
         if command -v "$cmd" >/dev/null 2>&1; then
-            log_info "Found $cmd in PATH. Installing Google.antigravity extension..."
-            if "$cmd" --install-extension Google.antigravity --force; then
+            log_info "Found $cmd in PATH. Installing Google.google-antigravity extension..."
+            if "$cmd" --install-extension Google.google-antigravity --force; then
                 log_info "${C_GREEN}✅ Installed Google Antigravity extension for $cmd.${C_RESET}"
                 installed=1
             fi

@@ -436,7 +436,7 @@ run_interactive() {
                         local selected_version
                         selected_version=$(echo "$choice" | cut -d':' -f2)
                         FAST_TRACK_PRODUCTS="ide"
-                        do_install_binary "$selected_version"
+                        do_install_binary "ide" "$selected_version"
                         save_manager_locally
                         post_install_menu
                         break

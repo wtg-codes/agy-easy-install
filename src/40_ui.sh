@@ -467,13 +467,13 @@ post_install_menu() {
 
 # ── Version Selection Helpers ────────────────────────────────────
 list_antigravity_versions() {
-    local json_file="/tmp/versions.json"
+    local json_file="${VERSIONS_JSON_CACHE:-/tmp/versions.json}"
     if [ -f "$json_file" ]; then
         awk '
           BEGIN { in_agy=0 }
-          $0 ~ "\"antigravity\"" { in_agy=1; next }
-          in_agy && $0 ~ "}" && $0 !~ "," { in_agy=0 }
-          in_agy && $0 ~ "^    \"[0-9.]+\":" {
+          $0 == "  \"antigravity\": {" { in_agy=1; next }
+          in_agy && $0 ~ "^  }" { in_agy=0; next }
+          in_agy && $0 ~ "^    \"[^\"]+\": \\{" {
             split($0, a, "\"");
             print a[2]
           }
@@ -532,13 +532,13 @@ choose_antigravity_version() {
 }
 
 list_ide_versions() {
-    local json_file="/tmp/versions.json"
+    local json_file="${VERSIONS_JSON_CACHE:-/tmp/versions.json}"
     if [ -f "$json_file" ]; then
         awk '
           BEGIN { in_ide=0 }
-          $0 ~ "\"ide\"" { in_ide=1; next }
-          in_ide && $0 ~ "}" && $0 !~ "," { in_ide=0 }
-          in_ide && $0 ~ "^    \"[0-9.]+\":" {
+          $0 == "  \"ide\": {" { in_ide=1; next }
+          in_ide && $0 ~ "^  }" { in_ide=0; next }
+          in_ide && $0 ~ "^    \"[^\"]+\": \\{" {
             split($0, a, "\"");
             print a[2]
           }
@@ -549,13 +549,13 @@ list_ide_versions() {
 }
 
 list_cli_versions() {
-    local json_file="/tmp/versions.json"
+    local json_file="${VERSIONS_JSON_CACHE:-/tmp/versions.json}"
     if [ -f "$json_file" ]; then
         awk '
           BEGIN { in_cli=0 }
-          $0 ~ "\"cli\"" { in_cli=1; next }
-          in_cli && $0 ~ "}" && $0 !~ "," { in_cli=0 }
-          in_cli && $0 ~ "^    \"[0-9.]+\":" {
+          $0 == "  \"cli\": {" { in_cli=1; next }
+          in_cli && $0 ~ "^  }" { in_cli=0; next }
+          in_cli && $0 ~ "^    \"[^\"]+\": \\{" {
             split($0, a, "\"");
             print a[2]
           }
@@ -566,15 +566,15 @@ list_cli_versions() {
 }
 
 list_sdk_versions() {
-    local json_file="/tmp/versions.json"
+    local json_file="${VERSIONS_JSON_CACHE:-/tmp/versions.json}"
     if [ -f "$json_file" ]; then
         awk '
           BEGIN { in_sdk=0; in_vers=0 }
-          $0 ~ "\"sdk\"" { in_sdk=1; next }
-          in_sdk && $0 ~ "}" && $0 !~ "," { in_sdk=0 }
-          in_sdk && $0 ~ "\"versions\"" { in_vers=1; next }
-          in_vers && $0 ~ "]" { in_vers=0 }
-          in_vers && $0 ~ "\"[0-9.]+\"" {
+          $0 == "  \"sdk\": {" { in_sdk=1; next }
+          in_sdk && $0 ~ "^  }" { in_sdk=0; next }
+          in_sdk && $0 ~ "^    \"versions\":" { in_vers=1; next }
+          in_vers && $0 ~ "^    ]" { in_vers=0; next }
+          in_vers && $0 ~ "^      \"[^\"]+\"" {
             split($0, a, "\"");
             print a[2]
           }
@@ -789,7 +789,7 @@ run_mock_action() {
             ;;
         vscode_ext)
             log_info "${C_MAG}🚀 Starting mock installation of VS Code extension...${C_RESET}"
-            run_cmd_ui "Installing Google.antigravity in VS Code / VSCodium..." sleep 1
+            run_cmd_ui "Installing Google.google-antigravity in VS Code / VSCodium..." sleep 1
             echo ""
             log_info "${C_GREEN}${C_BOLD}🎉 Mock Installation Complete!${C_RESET}"
             ;;

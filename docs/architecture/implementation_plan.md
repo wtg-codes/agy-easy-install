@@ -1,6 +1,6 @@
 # AGY Easy Install — Implementation Plan
 
-> **Last updated:** 2026-10-10 · Branch: `main`
+> **Last updated:** 2026-11-11 · Branch: `main`
 > This is a living document. It reflects the current architecture and roadmap.
 > For pending work items, see [`TODO.md`](../../TODO.md) in the project root.
 
@@ -25,7 +25,7 @@
            │ ./build.sh
            ▼
 ┌─────────────────────────────────────────────────────┐
-│  antigravity-manager.sh  (compiled — v0.3.0)        │
+│  antigravity-manager.sh  (compiled — v0.3.2)        │
 │  ├── DOWNLOAD_URL  ← updated nightly by CI          │
 │  └── KNOWN_SHA256  ← MUST be updated alongside URL  │
 └──────────┬──────────────────────────────────────────┘
@@ -64,12 +64,12 @@ All phases (0–7) are complete and validated by the 102-gate test suite.
 | 0 | Documentation Bootstrap | 5 | ✅ Complete |
 | 1 | Scaffolding & Hygiene | 9 | ✅ Complete |
 | 2 | Shell Hardening + Homebrew | 14 | ✅ Complete |
-| 3 | Pipeline Fixes | 11 | ✅ Complete |
-| 4 | Docs & Polish | 13 | ✅ Complete |
+| 3 | Pipeline Fixes | 12 | ✅ Complete |
+| 4 | Docs & Polish | 17 | ✅ Complete |
 | 5 | Bundler & Tooling | 14 | ✅ Complete |
 | 6 | Jules CLI & Bootstrapping | 19 | ✅ Complete |
 | 7 | IDE Extensions Support | 17 | ✅ Complete |
-| **Total** | | **102** | ✅ All passing |
+| **Total** | | **107** | ✅ All passing |
 
 ### Gate Runner
 
@@ -219,9 +219,9 @@ See [`TODO.md`](../../TODO.md) for the detailed, structured task list. Key areas
 **Completed:** WSL2 detection (`/proc/version`), `(WSL)` label in dashboard, `.desktop` skip in WSL, `wslview` browser opener, MSYS2/Git Bash hard-exit redirect to WSL2.
 **Remaining:** End-to-end testing in WSL2 Ubuntu.
 
-### Official Precompiled Binaries (macOS / Windows)
-- Scraper `scrape_latest.py` and nightly CI now scrape and track official release URLs and hashes across macOS (`mac-x64`, `mac-arm64`) and Windows (`windows-x64`, `windows-arm64`) binaries alongside the Linux tarball.
-- `versions.json` maintains full multi-platform release maps for Antigravity 2.0.0, IDE 1.23.2, CLI 1.3.3, SDK 0.1.21, and `agy-box` v0.6.0.
+### Official Precompiled Binaries & Extensions
+- Scraper `scrape_latest.py` and nightly CI scrape dedicated Cloud Run auto-updater endpoints for Google Antigravity Hub (`antigravity-hub-auto-updater`), Antigravity IDE (`antigravity-ide-auto-updater`), and Antigravity CLI (`antigravity-cli-auto-updater`) across Linux (`x64`, `arm64`, plus `musl` for CLI), macOS (`x64`, `arm64`), and Windows (`x64`, `arm64`).
+- `versions.json` maintains verified multi-platform release maps for Hub (`2.31.0`), IDE (`2.6.0`), CLI (`1.5.5`), all 6 official IDE extensions (`vscode`, `visual-studio`, `jetbrains`, `zed`, `xcode`, `eclipse`), SDK (`0.1.23`), and `agy-box` (`v0.6.0` + `nightly`).
 
 ### CI & Quality
 - ✅ GitHub Actions CI workflow (`ci.yml`) — runs phase gates on `ubuntu-latest` and `macos-latest`

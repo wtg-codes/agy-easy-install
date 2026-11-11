@@ -15,8 +15,10 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Install shellcheck
-        run: command -v shellcheck >/dev/null 2>&1 || (sudo -n apt-get update && sudo -n apt-get install -y shellcheck) || true
+      - name: Install shellcheck and test dependencies
+        run: |
+          command -v shellcheck >/dev/null 2>&1 || (sudo -n apt-get update && sudo -n apt-get install -y shellcheck) || true
+          python3 -c "import requests" 2>/dev/null || python3 -m pip install --user --break-system-packages -r requirements.txt 2>/dev/null || pip3 install -r requirements.txt || true
 
       - name: Run build script
         run: ./build.sh

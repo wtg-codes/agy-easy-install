@@ -19,10 +19,19 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Set up Python (GitHub-hosted fallback)
+        if: runner.environment == 'github-hosted'
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
       - name: Install dependencies
         run: |
           python3 -m pip install --user --break-system-packages -r requirements.txt 2>/dev/null || pip3 install -r requirements.txt || true
           command -v shellcheck >/dev/null 2>&1 || (sudo -n apt-get update -qq && sudo -n apt-get install -y -qq shellcheck) || true
+
+      - name: Run scraper unit tests
+        run: python3 -m unittest tests/test_scraper.py
 
       - name: Scrape latest URL
         id: scrape
@@ -44,8 +53,18 @@ jobs:
           python3 update_config.py versions.json src/00_config.sh
           ./build.sh
           
-          # Extract URLs for patching
+          # Extract URLs and versions for patching
+          AGY_VER=$(grep -oP '^DEFAULT_AGY_VERSION="\K[^"]+' src/00_config.sh)
+          IDE_VER=$(grep -oP '^DEFAULT_IDE_VERSION="\K[^"]+' src/00_config.sh)
+          CLI_VER=$(grep -oP '^DEFAULT_CLI_VERSION="\K[^"]+' src/00_config.sh)
+          SDK_VER=$(grep -oP '^DEFAULT_SDK_VERSION="\K[^"]+' src/00_config.sh)
+          echo "AGY_VER=$AGY_VER" >> "$GITHUB_ENV"
+          echo "IDE_VER=$IDE_VER" >> "$GITHUB_ENV"
+          echo "CLI_VER=$CLI_VER" >> "$GITHUB_ENV"
+          echo "SDK_VER=$SDK_VER" >> "$GITHUB_ENV"
+
           LINUX_X64_URL=$(grep -oP '^LINUX_X64_URL="\K[^"]+' src/00_config.sh)
+          LINUX_ARM64_URL=$(grep -oP '^LINUX_ARM64_URL="\K[^"]+' src/00_config.sh)
           MAC_ARM64_URL=$(grep -oP '^MAC_ARM64_URL="\K[^"]+' src/00_config.sh)
           MAC_X64_URL=$(grep -oP '^MAC_X64_URL="\K[^"]+' src/00_config.sh)
           WIN_X64_URL=$(grep -oP '^WIN_X64_URL="\K[^"]+' src/00_config.sh)
@@ -58,11 +77,12 @@ jobs:
           sed -i "/# TARBALL_URL/{ n; s#curl -fSsL \"[^\"]*\"#curl -fSsL \"$LINUX_X64_URL\"# }" README.md
           
           # Update README binary links
-          sed -i "s#- \*\*Linux (x64)\*\*: \[Antigravity.tar.gz\]([^)]*)#- **Linux (x64)**: [Antigravity.tar.gz]($LINUX_X64_URL)#" README.md
-          sed -i "s#- \*\*macOS (Apple Silicon)\*\*: \[Antigravity.dmg (arm64)\]([^)]*)#- **macOS (Apple Silicon)**: [Antigravity.dmg (arm64)]($MAC_ARM64_URL)#" README.md
-          sed -i "s#- \*\*macOS (Intel)\*\*: \[Antigravity.dmg (x64)\]([^)]*)#- **macOS (Intel)**: [Antigravity.dmg (x64)]($MAC_X64_URL)#" README.md
-          sed -i "s#- \*\*Windows (x64)\*\*: \[Antigravity.exe\]([^)]*)#- **Windows (x64)**: [Antigravity.exe]($WIN_X64_URL)#" README.md
-          sed -i "s#- \*\*Windows (ARM64)\*\*: \[Antigravity.exe\]([^)]*)#- **Windows (ARM64)**: [Antigravity.exe]($WIN_ARM64_URL)#" README.md
+          sed -i "s#- \*\*Linux (x64)\*\*: \[[^\]]*\]([^)]*)#- **Linux (x64)**: [Antigravity.tar.gz]($LINUX_X64_URL)#" README.md
+          sed -i "s#- \*\*Linux (ARM64)\*\*: \[[^\]]*\]([^)]*)#- **Linux (ARM64)**: [Antigravity.tar.gz (arm64)]($LINUX_ARM64_URL)#" README.md
+          sed -i "s#- \*\*macOS (Apple Silicon)\*\*: \[[^\]]*\]([^)]*)#- **macOS (Apple Silicon)**: [Antigravity.dmg (arm64)]($MAC_ARM64_URL)#" README.md
+          sed -i "s#- \*\*macOS (Intel)\*\*: \[[^\]]*\]([^)]*)#- **macOS (Intel)**: [Antigravity.dmg (x64)]($MAC_X64_URL)#" README.md
+          sed -i "s#- \*\*Windows (x64)\*\*: \[[^\]]*\]([^)]*)#- **Windows (x64)**: [Antigravity.exe]($WIN_X64_URL)#" README.md
+          sed -i "s#- \*\*Windows (ARM64)\*\*: \[[^\]]*\]([^)]*)#- **Windows (ARM64)**: [Antigravity.exe]($WIN_ARM64_URL)#" README.md
           
           # Update the docs/index.html download links
           sed -i "/<!-- TARBALL_LINK_LINUX/{ n; s#href=\"[^\"]*\"#href=\"$LINUX_X64_URL\"# }" docs/index.html
@@ -93,7 +113,7 @@ jobs:
           git config --local user.name "GitHub Action"
           git add src/00_config.sh antigravity-manager.sh README.md docs/index.html versions.json docs/diagrams/sources/ docs/diagrams/interactive/
           if ! git diff --cached --quiet; then
-            git commit -m "chore: nightly update of Antigravity download URL
+            git commit -m "chore: nightly update of Antigravity binaries (Hub $AGY_VER, IDE $IDE_VER, CLI $CLI_VER, SDK $SDK_VER)
 
           From: $OLD_URL
           To:   $LATEST_URL"
