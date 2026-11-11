@@ -5,6 +5,19 @@ Format follows [Keep a Changelog](https://keepachangelog.com/).
 
 ---
 
+## [0.3.3] — 2026-11-11
+
+### Added
+- **Headless Antigravity IDE 2.x Flag (`--install-ide`):** Added dedicated non-interactive installer flag for Antigravity IDE alongside `--install-binary` (Google Antigravity Hub), plus `agy-ide` convenience symlink and OAuth URL-handler `.desktop` entries (`x-scheme-handler/antigravity`, `x-scheme-handler/antigravity-ide`).
+- **Zero-Sudo Python SDK Bootstrap (`install_sdk`):** Added PEP 668 `--user --break-system-packages` support and ephemeral PyPA standalone `pip.pyz` fallback so `google-antigravity` installs cleanly on minimal Ubuntu/Debian/Atomic containers without `python3-pip` or `sudo`.
+- **Dual Hub & IDE Version Detection:** Added `read_asar_version()` and `get_installed_agy_version()` alongside `get_installed_ide_version()` (`product.json` `ideVersion`) on both the dashboard and `--check` health report.
+
+### Fixed
+- **ASAR Icon Extraction Offset (`do_install_binary`):** Fixed Chromium Pickle ASAR payload offset math (`8 + header_size + offset` instead of `16 + json_size + offset`) that shifted PNG headers by 2 bytes on Google Antigravity Hub 2.x, and added IDE 2.x's unpacked `resources/app/resources/linux/code.png` path.
+- **Homebrew Cask & Tap Alignment (`install_brew`, `get_installed_*_version`):** Updated Linux Homebrew installs to `ublue-os/tap/antigravity-linux` and `ublue-os/tap/antigravity-ide-linux`, macOS installs to `antigravity` and `antigravity-ide` casks, and fixed `brew list --cask --versions` detection (`brew info --cask` previously reported uninstalled casks as installed).
+- **Temp-File Poisoning & Lifecycle Hygiene (`fetch_versions_json`, `cleanup_ui`):** Replaced predictable `/tmp/versions.json` and unsafe relative `../versions.json` lookups with an owned `mktemp` file cleaned up on exit (passing gate `3.G12`).
+- **Self-Save & Self-Update Guards (`save_manager_locally`, `check_for_updates`):** Fixed same-file `cp` crash when re-running `~/.local/bin/antigravity-manager`, added semantic version comparison to prevent local builds from downgrading to older remote `main`, fixed Python SDK namespace (`google.antigravity` / `importlib.metadata`), and changed default Linux recommendation without Homebrew from legacy 1.x APT/RPM repos to Official Binary 2.x (`--install-binary`).
+
 ## [0.3.2] — 2026-11-11
 
 ### Added

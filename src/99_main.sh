@@ -4,8 +4,9 @@ print_usage() {
     echo "  --install         Interactive installation wizard (default)"
     echo "  --auto            Headless auto-install"
     echo "  --install-brew    Headless Homebrew install"
-    echo "  --install-repo    Headless System Repo install"
-    echo "  --install-binary  Headless Official Binary install"
+    echo "  --install-repo    Headless System Repo install (legacy 1.x)"
+    echo "  --install-binary  Headless Official Binary install (Google Antigravity)"
+    echo "  --install-ide     Headless Official Binary install (Antigravity IDE)"
     echo "  --install-cli     Headless Antigravity CLI install"
     echo "  --install-jules   Headless Google Jules CLI install"
     echo "  --install-sdk     Headless Antigravity Python SDK install"
@@ -36,7 +37,8 @@ for arg in "$@"; do
         --auto) ACTION="auto"; AUTO=1 ;;
         --install-brew) ACTION="brew"; AUTO=1 ;;
         --install-repo) ACTION="repo"; AUTO=1 ;;
-        --install-binary) ACTION="binary"; AUTO=1 ;;
+        --install-binary|--install-tarball) ACTION="binary"; AUTO=1 ;;
+        --install-ide) ACTION="ide_binary"; AUTO=1 ;;
         --install-cli) ACTION="cli"; AUTO=1 ;;
         --install-jules) ACTION="jules"; AUTO=1 ;;
         --install-sdk) ACTION="sdk"; AUTO=1 ;;
@@ -73,21 +75,41 @@ check_dependencies
 detect_platform
 
 # ── Auto-Update Mechanism ───────────────────────────────────────
+is_remote_version_newer() {
+    local local_ver="$1"
+    local remote_ver="$2"
+    awk -v l="$local_ver" -v r="$remote_ver" '
+      BEGIN {
+        nl = split(l, al, ".")
+        nr = split(r, ar, ".")
+        n = (nl > nr ? nl : nr)
+        for (i = 1; i <= n; i++) {
+          vl = (i <= nl ? al[i] + 0 : 0)
+          vr = (i <= nr ? ar[i] + 0 : 0)
+          if (vr > vl) exit 0
+          if (vr < vl) exit 1
+        }
+        exit 1
+      }
+    '
+}
+
 check_for_updates() {
     if [ "${NO_UPDATE:-0}" -eq 1 ] || [ "${MOCK_MODE:-0}" -eq 1 ]; then return 0; fi
+    # Never attempt in-place overwrite when piped into a shell (e.g. curl | bash)
+    if [ ! -f "$0" ]; then return 0; fi
+    case "${0##*/}" in
+        bash|sh|zsh|dash|ksh|fish|-*) return 0 ;;
+    esac
     # Skip if running locally without internet (we check quietly)
-    if ! curl -fSsL --head "$MANAGER_URL" >/dev/null 2>&1; then return 0; fi
+    if ! curl -fSsL --connect-timeout 3 --head "$MANAGER_URL" >/dev/null 2>&1; then return 0; fi
 
     local remote_version
-    remote_version=$(curl -fSsL "https://raw.githubusercontent.com/wtg-codes/agy-easy-install/main/src/00_config.sh" | grep '^SCRIPT_VERSION=' | cut -d'"' -f2)
+    remote_version=$(curl -fSsL --connect-timeout 3 "https://raw.githubusercontent.com/wtg-codes/agy-easy-install/main/src/00_config.sh" | grep '^SCRIPT_VERSION=' | cut -d'"' -f2 || true)
     
-    if [ -n "$remote_version" ] && [ "$remote_version" != "$SCRIPT_VERSION" ]; then
-        # Simple string comparison (assumes semver format like 0.2.2)
-        # Bash string comparison is sufficient unless version jumps digit places e.g. 0.9.0 -> 0.10.0
-        # For a robust approach we could use awk or just always update if !=
-        log_info "${C_BLUE}🔄 A newer version of the installer is available ($remote_version). Updating...${C_RESET}"
+    if [ -n "$remote_version" ] && is_remote_version_newer "$SCRIPT_VERSION" "$remote_version"; then
+        log_info "${C_BLUE}🔄 A newer version of the installer is available ($remote_version > $SCRIPT_VERSION). Updating...${C_RESET}"
         
-        # We need to securely download the new script and replace ourselves
         local temp_script
         temp_script=$(mktemp)
         if curl -fSsL "$MANAGER_URL" -o "$temp_script" && bash -n "$temp_script"; then
@@ -97,7 +119,7 @@ check_for_updates() {
                 rm -f "$temp_script"
                 log_info "${C_GREEN}✅ Update successful! Restarting...${C_RESET}"
                 echo ""
-                exec "$0" "$@" # Restart with the same arguments!
+                exec "$0" "$@"
             elif command -v sudo >/dev/null 2>&1 && sudo -n true 2>/dev/null; then
                 sudo cp "$temp_script" "$0"
                 sudo chmod +x "$0"
@@ -106,7 +128,7 @@ check_for_updates() {
                 echo ""
                 exec "$0" "$@"
             else
-                log_warn "New version available, but current script is read-only. Run with --no-update to suppress this message."
+                log_warn "New version available ($remote_version), but current script is read-only. Run with --no-update to suppress this message."
             fi
         else
             log_error "Failed to download update. Continuing with current version."
@@ -154,7 +176,7 @@ do_fast_track_install() {
         step=$((step+1))
         log_info "${C_BOLD}Step ${step}/${total}: Installing Antigravity IDE...${C_RESET}"
         case "$FAST_TRACK_METHOD" in
-            brew) install_brew ;;
+            brew) install_brew "ide" ;;
             repo) install_repo ;;
             binary|*) do_install_binary "ide" ;;
         esac
@@ -421,7 +443,7 @@ run_interactive() {
                     fi
                 done
                 case "$choice" in
-                    brew) FAST_TRACK_PRODUCTS="ide"; install_brew; save_manager_locally; post_install_menu; break ;;
+                    brew) FAST_TRACK_PRODUCTS="ide"; install_brew "ide"; save_manager_locally; post_install_menu; break ;;
                     repo) FAST_TRACK_PRODUCTS="ide"; install_repo; save_manager_locally; post_install_menu; break ;;
                     antigravity:*)
                         local selected_version
@@ -533,9 +555,10 @@ case "$ACTION" in
         FAST_TRACK_PRODUCTS="antigravity ide cli jules"
         case "$RECOMMENDED" in 1) FAST_TRACK_METHOD="brew" ;; 2) FAST_TRACK_METHOD="repo" ;; *) FAST_TRACK_METHOD="binary" ;; esac
         do_fast_track_install ;;
-    brew) install_brew; save_manager_locally ;;
+    brew) install_brew "antigravity"; save_manager_locally ;;
     repo) install_repo; save_manager_locally ;;
     binary) do_install_binary "antigravity"; save_manager_locally ;;
+    ide_binary) do_install_binary "ide"; save_manager_locally ;;
     cli) install_cli; save_manager_locally ;;
     jules) install_jules; save_manager_locally ;;
     sdk) install_sdk; save_manager_locally ;;

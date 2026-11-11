@@ -1,80 +1,113 @@
 install_brew() {
+    local product_name="${1:-antigravity}"
     JSON_METHOD="brew"
-    log_info "${C_MAG}🚀 Installing Antigravity via Homebrew...${C_RESET}"
+
+    local app_title="Google Antigravity"
+    local mac_cask="antigravity"
+    local linux_cask="ublue-os/tap/antigravity-linux"
+    local linux_cask_token="antigravity-linux"
+    local bin_name="antigravity"
+    local state_target="$STATE_FILE"
+
+    if [ "$product_name" = "ide" ]; then
+        app_title="Google Antigravity IDE"
+        mac_cask="antigravity-ide"
+        linux_cask="ublue-os/tap/antigravity-ide-linux"
+        linux_cask_token="antigravity-ide-linux"
+        bin_name="antigravity-ide"
+        state_target="${STATE_DIR}/install-ide.json"
+    fi
+
+    log_info "${C_MAG}🚀 Installing $app_title via Homebrew...${C_RESET}"
     ensure_brew
-    
+
     if [ "$PLATFORM" = "Darwin" ]; then
-        if ! run_cmd_ui "Brewing Antigravity..." brew install --cask antigravity; then
-            log_error "Formula not found or installation failed."
+        if ! run_cmd_ui "Brewing $app_title..." brew install --cask "$mac_cask"; then
+            log_error "Cask '$mac_cask' installation failed."
             log_warn "Falling back to official Binary installation..."
-            do_install_binary
+            do_install_binary "$product_name"
             return
+        fi
+        # Ensure CLI shim exists for Hub on macOS (cask only installs Antigravity.app)
+        if [ "$product_name" = "antigravity" ] && [ -x "/Applications/Antigravity.app/Contents/MacOS/Antigravity" ] && ! command -v antigravity >/dev/null 2>&1; then
+            mkdir -p "$BIN_DIR"
+            ln -sf "/Applications/Antigravity.app/Contents/MacOS/Antigravity" "$BIN_DIR/antigravity"
         fi
     else
-        # For Linux platforms using Brew (especially Bluefin)
-        run_cmd_ui "Tapping Ublue-OS experimental tap..." brew tap ublue-os/experimental-tap
-        if ! run_cmd_ui "Brewing Antigravity Linux..." brew install ublue-os/experimental-tap/antigravity-linux; then
-            log_error "Formula not found or installation failed."
+        # Linux Homebrew (Universal Blue official tap: ublue-os/tap)
+        run_cmd_ui "Tapping ublue-os/tap..." brew tap ublue-os/tap
+        if ! run_cmd_ui "Brewing $app_title ($linux_cask)..." brew install --cask "$linux_cask"; then
+            log_error "Cask '$linux_cask' installation failed."
             log_warn "Falling back to official Binary installation..."
-            do_install_binary
+            do_install_binary "$product_name"
             return
         fi
-        # Workaround Homebrew Cask bug: create the missing binary symlink in $(brew --prefix)/bin/
         local brew_prefix
         brew_prefix=$(brew --prefix)
-        local exec_file
-        exec_file=$(find "$brew_prefix/Caskroom/antigravity-linux" -type f -name "antigravity-ide" -o -name "antigravity" 2>/dev/null | head -n 1)
-        if [ -n "$exec_file" ]; then
-            log_info "Creating missing binary symlink in Homebrew bin folder..."
-            run_cmd ln -sf "$exec_file" "$brew_prefix/bin/antigravity"
-        else
-            log_warn "Could not locate the extracted executable to create the launcher symlink."
+        if [ ! -x "$brew_prefix/bin/$bin_name" ]; then
+            local exec_file
+            exec_file=$(find "$brew_prefix/Caskroom/$linux_cask_token" -type f -name "$bin_name" 2>/dev/null | head -n 1)
+            if [ -n "$exec_file" ]; then
+                log_info "Creating missing binary symlink in Homebrew bin folder..."
+                run_cmd ln -sf "$exec_file" "$brew_prefix/bin/$bin_name"
+            fi
         fi
-        # Refresh desktop database
-        if command -v update-desktop-database &>/dev/null; then
+        if command -v xdg-mime >/dev/null 2>&1; then
+            run_cmd xdg-mime default "${bin_name}-url-handler.desktop" "x-scheme-handler/${bin_name}" || true
+        fi
+        if command -v update-desktop-database >/dev/null 2>&1; then
             run_cmd update-desktop-database "$HOME/.local/share/applications" || true
         fi
     fi
-    configure_chrome_path
+    configure_chrome_path "$product_name"
     mkdir -p "$STATE_DIR"
-    echo '{"method": "brew", "version": "'"$SCRIPT_VERSION"'"}' > "$STATE_FILE"
+    echo '{"method": "brew", "product": "'"$product_name"'", "version": "'"$SCRIPT_VERSION"'"}' > "$state_target"
 }
 
 install_repo() {
     JSON_METHOD="repo"
-    log_warn "This method requires sudo — you may be prompted for your password."
-    sudo -v || { log_error "Sudo access required."; exit 1; }
+    if [ "${IS_ATOMIC:-no}" = "yes" ]; then
+        log_error "Atomic/Immutable Linux detected (/usr is read-only). Use --install-brew or --install-binary instead."
+        exit 1
+    fi
+    log_warn "Note: Upstream APT/RPM repositories currently publish legacy Antigravity 1.x. Use --install-binary or --install-brew for 2.x."
+    local sudo_prefix=()
+    if [ "$(id -u)" -ne 0 ]; then
+        log_warn "This method requires sudo — you may be prompted for your password."
+        sudo -v || { log_error "Sudo access required."; exit 1; }
+        sudo_prefix=(sudo)
+    fi
     detect_distro
     case "$DISTRO" in
-        ubuntu|debian|kali|linuxmint)
+        ubuntu|debian|kali|linuxmint|pop)
             log_info "${C_BLUE}🔑 Fetching repository keys...${C_RESET}"
-            run_cmd sudo mkdir -p /etc/apt/keyrings
+            run_cmd "${sudo_prefix[@]}" mkdir -p /etc/apt/keyrings
             curl -fSsL "https://us-central1-apt.pkg.dev/doc/repo-signing-key.gpg" | \
-                sudo gpg --dearmor --yes -o /etc/apt/keyrings/antigravity-repo-key.gpg || { log_error "Failed to fetch keys"; exit 1; }
+                "${sudo_prefix[@]}" gpg --dearmor --yes -o /etc/apt/keyrings/antigravity-repo-key.gpg || { log_error "Failed to fetch keys"; exit 1; }
             
             log_info "${C_BLUE}📦 Configuring APT repository...${C_RESET}"
             echo "deb [signed-by=/etc/apt/keyrings/antigravity-repo-key.gpg] https://us-central1-apt.pkg.dev/projects/antigravity-auto-updater-dev/ antigravity-debian main" | \
-                sudo tee /etc/apt/sources.list.d/antigravity.list > /dev/null
+                "${sudo_prefix[@]}" tee /etc/apt/sources.list.d/antigravity.list > /dev/null
             
-            if ! run_cmd_ui "Updating package lists..." sudo apt update || ! run_cmd_ui "Installing Antigravity..." sudo apt install -y antigravity; then
+            if ! run_cmd_ui "Updating package lists..." "${sudo_prefix[@]}" apt-get update || ! run_cmd_ui "Installing Antigravity..." "${sudo_prefix[@]}" apt-get install -y antigravity; then
                 log_error "Installation failed! Rolling back repository changes..."
-                run_cmd sudo rm -f /etc/apt/sources.list.d/antigravity.list
+                run_cmd "${sudo_prefix[@]}" rm -f /etc/apt/sources.list.d/antigravity.list
                 exit 1
             fi
             log_info "${C_GREEN}✅ Installation complete!${C_RESET} Launch with: ${C_BOLD}antigravity${C_RESET}"
             ;;
-        fedora|rhel|centos|amzn)
+        fedora|rhel|centos|amzn|rocky|almalinux)
             log_info "${C_BLUE}📦 Setting up RPM repository...${C_RESET}"
-            sudo tee /etc/yum.repos.d/antigravity.repo > /dev/null << EOL
+            "${sudo_prefix[@]}" tee /etc/yum.repos.d/antigravity.repo > /dev/null << EOL
 [antigravity-rpm]
 name=Antigravity RPM Repository
 baseurl=https://us-central1-yum.pkg.dev/projects/antigravity-auto-updater-dev/antigravity-rpm
 enabled=1
 gpgcheck=0
 EOL
-            if ! run_cmd_ui "Updating package cache..." sudo dnf makecache || ! run_cmd_ui "Installing Antigravity..." sudo dnf install -y antigravity; then
+            if ! run_cmd_ui "Updating package cache..." "${sudo_prefix[@]}" dnf makecache || ! run_cmd_ui "Installing Antigravity..." "${sudo_prefix[@]}" dnf install -y antigravity; then
                 log_error "Installation failed! Rolling back repository changes..."
-                run_cmd sudo rm -f /etc/yum.repos.d/antigravity.repo
+                run_cmd "${sudo_prefix[@]}" rm -f /etc/yum.repos.d/antigravity.repo
                 exit 1
             fi
             log_info "${C_GREEN}✅ Installation complete!${C_RESET} Launch with: ${C_BOLD}antigravity${C_RESET}"
@@ -83,11 +116,11 @@ EOL
             log_error "Distribution $DISTRO not explicitly supported for repo install."
             if [ "$PLATFORM" = "Darwin" ]; then exit 1; fi
             log_warn "Falling back to official Binary installation..."
-            do_install_binary
+            do_install_binary "ide"
             return
             ;;
     esac
-    configure_chrome_path
+    configure_chrome_path "ide"
     mkdir -p "$STATE_DIR"
     echo '{"method": "repo", "version": "'"$SCRIPT_VERSION"'"}' > "$STATE_FILE"
 }
@@ -100,9 +133,9 @@ get_product_release_info() {
     local product_name="$1"
     local version="$2"
     local platform_key="$3"
-    local json_file="${VERSIONS_JSON_CACHE:-/tmp/versions.json}"
+    local json_file="${VERSIONS_JSON_CACHE:-}"
     
-    if [ ! -f "$json_file" ]; then
+    if [ -z "$json_file" ] || [ ! -s "$json_file" ]; then
         if [ "$product_name" = "antigravity" ] && [ "$version" = "$DEFAULT_AGY_VERSION" ]; then
             case "$platform_key" in
                 LINUX_X64) echo "$AGY_LINUX_X64_URL|$AGY_LINUX_X64_SHA256" ;;
@@ -269,12 +302,11 @@ do_install_binary() {
 
     log_info "${C_MAG}🚀 Starting $app_title Official Binary Installation ($target_version)...${C_RESET}"
     
-    TMP_DIR=$(mktemp -d)
-    trap 'rm -rf "$TMP_DIR"; if [ "$PLATFORM" = "Darwin" ] && [ -d "/Volumes/Antigravity" ]; then hdiutil detach /Volumes/Antigravity -force -quiet 2>/dev/null || true; fi; exit_handler' EXIT INT TERM
-    local dl_target="$TMP_DIR/Antigravity.$file_ext"
+    ACTIVE_TMP_DIR=$(mktemp -d)
+    local dl_target="$ACTIVE_TMP_DIR/Antigravity.$file_ext"
 
-    if [ "$JSON_OUT" -eq 1 ] || [ "$QUIET" -eq 1 ]; then
-        run_cmd curl -fSL "$target_url" -o "$dl_target"
+    if [ "$JSON_OUT" -eq 1 ] || [ "$QUIET" -eq 1 ] || [ ! -t 2 ]; then
+        run_cmd curl -fSsL "$target_url" -o "$dl_target"
     else
         log_info "${C_BLUE}⬇️  Downloading $app_title...${C_RESET}"
         curl -fSL --progress-bar "$target_url" -o "$dl_target"
@@ -283,18 +315,24 @@ do_install_binary() {
     log_info "${C_BLUE}🔐 Verifying checksum...${C_RESET}"
     if ! echo "$target_sha  $dl_target" | $sha_cmd -c - >/dev/null 2>&1; then
         log_error "Checksum verification failed!"
+        rm -rf "$ACTIVE_TMP_DIR"
+        ACTIVE_TMP_DIR=""
         exit 1
     fi
 
     if [ "$install_type" = "tarball" ]; then
         log_info "${C_CYAN}📁 Preparing directories...${C_RESET}"
-        mkdir -p "$BIN_DIR" "$app_dir_var" "$WORKSPACE_DIR" "$DESKTOP_DIR" "$(dirname "$desktop_file_sys_var")"
+        rm -rf "${app_dir_var:?}"
+        mkdir -p "$BIN_DIR" "$app_dir_var" "$WORKSPACE_DIR" "$(dirname "$desktop_file_sys_var")" "$HOME/.local/share/icons/hicolor/512x512/apps"
 
-        if command -v gum >/dev/null 2>&1; then
+        if [ "$JSON_OUT" -eq 0 ] && [ "$QUIET" -eq 0 ] && [ -t 1 ] && command -v gum >/dev/null 2>&1; then
             gum spin --spinner dot --title "Extracting archive..." -- tar -xzf "$dl_target" -C "$app_dir_var" --strip-components=1
         else
             tar -xzf "$dl_target" -C "$app_dir_var" --strip-components=1
         fi
+
+        # Disable Electron built-in auto-update descriptor for standalone tarball installs
+        rm -f "$app_dir_var/resources/app-update.yml"
 
         log_info "${C_BLUE}🔗 Creating symlink...${C_RESET}"
         local target_exec="$app_dir_var/antigravity"
@@ -306,6 +344,7 @@ do_install_binary() {
             elif [ -x "$app_dir_var/bin/antigravity" ]; then
                 target_exec="$app_dir_var/bin/antigravity"
             fi
+            ln -sf "$target_exec" "$BIN_DIR/agy-ide"
         else
             if [ -x "$app_dir_var/bin/antigravity" ]; then
                 target_exec="$app_dir_var/bin/antigravity"
@@ -319,42 +358,51 @@ do_install_binary() {
         log_info "${C_CYAN}🎨 Extracting application icon...${C_RESET}"
         local extracted_icon=0
         
-        # 1. Try copying unpacked icon from 1.x IDE location
+        # 1. Try copying unpacked icon from IDE 2.x or legacy 1.x locations
+        local ide_v2_icon="${app_dir_var}/resources/app/resources/linux/code.png"
         local old_icon_location="${app_dir_var}/resources/app/out/vs/workbench/contrib/antigravityCustomAppIcon/browser/media/antigravity/antigravity.png"
-        if [ -f "$old_icon_location" ]; then
+        if [ -f "$ide_v2_icon" ]; then
+            mkdir -p "$(dirname "$icon_path_var")"
+            cp "$ide_v2_icon" "$icon_path_var"
+            extracted_icon=1
+        elif [ -f "$old_icon_location" ]; then
             mkdir -p "$(dirname "$icon_path_var")"
             cp "$old_icon_location" "$icon_path_var"
             extracted_icon=1
         fi
 
-        # 2. Try extracting from app.asar (for 2.x Antigravity)
-        if [ "$extracted_icon" -eq 0 ] && command -v python3 >/dev/null 2>&1; then
-            if python3 -c "
-import struct, json
+        # 2. Try extracting from app.asar (for 2.x Google Antigravity Hub)
+        # Chromium Pickle ASAR header: <IIII = (pickle_size=4, header_size, header_str_size, json_size)
+        # File data payload starts at byte offset (8 + header_size + file_offset).
+        if [ "$extracted_icon" -eq 0 ] && [ -f "${app_dir_var}/resources/app.asar" ] && command -v python3 >/dev/null 2>&1; then
+            if python3 -c '
+import struct, json, os, sys
+asar_path, icon_out = sys.argv[1], sys.argv[2]
 try:
-    with open('${app_dir_var}/resources/app.asar', 'rb') as f:
+    with open(asar_path, "rb") as f:
         header = f.read(16)
         if len(header) == 16:
-            _, _, _, json_size = struct.unpack('<IIII', header)
-            header_json = json.loads(f.read(json_size).decode('utf-8'))
-            info = header_json.get('files', {}).get('icon.png')
-            if info:
-                f.seek(16 + json_size + int(info['offset']))
-                import os
-                os.makedirs(os.path.dirname('${icon_path_var}'), exist_ok=True)
-                with open('${icon_path_var}', 'wb') as out:
-                    out.write(f.read(info['size']))
-                print('OK')
-except Exception as e:
+            _, header_size, _, json_size = struct.unpack("<IIII", header)
+            header_json = json.loads(f.read(json_size).decode("utf-8"))
+            info = header_json.get("files", {}).get("icon.png")
+            if info and "offset" in info and "size" in info:
+                f.seek(8 + header_size + int(info["offset"]))
+                data = f.read(int(info["size"]))
+                if data[:8] == b"\x89PNG\r\n\x1a\n":
+                    os.makedirs(os.path.dirname(icon_out), exist_ok=True)
+                    with open(icon_out, "wb") as out:
+                        out.write(data)
+                    print("OK")
+except Exception:
     pass
-" 2>/dev/null | grep -q "OK"; then
+' "${app_dir_var}/resources/app.asar" "$icon_path_var" 2>/dev/null | grep -q "OK"; then
                 extracted_icon=1
             fi
         fi
 
-        if [ "$extracted_icon" -eq 0 ] && command -v node >/dev/null 2>&1 && command -v npm >/dev/null 2>&1; then
+        if [ "$extracted_icon" -eq 0 ] && [ -f "${app_dir_var}/resources/app.asar" ] && command -v node >/dev/null 2>&1 && command -v npm >/dev/null 2>&1; then
             if (
-                cd "$TMP_DIR" || exit 1
+                cd "$ACTIVE_TMP_DIR" || exit 1
                 if npx --yes @electron/asar extract-file "${app_dir_var}/resources/app.asar" icon.png 2>/dev/null; then
                     mkdir -p "$(dirname "$icon_path_var")"
                     mv icon.png "$icon_path_var"
@@ -369,32 +417,69 @@ except Exception as e:
             fi
         fi
 
-        if [ "$extracted_icon" -eq 0 ]; then
+        if [ "$extracted_icon" -eq 1 ]; then
+            cp "$icon_path_var" "$HOME/.local/share/icons/hicolor/512x512/apps/${bin_name}.png" 2>/dev/null || true
+        else
             log_warn "Could not extract application icon. Desktop shortcut will use a default icon."
+        fi
+
+        local wm_class="Antigravity"
+        local mime_types="x-scheme-handler/antigravity;"
+        local url_exec="\"$BIN_DIR/$bin_name\" \"%U\""
+        if [ "$product_name" = "ide" ]; then
+            wm_class="Antigravity IDE"
+            mime_types="text/plain;inode/directory;application/x-code-workspace;x-scheme-handler/antigravity-ide;"
+            url_exec="\"$BIN_DIR/$bin_name\" --open-url \"%U\""
         fi
 
         cat << EOF > "$desktop_file_sys_var"
 [Desktop Entry]
 Version=1.0
 Name=$app_title
-Comment=Secure Agentic Development IDE
-Exec=$BIN_DIR/$bin_name %F
+Comment=Secure Agentic Development Environment
+Exec="$BIN_DIR/$bin_name" %F
 Icon=$icon_path_var
 Terminal=false
 Type=Application
+StartupWMClass=$wm_class
 Categories=Development;IDE;
+MimeType=$mime_types
+EOF
+
+        local url_handler_desktop="$HOME/.local/share/applications/${bin_name}-url-handler.desktop"
+        cat << EOF > "$url_handler_desktop"
+[Desktop Entry]
+Version=1.0
+Name=$app_title - URL Handler
+Comment=Secure Agentic Development Environment
+Exec=$url_exec
+Icon=$icon_path_var
+NoDisplay=true
+Terminal=false
+StartupNotify=true
+StartupWMClass=$wm_class
+Type=Application
+Categories=Utility;Development;IDE;
+MimeType=x-scheme-handler/${bin_name};
 EOF
 
         if ! grep -qi "microsoft" /proc/version 2>/dev/null; then
-            log_info "${C_CYAN}🖥️  Adding shortcut to Desktop...${C_RESET}"
-            cp "$desktop_file_sys_var" "$desktop_file_user_var"
-            chmod +x "$desktop_file_user_var"
-            if command -v gio &> /dev/null; then run_cmd gio set "$desktop_file_user_var" metadata::trusted true || true; fi
-            if command -v update-desktop-database &> /dev/null; then run_cmd update-desktop-database "$HOME/.local/share/applications" || true; fi
+            if [ -d "$DESKTOP_DIR" ]; then
+                log_info "${C_CYAN}🖥️  Adding shortcut to Desktop...${C_RESET}"
+                cp "$desktop_file_sys_var" "$desktop_file_user_var"
+                chmod +x "$desktop_file_user_var"
+                if command -v gio >/dev/null 2>&1; then run_cmd gio set "$desktop_file_user_var" metadata::trusted true || true; fi
+            fi
+            if command -v xdg-mime >/dev/null 2>&1; then
+                run_cmd xdg-mime default "${bin_name}-url-handler.desktop" "x-scheme-handler/${bin_name}" || true
+            fi
+            if command -v update-desktop-database >/dev/null 2>&1; then
+                run_cmd update-desktop-database "$HOME/.local/share/applications" || true
+            fi
         fi
 
         echo ""
-        if command -v gum >/dev/null 2>&1; then
+        if [ "$JSON_OUT" -eq 0 ] && [ "$QUIET" -eq 0 ] && command -v gum >/dev/null 2>&1; then
             gum style --border double --border-foreground 46 --padding "1 2" "🎉 Installation Complete!
 Launch: $bin_name
 Workspace: $WORKSPACE_DIR"
@@ -422,7 +507,9 @@ Workspace: $WORKSPACE_DIR"
             log_error "Could not find any .app bundle inside the mounted DMG!"
             log_info "Contents of /Volumes/Antigravity:"
             ls -la /Volumes/Antigravity >> "$LOG_FILE" 2>&1 || true
-            run_cmd hdiutil detach /Volumes/Antigravity -quiet
+            run_cmd hdiutil detach /Volumes/Antigravity -quiet || true
+            rm -rf "$ACTIVE_TMP_DIR"
+            ACTIVE_TMP_DIR=""
             exit 1
         fi
         
@@ -434,11 +521,13 @@ Workspace: $WORKSPACE_DIR"
         
         if ! cp -R "/Volumes/Antigravity/$APP_NAME" /Applications/ >> "$LOG_FILE" 2>&1; then
             log_error "Failed to copy $APP_NAME to /Applications. Check /tmp/antigravity-install.log for details."
-            run_cmd hdiutil detach /Volumes/Antigravity -quiet
+            run_cmd hdiutil detach /Volumes/Antigravity -quiet || true
+            rm -rf "$ACTIVE_TMP_DIR"
+            ACTIVE_TMP_DIR=""
             exit 1
         fi
         
-        run_cmd hdiutil detach /Volumes/Antigravity -quiet
+        run_cmd hdiutil detach /Volumes/Antigravity -quiet || true
 
         echo ""
         log_warn "macOS Gatekeeper may block the standalone binary from running."
@@ -446,10 +535,21 @@ Workspace: $WORKSPACE_DIR"
         log_info "run this command to clear the quarantine flag:"
         log_info "  ${C_BOLD}xattr -rd com.apple.quarantine '/Applications/$APP_NAME'${C_RESET}"
 
-        # Create CLI shim for terminal launch
+        # Create CLI shim for terminal launch (avoid GNU-only 'find -executable' on BSD/macOS)
         mkdir -p "$BIN_DIR"
-        local mac_bin_path
-        mac_bin_path=$(find "/Applications/$APP_NAME/Contents/MacOS" -type f -executable | head -n 1 || true)
+        local mac_bin_path=""
+        if [ "$product_name" = "ide" ] && [ -x "/Applications/$APP_NAME/Contents/Resources/app/bin/antigravity-ide" ]; then
+            mac_bin_path="/Applications/$APP_NAME/Contents/Resources/app/bin/antigravity-ide"
+            run_cmd ln -sf "$mac_bin_path" "$BIN_DIR/agy-ide"
+        else
+            local candidate
+            for candidate in "/Applications/$APP_NAME/Contents/MacOS/"*; do
+                if [ -f "$candidate" ] && [ -x "$candidate" ]; then
+                    mac_bin_path="$candidate"
+                    break
+                fi
+            done
+        fi
         
         if [ -n "$mac_bin_path" ] && [ -f "$mac_bin_path" ]; then
             run_cmd ln -sf "$mac_bin_path" "$BIN_DIR/$bin_name"
@@ -467,14 +567,19 @@ Workspace: $WORKSPACE_DIR"
             cmd.exe /c start "" "$win_path"
         else
             log_error "Could not find cmd.exe to launch installer."
+            rm -rf "$ACTIVE_TMP_DIR"
+            ACTIVE_TMP_DIR=""
             exit 1
         fi
         log_info "${C_GREEN}${C_BOLD}🎉 Please complete the installation in the Windows UI!${C_RESET}"
     fi
 
-    configure_chrome_path
+    rm -rf "$ACTIVE_TMP_DIR"
+    ACTIVE_TMP_DIR=""
+    configure_chrome_path "$product_name"
+    inject_path
     mkdir -p "$STATE_DIR"
-    echo "{\"method\": \"binary\", \"version\": \"$target_version\"}" > "$state_file_var"
+    echo "{\"method\": \"binary\", \"product\": \"$product_name\", \"version\": \"$target_version\"}" > "$state_file_var"
 }
 
 do_remove() {
@@ -499,55 +604,64 @@ do_remove() {
     fi
 
     # Remove Google Antigravity (Binary/Tarball)
-    rm -rf "$APP_DIR" "$BIN_DIR/antigravity" "$DESKTOP_FILE_SYS" "$DESKTOP_FILE_USER"
+    rm -rf "$APP_DIR" "$BIN_DIR/antigravity" "$DESKTOP_FILE_SYS" "$DESKTOP_FILE_USER" \
+           "$HOME/.local/share/applications/antigravity-url-handler.desktop" \
+           "$HOME/.local/share/icons/hicolor/512x512/apps/antigravity.png"
     if [ "$PLATFORM" = "Darwin" ]; then
         rm -rf "/Applications/Google Antigravity.app"
         rm -rf "/Applications/Antigravity.app"
+        rm -rf "/Applications/Antigravity IDE.app"
     fi
 
     # Remove IDE (Binary/Tarball)
-    rm -rf "${APP_DIR}-ide" "$BIN_DIR/antigravity-ide" "$HOME/.local/share/applications/google-antigravity-ide.desktop"
-    if command -v xdg-user-dir &> /dev/null; then DESKTOP_DIR=$(xdg-user-dir DESKTOP); else DESKTOP_DIR="$HOME/Desktop"; fi
+    rm -rf "${APP_DIR}-ide" "$BIN_DIR/antigravity-ide" "$BIN_DIR/agy-ide" \
+           "$HOME/.local/share/applications/google-antigravity-ide.desktop" \
+           "$HOME/.local/share/applications/antigravity-ide-url-handler.desktop" \
+           "$HOME/.local/share/icons/hicolor/512x512/apps/antigravity-ide.png"
+    if command -v xdg-user-dir >/dev/null 2>&1; then DESKTOP_DIR=$(xdg-user-dir DESKTOP); else DESKTOP_DIR="$HOME/Desktop"; fi
     rm -f "$DESKTOP_DIR/google-antigravity-ide.desktop"
 
-    if command -v update-desktop-database &> /dev/null; then run_cmd update-desktop-database "$HOME/.local/share/applications" || true; fi
+    if command -v update-desktop-database >/dev/null 2>&1; then run_cmd update-desktop-database "$HOME/.local/share/applications" || true; fi
 
-    # Also check other install methods (brew, repo)
-    if [ -f "$STATE_FILE" ]; then
-        local method
-        method=$(grep -o '"method": "[^"]*' "$STATE_FILE" | grep -o '[^\"]*$')
-        log_info "Found installation state. Method used: $method"
-        
-        case "$method" in
-            "brew")
-                if [ "$PLATFORM" = "Darwin" ]; then 
-                    run_cmd brew uninstall --cask antigravity || true
-                else 
-                    local brew_prefix
-                    brew_prefix=$(brew --prefix 2>/dev/null || echo "/home/linuxbrew/.linuxbrew")
-                    run_cmd rm -f "$brew_prefix/bin/antigravity" || true
-                    run_cmd brew uninstall ublue-os/experimental-tap/antigravity-linux || run_cmd brew uninstall antigravity || true
-                    if command -v update-desktop-database &>/dev/null; then
-                        run_cmd update-desktop-database "$HOME/.local/share/applications" || true
-                    fi
-                fi ;;
-            "repo")
-                detect_distro
-                if command -v apt &> /dev/null && [ -f /etc/apt/sources.list.d/antigravity.list ]; then
-                    run_cmd sudo apt remove -y antigravity || true
-                    sudo rm -f /etc/apt/sources.list.d/antigravity.list
-                elif command -v dnf &> /dev/null && [ -f /etc/yum.repos.d/antigravity.repo ]; then
-                    run_cmd sudo dnf remove -y antigravity || true
-                    sudo rm -f /etc/yum.repos.d/antigravity.repo
-                fi ;;
-        esac
-        rm -f "$STATE_FILE"
-    fi
-
-    # Also check IDE state file
-    if [ -f "${STATE_DIR}/install-ide.json" ]; then
-        rm -f "${STATE_DIR}/install-ide.json"
-    fi
+    # Also check other install methods (brew, repo) across both state files
+    local st_file
+    for st_file in "$STATE_FILE" "${STATE_DIR}/install-ide.json"; do
+        if [ -f "$st_file" ]; then
+            local method
+            method=$(grep -o '"method": "[^"]*' "$st_file" | grep -o '[^"]*$' || true)
+            log_info "Found installation state ($st_file). Method used: $method"
+            
+            case "$method" in
+                "brew")
+                    if [ "$PLATFORM" = "Darwin" ]; then 
+                        run_cmd brew uninstall --cask antigravity || true
+                        run_cmd brew uninstall --cask antigravity-ide || true
+                    else 
+                        local brew_prefix
+                        brew_prefix=$(brew --prefix 2>/dev/null || echo "/home/linuxbrew/.linuxbrew")
+                        run_cmd rm -f "$brew_prefix/bin/antigravity" "$brew_prefix/bin/antigravity-ide" "$brew_prefix/bin/agy-ide" || true
+                        run_cmd brew uninstall --cask ublue-os/tap/antigravity-linux || true
+                        run_cmd brew uninstall --cask ublue-os/tap/antigravity-ide-linux || true
+                        run_cmd brew uninstall ublue-os/experimental-tap/antigravity-linux || true
+                        if command -v update-desktop-database >/dev/null 2>&1; then
+                            run_cmd update-desktop-database "$HOME/.local/share/applications" || true
+                        fi
+                    fi ;;
+                "repo")
+                    detect_distro
+                    local sudo_prefix=()
+                    if [ "$(id -u)" -ne 0 ]; then sudo_prefix=(sudo); fi
+                    if command -v apt-get >/dev/null 2>&1 && [ -f /etc/apt/sources.list.d/antigravity.list ]; then
+                        run_cmd "${sudo_prefix[@]}" apt-get remove -y antigravity || true
+                        "${sudo_prefix[@]}" rm -f /etc/apt/sources.list.d/antigravity.list
+                    elif command -v dnf >/dev/null 2>&1 && [ -f /etc/yum.repos.d/antigravity.repo ]; then
+                        run_cmd "${sudo_prefix[@]}" dnf remove -y antigravity || true
+                        "${sudo_prefix[@]}" rm -f /etc/yum.repos.d/antigravity.repo
+                    fi ;;
+            esac
+            rm -f "$st_file"
+        fi
+    done
 
     log_info "${C_GREEN}✅ Uninstalled successfully.${C_RESET} (Note: Your code in $WORKSPACE_DIR was kept safe)."
 }
@@ -555,9 +669,9 @@ do_remove() {
 get_cli_release_info() {
     local version="$1"
     local platform_key="$2"
-    local json_file="${VERSIONS_JSON_CACHE:-/tmp/versions.json}"
+    local json_file="${VERSIONS_JSON_CACHE:-}"
     
-    if [ ! -f "$json_file" ]; then
+    if [ -z "$json_file" ] || [ ! -s "$json_file" ]; then
         echo "|"
         return
     fi
@@ -621,38 +735,36 @@ install_cli() {
     if [ -z "$target_url" ] || [ -z "$target_sha" ]; then
         if [ "$target_version" = "$DEFAULT_CLI_VERSION" ]; then
             log_warn "Release details not found in versions.json. Falling back to official bootstrap installer..."
-            TMP_DIR=$(mktemp -d)
-            trap 'rm -rf "$TMP_DIR"; exit_handler' EXIT INT TERM
-            local install_script="$TMP_DIR/install.sh"
+            ACTIVE_TMP_DIR=$(mktemp -d)
+            local install_script="$ACTIVE_TMP_DIR/install.sh"
             
             if [ "$JSON_OUT" -eq 1 ] || [ "$QUIET" -eq 1 ]; then
-                if run_cmd curl -fSsL "$CLI_INSTALL_URL" -o "$install_script" && run_cmd bash "$install_script" --dir "$BIN_DIR"; then
-                    :
-                else
+                if ! run_cmd curl -fSsL "$CLI_INSTALL_URL" -o "$install_script" || ! run_cmd bash "$install_script" --dir "$BIN_DIR"; then
                     log_error "Antigravity CLI installation failed."
-                    rm -rf "$TMP_DIR"
-                    trap exit_handler EXIT INT TERM
+                    rm -rf "$ACTIVE_TMP_DIR"
+                    ACTIVE_TMP_DIR=""
                     exit 1
                 fi
             else
                 log_info "${C_BLUE}⬇️  Downloading CLI installer...${C_RESET}"
                 if ! curl -fSsL "$CLI_INSTALL_URL" -o "$install_script"; then
                     log_error "Failed to download CLI installer."
-                    rm -rf "$TMP_DIR"
-                    trap exit_handler EXIT INT TERM
+                    rm -rf "$ACTIVE_TMP_DIR"
+                    ACTIVE_TMP_DIR=""
                     exit 1
                 fi
                 log_info "${C_BLUE}📦 Executing CLI installer...${C_RESET}"
                 if ! bash "$install_script" --dir "$BIN_DIR"; then
                     log_error "CLI installer execution failed."
-                    rm -rf "$TMP_DIR"
-                    trap exit_handler EXIT INT TERM
+                    rm -rf "$ACTIVE_TMP_DIR"
+                    ACTIVE_TMP_DIR=""
                     exit 1
                 fi
             fi
             
-            rm -rf "$TMP_DIR"
-            trap exit_handler EXIT INT TERM
+            rm -rf "$ACTIVE_TMP_DIR"
+            ACTIVE_TMP_DIR=""
+            inject_path
             log_info "${C_GREEN}✅ Antigravity CLI installation complete!${C_RESET}"
             return
         else
@@ -661,8 +773,7 @@ install_cli() {
         fi
     fi
     
-    TMP_DIR=$(mktemp -d)
-    trap 'rm -rf "$TMP_DIR"; exit_handler' EXIT INT TERM
+    ACTIVE_TMP_DIR=$(mktemp -d)
     
     local is_tar_gz=false
     local file_ext="bin"
@@ -670,10 +781,10 @@ install_cli() {
         *.tar.gz*) is_tar_gz=true; file_ext="tar.gz" ;;
     esac
     
-    local dl_target="$TMP_DIR/cli.$file_ext"
+    local dl_target="$ACTIVE_TMP_DIR/cli.$file_ext"
     
-    if [ "$JSON_OUT" -eq 1 ] || [ "$QUIET" -eq 1 ]; then
-        run_cmd curl -fSL "$target_url" -o "$dl_target"
+    if [ "$JSON_OUT" -eq 1 ] || [ "$QUIET" -eq 1 ] || [ ! -t 2 ]; then
+        run_cmd curl -fSsL "$target_url" -o "$dl_target"
     else
         log_info "${C_BLUE}⬇️  Downloading CLI package...${C_RESET}"
         curl -fSL --progress-bar "$target_url" -o "$dl_target"
@@ -687,11 +798,15 @@ install_cli() {
         sha_cmd="shasum -a 512"
     else
         log_error "sha512sum or shasum is required but was not found."
+        rm -rf "$ACTIVE_TMP_DIR"
+        ACTIVE_TMP_DIR=""
         exit 1
     fi
     
     if ! echo "$target_sha  $dl_target" | $sha_cmd -c - >/dev/null 2>&1; then
         log_error "Checksum verification failed!"
+        rm -rf "$ACTIVE_TMP_DIR"
+        ACTIVE_TMP_DIR=""
         exit 1
     fi
     
@@ -700,8 +815,8 @@ install_cli() {
     
     if [ "$is_tar_gz" = "true" ]; then
         log_info "${C_BLUE}📦 Extracting CLI...${C_RESET}"
-        tar -xzf "$dl_target" -C "$TMP_DIR" antigravity
-        cp "$TMP_DIR/antigravity" "$binary_dest"
+        tar -xzf "$dl_target" -C "$ACTIVE_TMP_DIR" antigravity
+        cp "$ACTIVE_TMP_DIR/antigravity" "$binary_dest"
     else
         cp "$dl_target" "$binary_dest"
     fi
@@ -712,10 +827,11 @@ install_cli() {
     fi
     
     log_info "${C_BLUE}⚙️  Configuring environment...${C_RESET}"
-    "$binary_dest" install || true
+    "$binary_dest" install --dir "$BIN_DIR" >/dev/null 2>&1 || "$binary_dest" install >/dev/null 2>&1 || true
+    inject_path
     
-    rm -rf "$TMP_DIR"
-    trap exit_handler EXIT INT TERM
+    rm -rf "$ACTIVE_TMP_DIR"
+    ACTIVE_TMP_DIR=""
     log_info "${C_GREEN}✅ Antigravity CLI installation complete!${C_RESET}"
 }
 
@@ -729,26 +845,63 @@ install_sdk() {
         exit 1
     fi
     
-    if ! python3 -m pip --version >/dev/null 2>&1; then
-        log_error "pip is required but was not found. Please install pip for python3 first."
-        exit 1
-    fi
-    
     local pkg="google-antigravity"
     if [ -n "$target_version" ] && [ "$target_version" != "latest" ]; then
         pkg="google-antigravity==$target_version"
     fi
-    
-    log_info "${C_BLUE}📦 Installing package '$pkg' via pip...${C_RESET}"
-    if [ "$JSON_OUT" -eq 1 ] || [ "$QUIET" -eq 1 ]; then
-        run_cmd python3 -m pip install --upgrade "$pkg"
+
+    local pip_runner=()
+    if python3 -m pip --version >/dev/null 2>&1; then
+        pip_runner=(python3 -m pip)
     else
-        if ! python3 -m pip install --upgrade "$pkg"; then
-            log_error "Failed to install Google Antigravity SDK."
-            exit 1
+        log_warn "pip module not found for python3; bootstrapping ephemeral pip zipapp..."
+        python3 -m ensurepip --user >/dev/null 2>&1 || true
+        if python3 -m pip --version >/dev/null 2>&1; then
+            pip_runner=(python3 -m pip)
+        else
+            ACTIVE_TMP_DIR=$(mktemp -d)
+            local pip_pyz="$ACTIVE_TMP_DIR/pip.pyz"
+            if ! curl -fSsL "https://bootstrap.pypa.io/pip/pip.pyz" -o "$pip_pyz"; then
+                log_error "Failed to bootstrap pip for python3."
+                rm -rf "$ACTIVE_TMP_DIR"
+                ACTIVE_TMP_DIR=""
+                exit 1
+            fi
+            pip_runner=(python3 "$pip_pyz")
         fi
     fi
-    
+
+    local pip_flags=(--upgrade)
+    if [ -z "${VIRTUAL_ENV:-}" ]; then
+        pip_flags+=(--user)
+        if "${pip_runner[@]}" install --help 2>&1 | grep -q -- '--break-system-packages'; then
+            pip_flags+=(--break-system-packages)
+        fi
+    fi
+
+    log_info "${C_BLUE}📦 Installing package '$pkg' via pip...${C_RESET}"
+    local sdk_ok=0
+    if [ "$JSON_OUT" -eq 1 ] || [ "$QUIET" -eq 1 ]; then
+        if run_cmd "${pip_runner[@]}" install "${pip_flags[@]}" "$pkg"; then
+            sdk_ok=1
+        fi
+    else
+        if "${pip_runner[@]}" install "${pip_flags[@]}" "$pkg"; then
+            sdk_ok=1
+        fi
+    fi
+
+    if [ -n "${ACTIVE_TMP_DIR:-}" ] && [ -d "$ACTIVE_TMP_DIR" ]; then
+        rm -rf "$ACTIVE_TMP_DIR"
+        ACTIVE_TMP_DIR=""
+    fi
+
+    if [ "$sdk_ok" -ne 1 ]; then
+        log_error "Failed to install Google Antigravity SDK."
+        exit 1
+    fi
+
+    inject_path
     log_info "${C_GREEN}✅ Antigravity SDK installation complete!${C_RESET}"
 }
 
@@ -989,9 +1142,9 @@ install_jules() {
 
 get_agy_box_release_url() {
     local version="$1"
-    local json_file="${VERSIONS_JSON_CACHE:-/tmp/versions.json}"
+    local json_file="${VERSIONS_JSON_CACHE:-}"
     
-    if [ ! -f "$json_file" ]; then
+    if [ -z "$json_file" ] || [ ! -s "$json_file" ]; then
         echo ""
         return
     fi
@@ -1010,23 +1163,70 @@ get_agy_box_release_url() {
     echo "$url"
 }
 
+get_vscode_vsix_url() {
+    local json_file="${VERSIONS_JSON_CACHE:-}"
+    if [ -z "$json_file" ] || [ ! -s "$json_file" ]; then
+        echo "https://open-vsx.org/api/Google/google-antigravity/latest/file/Google.google-antigravity.vsix"
+        return
+    fi
+    local url
+    url=$(awk '
+      BEGIN { in_ext=0; in_vsc=0 }
+      $0 == "  \"extensions\": {" { in_ext=1; next }
+      in_ext && $0 ~ "^  }" { in_ext=0; next }
+      in_ext && $0 == "    \"vscode\": {" { in_vsc=1; next }
+      in_vsc && $0 ~ "^    }" { in_vsc=0; next }
+      in_vsc && $0 ~ "\"vsix_url\":" { split($0, a, "\""); url=a[4] }
+      END { if (url != "") print url }
+    ' "$json_file" 2>/dev/null || true)
+    if [ -n "$url" ]; then
+        echo "$url"
+    else
+        echo "https://open-vsx.org/api/Google/google-antigravity/latest/file/Google.google-antigravity.vsix"
+    fi
+}
+
 install_vscode_ext() {
     JSON_METHOD="vscode_ext"
     log_info "${C_MAG}🚀 Installing Google Antigravity VS Code Extension...${C_RESET}"
     local installed=0
+    local found_any=0
     for cmd in code codium code-insiders; do
         if command -v "$cmd" >/dev/null 2>&1; then
+            found_any=1
             log_info "Found $cmd in PATH. Installing Google.google-antigravity extension..."
-            if "$cmd" --install-extension Google.google-antigravity --force; then
+            local extra_flags=()
+            if [ "$(id -u)" -eq 0 ]; then
+                mkdir -p "$HOME/.vscode-root"
+                extra_flags+=(--no-sandbox --user-data-dir "$HOME/.vscode-root")
+            fi
+            if "$cmd" "${extra_flags[@]}" --install-extension Google.google-antigravity --force; then
                 log_info "${C_GREEN}✅ Installed Google Antigravity extension for $cmd.${C_RESET}"
                 installed=1
+            else
+                log_warn "Direct marketplace lookup failed for $cmd; attempting OpenVSX VSIX fallback..."
+                fetch_versions_json || true
+                local vsix_url
+                vsix_url=$(get_vscode_vsix_url)
+                ACTIVE_TMP_DIR=$(mktemp -d)
+                local vsix_file="$ACTIVE_TMP_DIR/Google.google-antigravity.vsix"
+                if curl -fSsL "$vsix_url" -o "$vsix_file" && "$cmd" "${extra_flags[@]}" --install-extension "$vsix_file" --force; then
+                    log_info "${C_GREEN}✅ Installed Google Antigravity extension for $cmd via VSIX.${C_RESET}"
+                    installed=1
+                fi
+                rm -rf "$ACTIVE_TMP_DIR"
+                ACTIVE_TMP_DIR=""
             fi
         fi
     done
 
-    if [ "$installed" -eq 0 ]; then
+    if [ "$found_any" -eq 0 ]; then
         log_warn "None of 'code', 'codium', or 'code-insiders' was found in PATH."
         echo -e "${C_YELLOW}💡 Install Visual Studio Code first (https://code.visualstudio.com), then re-run.${C_RESET}"
+        return 1
+    fi
+    if [ "$installed" -eq 0 ]; then
+        log_error "Failed to install Google.google-antigravity extension."
         return 1
     fi
     return 0
@@ -1435,8 +1635,10 @@ install_agy_box() {
     log_info "Fetching agy-box version details..."
     fetch_versions_json || true
     local agy_ver="${DEFAULT_AGY_BOX_VERSION:-v0.6.0}"
-    local remote_url
-    remote_url=$(get_agy_box_release_url "$agy_ver")
+    local remote_url="${AGY_BOX_MANAGER_URL:-}"
+    if [ -z "$remote_url" ]; then
+        remote_url=$(get_agy_box_release_url "$agy_ver")
+    fi
     
     if [ -z "$remote_url" ]; then
         log_warn "Release version $agy_ver not found in versions.json. Falling back to official release tag URL..."
@@ -1447,7 +1649,7 @@ install_agy_box() {
     local target_dir="$HOME/.local/bin"
     mkdir -p "$target_dir"
     
-    if ! curl -fsSL "$remote_url" -o "$target_dir/agy-box-manager"; then
+    if ! curl -fSsL "$remote_url" -o "$target_dir/agy-box-manager"; then
         log_error "Failed to download agy-box-manager from $remote_url"
         return 1
     fi
@@ -1455,9 +1657,16 @@ install_agy_box() {
 
     # 4. Trigger sandbox installation
     log_info "Starting agy-box container setup..."
-    if ! "$target_dir/agy-box-manager" install; then
-        log_error "agy-box container setup failed during execution of agy-box-manager install."
-        return 1
+    if [ "$AUTO" -eq 1 ]; then
+        if ! AGY_NONINTERACTIVE=1 "$target_dir/agy-box-manager" install < /dev/null; then
+            log_error "agy-box container setup failed during execution of agy-box-manager install."
+            return 1
+        fi
+    else
+        if ! "$target_dir/agy-box-manager" install; then
+            log_error "agy-box container setup failed during execution of agy-box-manager install."
+            return 1
+        fi
     fi
 
     # 5. Check if ~/.local/bin is in PATH

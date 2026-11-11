@@ -1,7 +1,7 @@
 # Install Method: System Repository (APT/DNF)
 
-> **Status:** ✅ Tested
-> **Last updated:** 2026-05-13
+> **Status:** ⚠️ Legacy (Frozen at Antigravity 1.x / `1.23.2`)
+> **Last updated:** 2026-11-11
 > **Parent:** [implementation_plan.md](implementation_plan.md)
 > **Packages:** [package-antigravity-ide.md](package-antigravity-ide.md)
 
@@ -9,7 +9,8 @@
 
 ## Overview
 
-The "System Repo" install method is the recommended path for traditional Linux distributions (Ubuntu, Debian, Fedora). It hooks Antigravity into the OS's native package manager (`apt` or `dnf`), ensuring it receives automatic updates alongside normal system upgrades.
+> [!WARNING]
+> **Upstream 2.x Distribution Change:** Google's upstream APT and RPM Artifact Registry repositories stopped publishing new releases after Antigravity `1.23.2`. For **Google Antigravity Hub 2.x** and **Antigravity IDE 2.x**, `antigravity-manager.sh` now recommends **Official Binary (`--install-binary` / `--install-ide`)** or **Homebrew (`--install-brew`)** by default on Linux. `--install-repo` remains available explicitly for legacy 1.x environments (and automatically refuses to run on read-only Atomic/Immutable Linux systems).
 
 We use **Google Artifact Registry (AR)** as the backend hosting provider for both our APT and YUM/DNF repositories.
 

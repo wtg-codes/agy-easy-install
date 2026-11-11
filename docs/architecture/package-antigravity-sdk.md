@@ -17,17 +17,17 @@ The **Antigravity Python SDK** (`google-antigravity`) provides programmatic Pyth
 | Property | Value / Description |
 |---|---|
 | **PyPI Package Name** | `google-antigravity` |
-| **Import Namespace** | `google_antigravity` |
+| **Import Namespace** | `google.antigravity` |
 | **Distribution** | Python Package Index (PyPI) |
-| **Dependencies** | `python3` (>= 3.9), `pip` |
+| **Dependencies** | `python3` (>= 3.10), `pip` (or automatic standalone PyPA `pip.pyz` bootstrap) |
 
 ---
 
 ## Target Installation Directories
 
-The SDK is installed via `pip3` and resides in the system or virtual environment's site-packages:
-- **Global User-space:** `~/.local/lib/python3.*/site-packages/google_antigravity/`
-- **Virtual Environment:** `<venv>/lib/python3.*/site-packages/google_antigravity/`
+The SDK is installed via `pip` (`--user --break-system-packages` when outside a virtualenv on PEP 668 distributions) and resides in site-packages:
+- **Global User-space:** `~/.local/lib/python3.*/site-packages/google/antigravity/`
+- **Virtual Environment:** `<venv>/lib/python3.*/site-packages/google/antigravity/`
 
 ---
 

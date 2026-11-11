@@ -26,15 +26,26 @@ Because Antigravity relies heavily on a terminal CLI experience but requires Goo
 
 ## Installation Flow
 
+### macOS (`Homebrew/homebrew-cask`)
 ```bash
-# 1. Tap the custom repository
-brew tap wtg-codes/homebrew-antigravity
+# Google Antigravity Hub (2.x)
+brew install --cask antigravity
 
-# 2. Install the formula
-brew install antigravity
+# Antigravity IDE (2.x)
+brew install --cask antigravity-ide
 ```
 
-**Source:** `src/30_installers.sh:23-38`
+### Linux (`ublue-os/tap`)
+```bash
+# 1. Tap Universal Blue's official Homebrew tap
+brew tap ublue-os/tap
+
+# 2. Install Google Antigravity Hub or Antigravity IDE cask
+brew install --cask ublue-os/tap/antigravity-linux
+brew install --cask ublue-os/tap/antigravity-ide-linux
+```
+
+**Source:** `src/30_installers.sh`
 
 ### Why a Custom Tap?
 We use a custom tap (`wtg-codes/homebrew-antigravity`) instead of submitting to `homebrew-core` because:

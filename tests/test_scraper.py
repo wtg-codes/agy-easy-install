@@ -358,6 +358,51 @@ class TestShellParsersAndInstallers(unittest.TestCase):
         self.assertNotIn("--install-extension Google.antigravity ", installers)
         self.assertIn('do_install_binary "ide" "$selected_version"', main_sh)
 
+    def test_poisoned_tmp_versions_json_is_ignored_and_cleaned_up(self):
+        repo_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+        with tempfile.TemporaryDirectory() as tmp:
+            poisoned = os.path.join(tmp, "versions.json")
+            with open(poisoned, "w") as f:
+                json.dump(
+                    {
+                        "antigravity": {
+                            "2.31.0": {"LINUX_X64": {"url": "https://hub-231", "sha256": "bad"}}
+                        },
+                        "ide": {
+                            "2.6.0": {"LINUX_X64": {"url": "https://ide-260", "sha256": "bad"}}
+                        },
+                    },
+                    f,
+                    indent=2,
+                )
+            work_dir = os.path.join(tmp, "work")
+            os.makedirs(work_dir, exist_ok=True)
+            script = f"""
+            set -e
+            export TMPDIR="{tmp}"
+            unset VERSIONS_JSON_CACHE
+            cd "{work_dir}"
+            source "{repo_root}/src/00_config.sh"
+            source "{repo_root}/src/10_utils.sh"
+            source "{repo_root}/src/30_installers.sh"
+            VERSIONS_JSON_URL="file://{repo_root}/versions.json"
+            fetch_versions_json
+            echo "CACHE_PATH=$VERSIONS_JSON_CACHE"
+            echo "IDE_INFO=$(get_product_release_info ide 2.6.0 LINUX_X64)"
+            echo "AGY_INFO=$(get_product_release_info antigravity 2.31.0 LINUX_X64)"
+            """
+            res = subprocess.run(["bash", "-c", script], capture_output=True, text=True)
+            self.assertEqual(res.returncode, 0, msg=res.stderr)
+            kv = dict(
+                line.split("=", 1) for line in res.stdout.strip().splitlines() if "=" in line
+            )
+            self.assertNotIn("ide-260", kv["IDE_INFO"])
+            self.assertNotIn("hub-231", kv["AGY_INFO"])
+            self.assertIn("edgedl.me.gvt1.com", kv["IDE_INFO"])
+            self.assertIn("storage.googleapis.com", kv["AGY_INFO"])
+            self.assertNotEqual(kv["CACHE_PATH"], poisoned)
+            self.assertFalse(os.path.exists(kv["CACHE_PATH"]))
+
 
 if __name__ == "__main__":
     unittest.main()
