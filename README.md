@@ -63,14 +63,16 @@ curl -fSsL "https://raw.githubusercontent.com/wtg-codes/agy-easy-install/main/an
 
 # Or force a specific method
 bash antigravity-manager.sh --install-brew
-bash antigravity-manager.sh --install-repo
-bash antigravity-manager.sh --install-binary
-bash antigravity-manager.sh --install-cli      # Headless Antigravity CLI install
-bash antigravity-manager.sh --install-sdk      # Headless Antigravity Python SDK install
-bash antigravity-manager.sh --install-sandbox  # Headless agy-box sandbox container install
-bash antigravity-manager.sh --install-vscode   # Headless VS Code / VSCodium extension install
+bash antigravity-manager.sh --install-repo      # Legacy 1.x APT/DNF repo
+bash antigravity-manager.sh --install-binary    # Headless Google Antigravity Hub 2.x install
+bash antigravity-manager.sh --install-ide       # Headless Antigravity IDE 2.x install
+bash antigravity-manager.sh --install-cli       # Headless Antigravity CLI install
+bash antigravity-manager.sh --install-sdk       # Headless Antigravity Python SDK install
+bash antigravity-manager.sh --install-jules     # Headless Google Jules CLI install
+bash antigravity-manager.sh --install-sandbox   # Headless agy-box sandbox container install
+bash antigravity-manager.sh --install-vscode    # Headless VS Code / VSCodium extension install
 bash antigravity-manager.sh --install-jetbrains # Headless JetBrains Antigravity plugin install
-bash antigravity-manager.sh --install-zed      # Headless Zed Antigravity extension config
+bash antigravity-manager.sh --install-zed       # Headless Zed Antigravity extension config
 bash antigravity-manager.sh --install-extensions # Install extensions for all detected IDEs
 
 # Additional options
@@ -146,12 +148,21 @@ For detailed platform-specific architecture, see our documentation:
 
 These links are updated nightly by our CI pipeline. If they fail, run the installer script instead—it always scrapes the latest URL.
 
-- **Linux (x64)**: [Antigravity.tar.gz](https://edgedl.me.gvt1.com/edgedl/release2/j0qc3/antigravity/stable/1.23.2-4781536860569600/linux-x64/Antigravity.tar.gz)
-- **Linux (ARM64)**: [Antigravity.tar.gz (arm64)](https://edgedl.me.gvt1.com/edgedl/release2/j0qc3/antigravity/stable/2.6.0-5526304964083712/linux-arm/Antigravity%20IDE.tar.gz)
-- **macOS (Apple Silicon)**: [Antigravity.dmg (arm64)](https://edgedl.me.gvt1.com/edgedl/release2/j0qc3/antigravity/stable/1.23.2-4781536860569600/darwin-arm/Antigravity.dmg)
-- **macOS (Intel)**: [Antigravity.dmg (x64)](https://edgedl.me.gvt1.com/edgedl/release2/j0qc3/antigravity/stable/1.23.2-4781536860569600/darwin-x64/Antigravity.dmg)
-- **Windows (x64)**: [Antigravity.exe](https://edgedl.me.gvt1.com/edgedl/release2/j0qc3/antigravity/stable/1.23.2-4781536860569600/windows-x64/Antigravity.exe)
-- **Windows (ARM64)**: [Antigravity.exe](https://edgedl.me.gvt1.com/edgedl/release2/j0qc3/antigravity/stable/1.23.2-4781536860569600/windows-arm64/Antigravity.exe)
+**Google Antigravity Hub (2.x):**
+- **Linux (x64)**: [Antigravity.tar.gz](https://storage.googleapis.com/antigravity-public/antigravity-hub/2.31.0-6379060755038208/linux-x64/Antigravity.tar.gz)
+- **Linux (ARM64)**: [Antigravity.tar.gz (arm64)](https://storage.googleapis.com/antigravity-public/antigravity-hub/2.31.0-6379060755038208/linux-arm/Antigravity.tar.gz)
+- **macOS (Apple Silicon)**: [Antigravity.dmg (arm64)](https://storage.googleapis.com/antigravity-public/antigravity-hub/2.31.0-6379060755038208/darwin-arm/Antigravity.dmg)
+- **macOS (Intel)**: [Antigravity.dmg (x64)](https://storage.googleapis.com/antigravity-public/antigravity-hub/2.31.0-6379060755038208/darwin-x64/Antigravity.dmg)
+- **Windows (x64)**: [Antigravity-x64.exe](https://storage.googleapis.com/antigravity-public/antigravity-hub/2.31.0-6379060755038208/windows-x64/Antigravity-x64.exe)
+- **Windows (ARM64)**: [Antigravity-arm64.exe](https://storage.googleapis.com/antigravity-public/antigravity-hub/2.31.0-6379060755038208/windows-arm/Antigravity-arm64.exe)
+
+**Antigravity IDE (2.x):**
+- **Linux (x64)**: [Antigravity IDE.tar.gz](https://edgedl.me.gvt1.com/edgedl/release2/j0qc3/antigravity/stable/2.6.0-5526304964083712/linux-x64/Antigravity%20IDE.tar.gz)
+- **Linux (ARM64)**: [Antigravity IDE.tar.gz (arm64)](https://edgedl.me.gvt1.com/edgedl/release2/j0qc3/antigravity/stable/2.6.0-5526304964083712/linux-arm/Antigravity%20IDE.tar.gz)
+- **macOS (Apple Silicon)**: [Antigravity IDE.dmg (arm64)](https://edgedl.me.gvt1.com/edgedl/release2/j0qc3/antigravity/stable/2.6.0-5526304964083712/darwin-arm/Antigravity%20IDE.dmg)
+- **macOS (Intel)**: [Antigravity IDE.dmg (x64)](https://edgedl.me.gvt1.com/edgedl/release2/j0qc3/antigravity/stable/2.6.0-5526304964083712/darwin-x64/Antigravity%20IDE.dmg)
+- **Windows (x64)**: [Antigravity IDE.exe](https://edgedl.me.gvt1.com/edgedl/release2/j0qc3/antigravity/stable/2.6.0-5526304964083712/windows-x64/Antigravity%20IDE.exe)
+- **Windows (ARM64)**: [Antigravity IDE.exe (arm64)](https://edgedl.me.gvt1.com/edgedl/release2/j0qc3/antigravity/stable/2.6.0-5526304964083712/windows-arm64/Antigravity%20IDE.exe)
 
 </details>
 

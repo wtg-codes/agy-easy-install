@@ -1,8 +1,16 @@
 cleanup_ui() {
-    tput cnorm 2>/dev/null || true
-    printf "\r\033[K" 2>/dev/null || true
-    if [ -n "$GUM_DIR" ] && [ -d "$GUM_DIR" ]; then
+    if [ "${JSON_OUT:-0}" -eq 0 ] && [ "${QUIET:-0}" -eq 0 ] && [ -t 1 ]; then
+        tput cnorm 2>/dev/null || true
+        printf "\r\033[K" 2>/dev/null || true
+    fi
+    if [ -n "${GUM_DIR:-}" ] && [ -d "$GUM_DIR" ]; then
         rm -rf "$GUM_DIR"
+    fi
+    if [ "${VERSIONS_JSON_OWNED:-0}" -eq 1 ] && [ -n "${VERSIONS_JSON_CACHE:-}" ] && [ -f "$VERSIONS_JSON_CACHE" ]; then
+        rm -f "$VERSIONS_JSON_CACHE"
+    fi
+    if [ -n "${ACTIVE_TMP_DIR:-}" ] && [ -d "$ACTIVE_TMP_DIR" ]; then
+        rm -rf "$ACTIVE_TMP_DIR"
     fi
 }
 
@@ -115,28 +123,39 @@ check_dependencies() {
 }
 
 fetch_versions_json() {
-    local cache_file="${VERSIONS_JSON_CACHE:-/tmp/versions.json}"
-    if [ -f "$cache_file" ]; then
+    if [ -n "${VERSIONS_JSON_CACHE:-}" ] && [ -s "$VERSIONS_JSON_CACHE" ]; then
         return 0
     fi
+
+    if [ -z "${VERSIONS_JSON_CACHE:-}" ]; then
+        VERSIONS_JSON_CACHE=$(mktemp "${TMPDIR:-/tmp}/agy-versions.XXXXXX.json")
+        VERSIONS_JSON_OWNED=1
+    fi
+
     local local_json=""
-    if [ -f "versions.json" ]; then
-        local_json="versions.json"
-    elif [ -f "../versions.json" ]; then
-        local_json="../versions.json"
-    elif [ -f "$(dirname "$0")/versions.json" ]; then
-        local_json="$(dirname "$0")/versions.json"
+    if [ "$VERSIONS_JSON_URL" = "${DEFAULT_VERSIONS_JSON_URL:-}" ] && [ -f "$0" ]; then
+        local script_dir
+        script_dir=$(cd "$(dirname "$0")" 2>/dev/null && pwd || echo "")
+        case "$script_dir" in
+            ""|/tmp|/tmp/*|/var/tmp|/var/tmp/*|"${TMPDIR:-/tmp}"|"${TMPDIR:-/tmp}"/*) ;;
+            *)
+                if [ -s "$script_dir/versions.json" ]; then
+                    local_json="$script_dir/versions.json"
+                fi
+                ;;
+        esac
     fi
-    
+
     if [ -n "$local_json" ]; then
-        cp "$local_json" "$cache_file"
+        cp "$local_json" "$VERSIONS_JSON_CACHE"
         return 0
     fi
-    
-    if curl -fSsL --connect-timeout 5 "$VERSIONS_JSON_URL" -o "$cache_file" 2>/dev/null; then
+
+    if curl -fSsL --connect-timeout 5 "$VERSIONS_JSON_URL" -o "$VERSIONS_JSON_CACHE" 2>/dev/null && [ -s "$VERSIONS_JSON_CACHE" ]; then
         return 0
-    else
-        return 1
     fi
+
+    rm -f "$VERSIONS_JSON_CACHE" 2>/dev/null || true
+    return 1
 }
 

@@ -13,15 +13,17 @@ C_DIM='\033[2m'
 C_RESET='\033[0m'
 
 # Configuration
-SCRIPT_VERSION="0.3.2"
+SCRIPT_VERSION="0.3.3"
 DEFAULT_AGY_VERSION="2.31.0"
 DEFAULT_IDE_VERSION="2.6.0"
 DEFAULT_CLI_VERSION="1.5.5"
 DEFAULT_SDK_VERSION="0.1.23"
 DEFAULT_JULES_VERSION="latest"
 DEFAULT_AGY_BOX_VERSION="v0.6.0"
-VERSIONS_JSON_URL="https://raw.githubusercontent.com/wtg-codes/agy-easy-install/main/versions.json"
-VERSIONS_JSON_CACHE="${VERSIONS_JSON_CACHE:-/tmp/versions.json}"
+DEFAULT_VERSIONS_JSON_URL="https://raw.githubusercontent.com/wtg-codes/agy-easy-install/main/versions.json"
+VERSIONS_JSON_URL="${VERSIONS_JSON_URL:-$DEFAULT_VERSIONS_JSON_URL}"
+VERSIONS_JSON_CACHE="${VERSIONS_JSON_CACHE:-}"
+VERSIONS_JSON_OWNED="${VERSIONS_JSON_OWNED:-0}"
 
 LINUX_X64_SHA256="b060a7c7679103b2b619752f8ee7a3088dd241a7d207d4311974b56ea6f94356"
 LINUX_X64_URL="https://edgedl.me.gvt1.com/edgedl/release2/j0qc3/antigravity/stable/2.6.0-5526304964083712/linux-x64/Antigravity%20IDE.tar.gz"

@@ -401,10 +401,23 @@ post_install_menu() {
     clear || true
     echo ""
     local done_msg="🎉 Setup Complete!"
-    if echo "$FAST_TRACK_PRODUCTS" | grep -q "ide"; then done_msg="${done_msg}\nIDE:  v${DEFAULT_IDE_VERSION} installed"; fi
-    if echo "$FAST_TRACK_PRODUCTS" | grep -q "cli"; then done_msg="${done_msg}\nCLI:  v${DEFAULT_CLI_VERSION} installed"; fi
+    local launch_cmd="antigravity"
+    if echo "$FAST_TRACK_PRODUCTS" | grep -q "antigravity"; then done_msg="${done_msg}\nAntigravity: v${DEFAULT_AGY_VERSION} installed"; fi
+    if echo "$FAST_TRACK_PRODUCTS" | grep -q "ide"; then
+        done_msg="${done_msg}\nIDE:  v${DEFAULT_IDE_VERSION} installed"
+        if ! echo "$FAST_TRACK_PRODUCTS" | grep -q "antigravity"; then
+            launch_cmd="antigravity-ide"
+        fi
+    fi
+    if echo "$FAST_TRACK_PRODUCTS" | grep -q "cli"; then
+        done_msg="${done_msg}\nCLI:  v${DEFAULT_CLI_VERSION} installed"
+        if ! echo "$FAST_TRACK_PRODUCTS" | grep -qE "antigravity|ide"; then
+            launch_cmd="agy"
+        fi
+    fi
+    if echo "$FAST_TRACK_PRODUCTS" | grep -q "jules"; then done_msg="${done_msg}\nJules: latest installed"; fi
     if echo "$FAST_TRACK_PRODUCTS" | grep -q "sdk"; then done_msg="${done_msg}\nSDK:  v${DEFAULT_SDK_VERSION} installed"; fi
-    done_msg="${done_msg}\nLaunch: antigravity"
+    done_msg="${done_msg}\nLaunch: ${launch_cmd}"
 
     if command -v gum >/dev/null 2>&1; then
         echo -e "$done_msg" | gum style --border double --border-foreground 46 --padding "1 2"
@@ -467,8 +480,8 @@ post_install_menu() {
 
 # ── Version Selection Helpers ────────────────────────────────────
 list_antigravity_versions() {
-    local json_file="${VERSIONS_JSON_CACHE:-/tmp/versions.json}"
-    if [ -f "$json_file" ]; then
+    local json_file="${VERSIONS_JSON_CACHE:-}"
+    if [ -n "$json_file" ] && [ -s "$json_file" ]; then
         awk '
           BEGIN { in_agy=0 }
           $0 == "  \"antigravity\": {" { in_agy=1; next }
@@ -532,8 +545,8 @@ choose_antigravity_version() {
 }
 
 list_ide_versions() {
-    local json_file="${VERSIONS_JSON_CACHE:-/tmp/versions.json}"
-    if [ -f "$json_file" ]; then
+    local json_file="${VERSIONS_JSON_CACHE:-}"
+    if [ -n "$json_file" ] && [ -s "$json_file" ]; then
         awk '
           BEGIN { in_ide=0 }
           $0 == "  \"ide\": {" { in_ide=1; next }
@@ -549,8 +562,8 @@ list_ide_versions() {
 }
 
 list_cli_versions() {
-    local json_file="${VERSIONS_JSON_CACHE:-/tmp/versions.json}"
-    if [ -f "$json_file" ]; then
+    local json_file="${VERSIONS_JSON_CACHE:-}"
+    if [ -n "$json_file" ] && [ -s "$json_file" ]; then
         awk '
           BEGIN { in_cli=0 }
           $0 == "  \"cli\": {" { in_cli=1; next }
@@ -566,8 +579,8 @@ list_cli_versions() {
 }
 
 list_sdk_versions() {
-    local json_file="${VERSIONS_JSON_CACHE:-/tmp/versions.json}"
-    if [ -f "$json_file" ]; then
+    local json_file="${VERSIONS_JSON_CACHE:-}"
+    if [ -n "$json_file" ] && [ -s "$json_file" ]; then
         awk '
           BEGIN { in_sdk=0; in_vers=0 }
           $0 == "  \"sdk\": {" { in_sdk=1; next }
@@ -894,7 +907,7 @@ run_mock_action() {
                 run_cmd_ui "Installing package 'google-antigravity'..." sleep 1.5
                 echo ""
                 log_info "${C_GREEN}${C_BOLD}🎉 Mock Installation Complete!${C_RESET}"
-                log_info "  ${C_CYAN}▸${C_RESET} Verify:    ${C_BOLD}python3 -c \"import google_antigravity\"${C_RESET}"
+                log_info "  ${C_CYAN}▸${C_RESET} Verify:    ${C_BOLD}python3 -c \"import google.antigravity\"${C_RESET}"
                 return
             fi
 

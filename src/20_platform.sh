@@ -76,11 +76,31 @@ find_chrome_binary() {
 }
 
 configure_chrome_path() {
-    local SETTINGS_DIR="$HOME/.config/Antigravity/User"
+    local target_product="${1:-antigravity}"
+    local settings_dirs=()
     if [ "$PLATFORM" = "Darwin" ]; then
-        SETTINGS_DIR="$HOME/Library/Application Support/Antigravity/User"
+        case "$target_product" in
+            ide) settings_dirs=("$HOME/Library/Application Support/Antigravity IDE/User") ;;
+            both)
+                settings_dirs=(
+                    "$HOME/Library/Application Support/Antigravity/User"
+                    "$HOME/Library/Application Support/Antigravity IDE/User"
+                )
+                ;;
+            *) settings_dirs=("$HOME/Library/Application Support/Antigravity/User") ;;
+        esac
+    else
+        case "$target_product" in
+            ide) settings_dirs=("$HOME/.config/Antigravity IDE/User") ;;
+            both)
+                settings_dirs=(
+                    "$HOME/.config/Antigravity/User"
+                    "$HOME/.config/Antigravity IDE/User"
+                )
+                ;;
+            *) settings_dirs=("$HOME/.config/Antigravity/User") ;;
+        esac
     fi
-    local SETTINGS_FILE="$SETTINGS_DIR/settings.json"
     local chrome_path=""
 
     log_info "${C_CYAN}🔍 Locating Chrome binary for Antigravity...${C_RESET}"
@@ -114,17 +134,41 @@ configure_chrome_path() {
         fi
 
         if [ "$do_inject" -eq 1 ]; then
-            mkdir -p "$SETTINGS_DIR"
-            [[ ! -f "$SETTINGS_FILE" ]] && echo '{}' > "$SETTINGS_FILE"
+            local sdir sfile
+            for sdir in "${settings_dirs[@]}"; do
+                sfile="$sdir/settings.json"
+                mkdir -p "$sdir"
+                [[ ! -f "$sfile" ]] && echo '{}' > "$sfile"
 
-            if command -v jq >/dev/null 2>&1; then
-                jq --arg path "$chrome_path" \
-                   '.["antigravity.browser.chromeBinaryPath"] = $path' \
-                   "$SETTINGS_FILE" > "${SETTINGS_FILE}.tmp" && mv "${SETTINGS_FILE}.tmp" "$SETTINGS_FILE"
-                log_info "${C_GREEN}✅ Antigravity Chrome path mapped to $chrome_path${C_RESET}"
-            else
-                log_warn "jq is missing. Cannot automatically configure Chrome path. Install jq to enable auto-config."
-            fi
+                if command -v jq >/dev/null 2>&1; then
+                    jq --arg path "$chrome_path" \
+                       '.["antigravity.browser.chromeBinaryPath"] = $path' \
+                       "$sfile" > "${sfile}.tmp" && mv "${sfile}.tmp" "$sfile"
+                    log_info "${C_GREEN}✅ Antigravity Chrome path mapped to $chrome_path ($sfile)${C_RESET}"
+                elif command -v python3 >/dev/null 2>&1; then
+                    if python3 -c '
+import json, sys
+p, chrome = sys.argv[1], sys.argv[2]
+try:
+    with open(p, "r", encoding="utf-8") as f:
+        data = json.load(f)
+    if not isinstance(data, dict):
+        data = {}
+except Exception:
+    data = {}
+data["antigravity.browser.chromeBinaryPath"] = chrome
+with open(p, "w", encoding="utf-8") as f:
+    json.dump(data, f, indent=2)
+    f.write("\n")
+' "$sfile" "$chrome_path" 2>/dev/null; then
+                        log_info "${C_GREEN}✅ Antigravity Chrome path mapped to $chrome_path ($sfile)${C_RESET}"
+                    else
+                        log_warn "Could not update $sfile automatically."
+                    fi
+                else
+                    log_warn "Neither jq nor python3 found. Cannot automatically configure Chrome path."
+                fi
+            done
         fi
     else
         log_warn "Could not locate a valid Chrome or Chromium executable. Antigravity may complain it is not installed."
@@ -134,9 +178,19 @@ configure_chrome_path() {
 save_manager_locally() {
     log_info "${C_CYAN}💾 Saving Antigravity Manager to your system...${C_RESET}"
     mkdir -p "$BIN_DIR"
-    
+
+    local is_valid_self=0
     if [ -f "$0" ] && [ -r "$0" ]; then
-        cp "$0" "$BIN_DIR/antigravity-manager"
+        case "${0##*/}" in
+            bash|sh|zsh|dash|ksh|fish|-*) is_valid_self=0 ;;
+            *) is_valid_self=1 ;;
+        esac
+    fi
+
+    if [ "$is_valid_self" -eq 1 ]; then
+        if [ ! "$0" -ef "$BIN_DIR/antigravity-manager" ]; then
+            cp "$0" "$BIN_DIR/antigravity-manager"
+        fi
     else
         run_cmd curl -fSsL "$MANAGER_URL" -o "$BIN_DIR/antigravity-manager"
     fi
@@ -229,48 +283,110 @@ detect_platform() {
             DISTRO_PRETTY="${DISTRO_PRETTY} (Atomic)"
         fi
 
-        if [ "$IS_ATOMIC" = "yes" ]; then
-            if [ "$HAS_BREW" = "yes" ]; then RECOMMENDED="1"; else RECOMMENDED="3"; fi
-        elif [ "$HAS_BREW" = "yes" ]; then RECOMMENDED="1"
-        elif [ "$HAS_APT" = "yes" ] || [ "$HAS_DNF" = "yes" ]; then RECOMMENDED="2"
-        else RECOMMENDED="3"; fi
+        if [ "$HAS_BREW" = "yes" ]; then
+            RECOMMENDED="1"
+        else
+            # Official 2.x releases on Linux are distributed as tarballs / Homebrew casks
+            # (legacy APT/RPM repos remain available manually but stopped at 1.23.2).
+            RECOMMENDED="3"
+        fi
     fi
 }
 
+read_asar_version() {
+    local asar_path="$1"
+    if [ ! -f "$asar_path" ]; then
+        return 1
+    fi
+    if command -v python3 >/dev/null 2>&1; then
+        python3 -c '
+import json, struct, sys
+try:
+    with open(sys.argv[1], "rb") as f:
+        hdr = f.read(16)
+        if len(hdr) == 16:
+            _, h_sz, _, j_sz = struct.unpack("<IIII", hdr)
+            meta = json.loads(f.read(j_sz).decode("utf-8"))
+            info = meta.get("files", {}).get("package.json")
+            if info and "offset" in info and "size" in info:
+                f.seek(8 + h_sz + int(info["offset"]))
+                pkg = json.loads(f.read(int(info["size"])).decode("utf-8"))
+                if pkg.get("version"):
+                    print(pkg["version"])
+except Exception:
+    pass
+' "$asar_path" 2>/dev/null || true
+    fi
+}
+
+get_installed_agy_version() {
+    local v=""
+    # 1. User-space Hub 2.x binary install (app.asar)
+    if [ -f "$APP_DIR/resources/app.asar" ]; then
+        v=$(read_asar_version "$APP_DIR/resources/app.asar")
+        if [ -n "$v" ]; then echo "$v"; return; fi
+    fi
+    # 2. macOS Antigravity.app bundle
+    if [ -f "/Applications/Antigravity.app/Contents/Resources/app.asar" ]; then
+        v=$(read_asar_version "/Applications/Antigravity.app/Contents/Resources/app.asar")
+        if [ -n "$v" ]; then echo "$v"; return; fi
+    fi
+    if [ -f "/Applications/Antigravity.app/Contents/Info.plist" ] && command -v defaults >/dev/null 2>&1; then
+        v=$(defaults read "/Applications/Antigravity.app/Contents/Info" CFBundleShortVersionString 2>/dev/null || true)
+        if [ -n "$v" ]; then echo "$v"; return; fi
+    fi
+    # 3. Homebrew cask (only if actually installed locally)
+    if command -v brew >/dev/null 2>&1; then
+        v=$(brew list --cask --versions antigravity antigravity-linux 2>/dev/null | awk 'NR==1 {sub(/,.*/, "", $2); print $2}' || true)
+        if [ -n "$v" ]; then echo "$v"; return; fi
+    fi
+    # 4. Fallback to state file if binary exists
+    if [ -x "$BIN_DIR/antigravity" ] && [ -f "$STATE_FILE" ]; then
+        v=$(awk -F'"' '/"version":/ {print $4; exit}' "$STATE_FILE" 2>/dev/null || true)
+        if [ -n "$v" ]; then echo "$v"; return; fi
+    fi
+    echo ""
+}
+
 get_installed_ide_version() {
-    # Check binary install directory (Linux/WSL)
-    if [ -f "$APP_DIR/resources/app/package.json" ]; then
-        awk -F'"' '/"version":/ {print $4}' "$APP_DIR/resources/app/package.json"
-        return
-    fi
-    if [ -f "$APP_DIR/resources/app/product.json" ]; then
-        awk -F'"' '/"version":/ {print $4}' "$APP_DIR/resources/app/product.json"
-        return
-    fi
-    # Check macOS bundle
-    if [ -f "/Applications/Google Antigravity.app/Contents/Resources/app/package.json" ]; then
-        awk -F'"' '/"version":/ {print $4}' "/Applications/Google Antigravity.app/Contents/Resources/app/package.json"
-        return
-    fi
-    if [ -f "/Applications/Google Antigravity.app/Contents/Resources/app/product.json" ]; then
-        awk -F'"' '/"version":/ {print $4}' "/Applications/Google Antigravity.app/Contents/Resources/app/product.json"
-        return
-    fi
-    # Check package managers
+    local v=""
+    local prod_json=""
+    # 1. Check IDE 2.x binary install directory (~/.local/lib/antigravity-ide)
+    for prod_json in "${APP_DIR}-ide/resources/app/product.json" \
+                     "/Applications/Antigravity IDE.app/Contents/Resources/app/product.json" \
+                     "/Applications/Google Antigravity.app/Contents/Resources/app/product.json" \
+                     "$APP_DIR/resources/app/product.json"; do
+        if [ -f "$prod_json" ]; then
+            v=$(awk -F'"' '/"ideVersion":/ {print $4; exit}' "$prod_json")
+            if [ -z "$v" ]; then
+                v=$(awk -F'"' '/"version":/ {print $4; exit}' "$prod_json")
+            fi
+            if [ -n "$v" ]; then echo "$v"; return; fi
+        fi
+    done
+    for prod_json in "${APP_DIR}-ide/resources/app/package.json" \
+                     "/Applications/Antigravity IDE.app/Contents/Resources/app/package.json" \
+                     "/Applications/Google Antigravity.app/Contents/Resources/app/package.json" \
+                     "$APP_DIR/resources/app/package.json"; do
+        if [ -f "$prod_json" ]; then
+            v=$(awk -F'"' '/"version":/ {print $4; exit}' "$prod_json")
+            if [ -n "$v" ]; then echo "$v"; return; fi
+        fi
+    done
+    # 2. Check package managers (only actually installed packages)
     if command -v dpkg-query >/dev/null 2>&1; then
-        local v
-        v=$(dpkg-query -W -f='${Version}' antigravity 2>/dev/null || true)
+        v=$(dpkg-query -W -f='${Status} ${Version}\n' antigravity 2>/dev/null | awk '/^install ok installed/ {print $4}' || true)
         if [ -n "$v" ]; then echo "$v"; return; fi
     fi
     if command -v rpm >/dev/null 2>&1; then
-        local v
-        v=$(rpm -q --qf "%{VERSION}" antigravity 2>/dev/null || true)
-        if [ -n "$v" ]; then echo "$v"; return; fi
+        if rpm -q antigravity >/dev/null 2>&1; then
+            v=$(rpm -q --qf "%{VERSION}" antigravity 2>/dev/null || true)
+            if [ -n "$v" ]; then echo "$v"; return; fi
+        fi
     fi
     if command -v brew >/dev/null 2>&1; then
-        local v
-        v=$(brew info --cask antigravity 2>/dev/null | awk 'NR==1 {print $2}' || true)
-        if [ -n "$v" ] && [ "$v" != "Error:" ]; then echo "$v"; return; fi
+        v=$(brew list --cask --versions antigravity-ide antigravity-ide-linux 2>/dev/null | awk 'NR==1 {sub(/,.*/, "", $2); print $2}' || true)
+        if [ -n "$v" ]; then echo "$v"; return; fi
     fi
     echo ""
 }
@@ -287,8 +403,8 @@ get_installed_cli_version() {
 
 get_installed_sdk_version() {
     if command -v python3 >/dev/null 2>&1; then
-        python3 -c "import google_antigravity; print(google_antigravity.__version__)" 2>/dev/null || \
-        python3 -m pip show google-antigravity 2>/dev/null | awk -F': ' '/Version:/ {print $2}' || \
+        python3 -c 'import importlib.metadata; print(importlib.metadata.version("google-antigravity"))' 2>/dev/null || \
+        python3 -m pip show google-antigravity 2>/dev/null | awk -F': ' '/^Version:/ {print $2}' || \
         echo ""
     else
         echo ""
@@ -297,12 +413,21 @@ get_installed_sdk_version() {
 
 print_system_info() {
     # --- Detect dynamic current versions ---
+    local inst_agy
+    inst_agy=$(get_installed_agy_version)
     local inst_ide
     inst_ide=$(get_installed_ide_version)
     local inst_cli
     inst_cli=$(get_installed_cli_version)
     local inst_sdk
     inst_sdk=$(get_installed_sdk_version)
+
+    local agy_status
+    if [ -n "$inst_agy" ]; then
+        agy_status="${C_GREEN}✓ $inst_agy${C_RESET}"
+    else
+        agy_status="${C_YELLOW}Not Installed${C_RESET}"
+    fi
 
     local ide_status
     if [ -n "$inst_ide" ]; then
@@ -336,6 +461,7 @@ print_system_info() {
     # --- Print dashboard ---
     log_info "  ${C_CYAN}OS:${C_RESET}                 ${C_BOLD}${DISTRO_PRETTY}${C_RESET} ${C_DIM}(${ARCH})${C_RESET}"
     log_info "  ${C_CYAN}Installed Products:${C_RESET}"
+    log_info "    ${C_BOLD}Google Antigravity:${C_RESET}      ${agy_status} ${C_DIM}[Latest: $DEFAULT_AGY_VERSION]${C_RESET}"
     log_info "    ${C_BOLD}Google Antigravity IDE:${C_RESET}  ${ide_status} ${C_DIM}[Latest: $DEFAULT_IDE_VERSION]${C_RESET}"
     log_info "    ${C_BOLD}Antigravity CLI (agy):${C_RESET}   ${cli_status} ${C_DIM}[Latest: $DEFAULT_CLI_VERSION]${C_RESET}"
     log_info "    ${C_BOLD}Antigravity SDK (Python):${C_RESET} ${sdk_status} ${C_DIM}[Latest: $DEFAULT_SDK_VERSION]${C_RESET}"
