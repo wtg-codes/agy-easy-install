@@ -28,11 +28,15 @@ FAIL_COUNT=0
 check() {
     local label="$1"
     shift
-    if eval "$@" > /dev/null 2>&1; then
+    local out
+    if out=$(eval "$@" 2>&1); then
         echo -e "  ${GREEN}✅ $label${RESET}"
         PASS_COUNT=$((PASS_COUNT + 1))
     else
         echo -e "  ${RED}❌ $label${RESET}"
+        if [ -n "$out" ]; then
+            echo -e "     ${RED}$out${RESET}"
+        fi
         FAIL_COUNT=$((FAIL_COUNT + 1))
     fi
 }

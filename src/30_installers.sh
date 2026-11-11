@@ -1144,21 +1144,56 @@ get_agy_box_release_url() {
     local version="$1"
     local json_file="${VERSIONS_JSON_CACHE:-}"
     
-    if [ -z "$json_file" ] || [ ! -s "$json_file" ]; then
+    if [ -z "$version" ] || [ -z "$json_file" ] || [ ! -s "$json_file" ]; then
         echo ""
         return
     fi
     
     local url
-    url=$(awk -v ver="$version" '
-      BEGIN { in_agy=0; in_ver=0 }
-      $0 == "  \"agy-box\": {" { in_agy=1; next }
-      in_agy && $0 ~ "^  }" { in_agy=0; next }
-      in_agy && $0 == "    \"" ver "\": {" { in_ver=1; next }
-      in_ver && $0 ~ "^    }" { in_ver=0; next }
-      in_ver && $0 ~ "\"url\":" { split($0, a, "\""); url=a[4] }
+    url=$(sed 's#{#{\n#g; s#}#\n}\n#g' "$json_file" 2>/dev/null | awk -v ver="$version" '
+      BEGIN { in_agy=0; in_ver=0; agy_depth=0; ver_depth=0; url="" }
+      !in_agy && index($0, "\"agy-box\"") > 0 && $0 ~ /:[[:space:]]*\{/ {
+        in_agy = 1
+        agy_depth = 1
+        next
+      }
+      in_agy {
+        if (!in_ver) {
+          if (index($0, "\"" ver "\"") > 0 && $0 ~ /:[[:space:]]*\{/) {
+            in_ver = 1
+            ver_depth = 1
+          }
+        } else {
+          if ($0 ~ /"url"[[:space:]]*:/) {
+            split($0, a, "\"")
+            url = a[4]
+          }
+          for (i = 1; i <= length($0); i++) {
+            c = substr($0, i, 1)
+            if (c == "{") ver_depth++
+            else if (c == "}") {
+              ver_depth--
+              if (ver_depth <= 0) {
+                in_ver = 0
+                break
+              }
+            }
+          }
+        }
+        for (i = 1; i <= length($0); i++) {
+          c = substr($0, i, 1)
+          if (c == "{") agy_depth++
+          else if (c == "}") {
+            agy_depth--
+            if (agy_depth <= 0) {
+              in_agy = 0
+              break
+            }
+          }
+        }
+      }
       END { if (url != "") print url }
-    ' "$json_file" 2>/dev/null || true)
+    ' 2>/dev/null || true)
     
     echo "$url"
 }
@@ -1534,6 +1569,11 @@ install_agy_box() {
             else
                 if gum confirm "Would you like to install distrobox and podman now?"; then
                     sudo apt update && sudo apt install -y distrobox podman
+                elif command -v podman &>/dev/null || command -v docker &>/dev/null; then
+                    if ! gum confirm "distrobox is missing. Proceed with standalone container sandbox mode?"; then
+                        log_error "Sandbox installation cannot proceed without distrobox."
+                        return 1
+                    fi
                 else
                     log_error "Sandbox installation cannot proceed without distrobox."
                     return 1
@@ -1546,6 +1586,11 @@ install_agy_box() {
             else
                 if gum confirm "Would you like to install distrobox and podman now?"; then
                     sudo dnf install -y distrobox podman
+                elif command -v podman &>/dev/null || command -v docker &>/dev/null; then
+                    if ! gum confirm "distrobox is missing. Proceed with standalone container sandbox mode?"; then
+                        log_error "Sandbox installation cannot proceed without distrobox."
+                        return 1
+                    fi
                 else
                     log_error "Sandbox installation cannot proceed without distrobox."
                     return 1
@@ -1558,16 +1603,24 @@ install_agy_box() {
                 echo -e "  1. Open Terminal in ChromeOS."
                 echo -e "  2. Install distrobox and podman: ${C_BOLD}sudo apt update && sudo apt install -y distrobox podman${C_RESET}"
                 echo -e "  3. Re-run this installer once installed."
+                return 1
             elif grep -qi "microsoft" /proc/version 2>/dev/null; then
                 log_error "distrobox is missing in your WSL2 environment."
                 echo -e "${C_YELLOW}💡 Guidance: To run agy-box on WSL2 (Windows):${C_RESET}"
                 echo -e "  1. Install Podman or Docker inside your WSL2 distro (e.g., Ubuntu)."
                 echo -e "  2. Install distrobox: ${C_BOLD}curl -s https://raw.githubusercontent.com/89luca89/distrobox/main/install | sh${C_RESET}"
                 echo -e "  Alternatively, follow the official WSL2 container setup instructions."
+                return 1
+            elif command -v podman &>/dev/null || command -v docker &>/dev/null; then
+                if [ "$AUTO" -eq 0 ]; then
+                    if ! gum confirm "distrobox is missing, but a container engine is available. Proceed with standalone sandbox mode?"; then
+                        return 1
+                    fi
+                fi
             else
                 log_error "Please install distrobox and a container manager (podman/docker) first."
+                return 1
             fi
-            return 1
         fi
     fi
 
@@ -1634,7 +1687,7 @@ install_agy_box() {
     # 3. Download and install agy-box-manager globally from tag version
     log_info "Fetching agy-box version details..."
     fetch_versions_json || true
-    local agy_ver="${DEFAULT_AGY_BOX_VERSION:-v0.6.0}"
+    local agy_ver="${DEFAULT_AGY_BOX_VERSION:-v0.7.0}"
     local remote_url="${AGY_BOX_MANAGER_URL:-}"
     if [ -z "$remote_url" ]; then
         remote_url=$(get_agy_box_release_url "$agy_ver")
@@ -1656,16 +1709,23 @@ install_agy_box() {
     chmod +x "$target_dir/agy-box-manager"
 
     # 4. Trigger sandbox installation
-    log_info "Starting agy-box container setup..."
+    log_info "Starting agy-box container setup ($agy_ver) — live progress below..."
     if [ "$AUTO" -eq 1 ]; then
         if ! AGY_NONINTERACTIVE=1 "$target_dir/agy-box-manager" install < /dev/null; then
             log_error "agy-box container setup failed during execution of agy-box-manager install."
             return 1
         fi
     else
-        if ! "$target_dir/agy-box-manager" install; then
-            log_error "agy-box container setup failed during execution of agy-box-manager install."
-            return 1
+        if [ ! -t 0 ] && [ -t 1 ] && [ -r /dev/tty ]; then
+            if ! "$target_dir/agy-box-manager" install < /dev/tty; then
+                log_error "agy-box container setup failed during execution of agy-box-manager install."
+                return 1
+            fi
+        else
+            if ! "$target_dir/agy-box-manager" install; then
+                log_error "agy-box container setup failed during execution of agy-box-manager install."
+                return 1
+            fi
         fi
     fi
 

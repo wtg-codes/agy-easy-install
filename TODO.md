@@ -29,6 +29,7 @@
 - [x] Jules CLI bootstrapping (`--install-jules`) with zero-dependency Node.js and Homebrew setup
 - [x] `agy-box` v0.6.0 multi-arch container integration (`--install-agy-box`, `--install-sandbox`)
 - [x] v0.3.3 sandbox-verified fixes: Hub 2.x ASAR icon offset, `--install-ide`, `ublue-os/tap` Homebrew casks, PEP 668 + `pip.pyz` zero-sudo SDK install (`google.antigravity`), temp-file poisoning hygiene, and `save_manager_locally` / `check_for_updates` guards
+- [x] v0.3.4: Bump to agy-box v0.7.0, whitespace-tolerant awk JSON version parser, curl|bash TTY starvation fix (< /dev/tty), and standalone sandbox fallback
 
 ### Terminal UI
 - [x] Ephemeral `gum` bootstrap (download → temp dir → cleanup)
