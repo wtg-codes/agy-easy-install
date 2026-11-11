@@ -295,6 +295,7 @@ class TestShellParsersAndInstallers(unittest.TestCase):
             "sdk": {"latest": "0.1.23", "versions": ["0.1.23", "0.1.10", "0.1.9"]},
             "agy-box": {
                 "nightly": {"url": "https://box/nightly"},
+                "v0.7.0": {"url": "https://box/v0.7.0"},
                 "v0.6.0": {"url": "https://box/v0.6.0"},
                 "v0.4.2": {"url": "https://box/v0.4.2"},
             },
@@ -320,6 +321,7 @@ class TestShellParsersAndInstallers(unittest.TestCase):
             echo "CLI155=$(get_cli_release_info 1.5.5 linux_amd64)"
             echo "CLI155_MUSL=$(get_cli_release_info 1.5.5 linux_amd64_musl)"
             echo "CLI154=$(get_cli_release_info 1.5.4 linux_amd64)"
+            echo "BOX070=$(get_agy_box_release_url v0.7.0)"
             echo "BOX060=$(get_agy_box_release_url v0.6.0)"
             echo "LIST_AGY=$(list_antigravity_versions | paste -sd, -)"
             echo "LIST_IDE=$(list_ide_versions | paste -sd, -)"
@@ -340,6 +342,7 @@ class TestShellParsersAndInstallers(unittest.TestCase):
             self.assertEqual(kv["CLI155"], "https://cli/1.5.5/amd64|cli155_amd64")
             self.assertEqual(kv["CLI155_MUSL"], "https://cli/1.5.5/musl|cli155_musl")
             self.assertEqual(kv["CLI154"], "https://cli/1.5.4/amd64|cli154_amd64")
+            self.assertEqual(kv["BOX070"], "https://box/v0.7.0")
             self.assertEqual(kv["BOX060"], "https://box/v0.6.0")
             self.assertEqual(kv["LIST_AGY"], "2.31.0,2.6.0")
             self.assertEqual(kv["LIST_IDE"], "2.6.0,2.5.5")
@@ -402,6 +405,43 @@ class TestShellParsersAndInstallers(unittest.TestCase):
             self.assertIn("storage.googleapis.com", kv["AGY_INFO"])
             self.assertNotEqual(kv["CACHE_PATH"], poisoned)
             self.assertFalse(os.path.exists(kv["CACHE_PATH"]))
+
+    def test_get_agy_box_release_url_whitespace_tolerance(self):
+        repo_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+        sample_box = {
+            "antigravity": {},
+            "agy-box": {
+                "nightly": {"url": "https://box/nightly"},
+                "v0.7.0": {"url": "https://box/v0.7.0"},
+                "v0.6.0": {"url": "https://box/v0.6.0"},
+            },
+        }
+        for indent in [None, 2, 4]:
+            with tempfile.NamedTemporaryFile("w", suffix=".json", delete=False) as tf:
+                json.dump(sample_box, tf, indent=indent)
+                vfile = tf.name
+            try:
+                script = f"""
+                set -e
+                export VERSIONS_JSON_CACHE="{vfile}"
+                source "{repo_root}/src/00_config.sh"
+                source "{repo_root}/src/10_utils.sh"
+                source "{repo_root}/src/30_installers.sh"
+                echo "BOX070=$(get_agy_box_release_url v0.7.0)"
+                echo "BOX060=$(get_agy_box_release_url v0.6.0)"
+                echo "ABSENT=$(get_agy_box_release_url v9.9.9)"
+                """
+                res = subprocess.run(["bash", "-c", script], capture_output=True, text=True)
+                self.assertEqual(res.returncode, 0, msg=res.stderr)
+                kv = dict(
+                    line.split("=", 1) for line in res.stdout.strip().splitlines() if "=" in line
+                )
+                self.assertEqual(kv["BOX070"], "https://box/v0.7.0", f"Failed on indent={indent}")
+                self.assertEqual(kv["BOX060"], "https://box/v0.6.0", f"Failed on indent={indent}")
+                self.assertEqual(kv["ABSENT"], "", f"Failed on absent version indent={indent}")
+            finally:
+                if os.path.exists(vfile):
+                    os.remove(vfile)
 
 
 if __name__ == "__main__":

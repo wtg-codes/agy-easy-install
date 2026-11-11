@@ -5,6 +5,17 @@ Format follows [Keep a Changelog](https://keepachangelog.com/).
 
 ---
 
+## [0.3.4] — 2026-11-11
+
+### Added
+- **Antigravity Dev Box (`agy-box`) v0.7.0 Support:** Added `v0.7.0` release tag tracking in `versions.json` and `DEFAULT_AGY_BOX_VERSION="v0.7.0"` in `src/00_config.sh`.
+- **Whitespace-Tolerant JSON Parsing (`get_agy_box_release_url`):** Upgraded `get_agy_box_release_url()` to dynamically track object nesting depth regardless of indentation (compact, 2-space, 4-space, tabs), eliminating false "not found in versions.json" fallback warnings.
+- **Standalone Sandbox Fallback Mode:** Added fallback support in `install_agy_box()` to proceed with standalone container sandbox mode (`--mode sandbox`) when Distrobox is missing but Podman or Docker is available.
+
+### Fixed
+- **Live Progress Reporting (`install_agy_box`):** Added explicit status logging during download and setup (`Starting agy-box container setup ($agy_ver) — live progress below...`).
+- **Piped Install TTY Starvation (`install_agy_box`):** Redirected stdin from `/dev/tty` for interactive `agy-box-manager install` when running via `curl ... | bash` (`[ ! -t 0 ] && [ -t 1 ] && [ -r /dev/tty ]`), preventing premature stdin starvation on user input.
+
 ## [0.3.3] — 2026-11-11
 
 ### Added
