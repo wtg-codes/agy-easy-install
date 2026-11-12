@@ -31,6 +31,7 @@
 - [x] v0.3.3 sandbox-verified fixes: Hub 2.x ASAR icon offset, `--install-ide`, `ublue-os/tap` Homebrew casks, PEP 668 + `pip.pyz` zero-sudo SDK install (`google.antigravity`), temp-file poisoning hygiene, and `save_manager_locally` / `check_for_updates` guards
 - [x] v0.3.4: Bump to agy-box v0.7.0, whitespace-tolerant awk JSON version parser, curl|bash TTY starvation fix (< /dev/tty), and standalone sandbox fallback
 - [x] v0.3.5: Bump to agy-box v0.7.1 and update version mappings in versions.json and scraper
+- [x] v0.3.6: Bump to agy-box v0.7.2 (VDI quick-exec desktop icons, deduplicated desktop launchers, D-Bus SecretService / persistent keyring auth) and update version mappings in versions.json and scraper
 
 ### Terminal UI
 - [x] Ephemeral `gum` bootstrap (download → temp dir → cleanup)
