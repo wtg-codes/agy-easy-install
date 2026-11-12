@@ -83,7 +83,7 @@
     {
       "id": "target_agy_box",
       "type": "cloud",
-      "label": "agy-box v0.6.0 Sandbox",
+      "label": "agy-box v0.7.2 Sandbox",
       "sublabel": "distrobox & noVNC desktop",
       "tag": "containerized",
       "pos": [720, 360],
@@ -223,7 +223,7 @@
       "dot": "amber",
       "title": "Container Sandbox Integration",
       "items": [
-        "Seamless integration with agy-box v0.6.0 multi-arch OCI container image (ghcr.io/wtg-codes/agy-box)",
+        "Seamless integration with agy-box v0.7.2 multi-arch OCI container image (ghcr.io/wtg-codes/agy-box)",
         "Distrobox-managed immutable execution layer with isolated D-Bus keyring and noVNC graphical desktop",
         "One-click IDE companion extensions for VS Code, JetBrains, and Zed to bridge containerized agents"
       ]
