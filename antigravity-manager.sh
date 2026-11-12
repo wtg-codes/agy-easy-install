@@ -18,13 +18,13 @@ C_DIM='\033[2m'
 C_RESET='\033[0m'
 
 # Configuration
-SCRIPT_VERSION="0.3.4"
+SCRIPT_VERSION="0.3.5"
 DEFAULT_AGY_VERSION="2.31.0"
 DEFAULT_IDE_VERSION="2.6.0"
 DEFAULT_CLI_VERSION="1.5.5"
 DEFAULT_SDK_VERSION="0.1.23"
 DEFAULT_JULES_VERSION="latest"
-DEFAULT_AGY_BOX_VERSION="v0.7.0"
+DEFAULT_AGY_BOX_VERSION="v0.7.1"
 DEFAULT_VERSIONS_JSON_URL="https://raw.githubusercontent.com/wtg-codes/agy-easy-install/main/versions.json"
 VERSIONS_JSON_URL="${VERSIONS_JSON_URL:-$DEFAULT_VERSIONS_JSON_URL}"
 VERSIONS_JSON_CACHE="${VERSIONS_JSON_CACHE:-}"
@@ -2449,7 +2449,7 @@ install_agy_box() {
     # 3. Download and install agy-box-manager globally from tag version
     log_info "Fetching agy-box version details..."
     fetch_versions_json || true
-    local agy_ver="${DEFAULT_AGY_BOX_VERSION:-v0.7.0}"
+    local agy_ver="${DEFAULT_AGY_BOX_VERSION:-v0.7.1}"
     local remote_url="${AGY_BOX_MANAGER_URL:-}"
     if [ -z "$remote_url" ]; then
         remote_url=$(get_agy_box_release_url "$agy_ver")

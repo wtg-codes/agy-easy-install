@@ -5,6 +5,11 @@ Format follows [Keep a Changelog](https://keepachangelog.com/).
 
 ---
 
+## [0.3.5] — 2026-11-12
+
+### Added
+- **Antigravity Dev Box (`agy-box`) v0.7.1 Support:** Bumped `DEFAULT_AGY_BOX_VERSION` to `v0.7.1` in `src/00_config.sh` and updated `versions.json` & `scrape_latest.py` with `v0.7.1` release URL mapping.
+
 ## [0.3.4] — 2026-11-11
 
 ### Added

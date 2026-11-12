@@ -197,7 +197,7 @@ class TestUpdateConfig(unittest.TestCase):
             },
             "cli": {"1.5.5": {}, "1.5.5-rc1": {}},
             "sdk": {"latest": "0.1.23", "versions": ["0.1.23"]},
-            "agy-box": {"nightly": {"url": "x"}, "v0.7.0": {"url": "z"}, "v0.6.0": {"url": "y"}},
+            "agy-box": {"nightly": {"url": "x"}, "v0.7.1": {"url": "w"}, "v0.7.0": {"url": "z"}, "v0.6.0": {"url": "y"}},
         }
         sample_config = "\n".join(
             [
@@ -246,7 +246,7 @@ class TestUpdateConfig(unittest.TestCase):
             with open(diag_path, "r") as f:
                 updated_diag = f.read()
 
-        self.assertIn("agy-box v0.7.0", updated_diag)
+        self.assertIn("agy-box v0.7.1", updated_diag)
 
         self.assertIn('DEFAULT_AGY_VERSION="2.31.0"', updated)
         self.assertIn('DEFAULT_IDE_VERSION="2.6.0"', updated)
@@ -295,6 +295,7 @@ class TestShellParsersAndInstallers(unittest.TestCase):
             "sdk": {"latest": "0.1.23", "versions": ["0.1.23", "0.1.10", "0.1.9"]},
             "agy-box": {
                 "nightly": {"url": "https://box/nightly"},
+                "v0.7.1": {"url": "https://box/v0.7.1"},
                 "v0.7.0": {"url": "https://box/v0.7.0"},
                 "v0.6.0": {"url": "https://box/v0.6.0"},
                 "v0.4.2": {"url": "https://box/v0.4.2"},
@@ -321,6 +322,7 @@ class TestShellParsersAndInstallers(unittest.TestCase):
             echo "CLI155=$(get_cli_release_info 1.5.5 linux_amd64)"
             echo "CLI155_MUSL=$(get_cli_release_info 1.5.5 linux_amd64_musl)"
             echo "CLI154=$(get_cli_release_info 1.5.4 linux_amd64)"
+            echo "BOX071=$(get_agy_box_release_url v0.7.1)"
             echo "BOX070=$(get_agy_box_release_url v0.7.0)"
             echo "BOX060=$(get_agy_box_release_url v0.6.0)"
             echo "LIST_AGY=$(list_antigravity_versions | paste -sd, -)"
@@ -342,6 +344,7 @@ class TestShellParsersAndInstallers(unittest.TestCase):
             self.assertEqual(kv["CLI155"], "https://cli/1.5.5/amd64|cli155_amd64")
             self.assertEqual(kv["CLI155_MUSL"], "https://cli/1.5.5/musl|cli155_musl")
             self.assertEqual(kv["CLI154"], "https://cli/1.5.4/amd64|cli154_amd64")
+            self.assertEqual(kv["BOX071"], "https://box/v0.7.1")
             self.assertEqual(kv["BOX070"], "https://box/v0.7.0")
             self.assertEqual(kv["BOX060"], "https://box/v0.6.0")
             self.assertEqual(kv["LIST_AGY"], "2.31.0,2.6.0")
@@ -412,6 +415,7 @@ class TestShellParsersAndInstallers(unittest.TestCase):
             "antigravity": {},
             "agy-box": {
                 "nightly": {"url": "https://box/nightly"},
+                "v0.7.1": {"url": "https://box/v0.7.1"},
                 "v0.7.0": {"url": "https://box/v0.7.0"},
                 "v0.6.0": {"url": "https://box/v0.6.0"},
             },
@@ -427,6 +431,7 @@ class TestShellParsersAndInstallers(unittest.TestCase):
                 source "{repo_root}/src/00_config.sh"
                 source "{repo_root}/src/10_utils.sh"
                 source "{repo_root}/src/30_installers.sh"
+                echo "BOX071=$(get_agy_box_release_url v0.7.1)"
                 echo "BOX070=$(get_agy_box_release_url v0.7.0)"
                 echo "BOX060=$(get_agy_box_release_url v0.6.0)"
                 echo "ABSENT=$(get_agy_box_release_url v9.9.9)"
@@ -436,6 +441,7 @@ class TestShellParsersAndInstallers(unittest.TestCase):
                 kv = dict(
                     line.split("=", 1) for line in res.stdout.strip().splitlines() if "=" in line
                 )
+                self.assertEqual(kv["BOX071"], "https://box/v0.7.1", f"Failed on indent={indent}")
                 self.assertEqual(kv["BOX070"], "https://box/v0.7.0", f"Failed on indent={indent}")
                 self.assertEqual(kv["BOX060"], "https://box/v0.6.0", f"Failed on indent={indent}")
                 self.assertEqual(kv["ABSENT"], "", f"Failed on absent version indent={indent}")
