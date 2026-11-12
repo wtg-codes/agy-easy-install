@@ -1687,7 +1687,7 @@ install_agy_box() {
     # 3. Download and install agy-box-manager globally from tag version
     log_info "Fetching agy-box version details..."
     fetch_versions_json || true
-    local agy_ver="${DEFAULT_AGY_BOX_VERSION:-v0.7.1}"
+    local agy_ver="${DEFAULT_AGY_BOX_VERSION:-v0.7.2}"
     local remote_url="${AGY_BOX_MANAGER_URL:-}"
     if [ -z "$remote_url" ]; then
         remote_url=$(get_agy_box_release_url "$agy_ver")

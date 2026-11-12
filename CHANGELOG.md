@@ -5,6 +5,11 @@ Format follows [Keep a Changelog](https://keepachangelog.com/).
 
 ---
 
+## [0.3.6] — 2026-11-12
+
+### Added
+- **Antigravity Dev Box (`agy-box`) v0.7.2 Support:** Bumped `DEFAULT_AGY_BOX_VERSION` to `v0.7.2` in `src/00_config.sh` (and fallback in `src/30_installers.sh`), and updated `versions.json` & `scrape_latest.py` with the `v0.7.2` release URL mapping (VDI quick-exec desktop icons, deduplicated desktop launchers, and D-Bus SecretService / persistent keyring auth).
+
 ## [0.3.5] — 2026-11-12
 
 ### Added
