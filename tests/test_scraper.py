@@ -199,6 +199,7 @@ class TestUpdateConfig(unittest.TestCase):
             "sdk": {"latest": "0.1.23", "versions": ["0.1.23"]},
             "agy-box": {
                 "nightly": {"url": "x"},
+                "v0.8.0": {"url": "u"},
                 "v0.7.2": {"url": "v"},
                 "v0.7.1": {"url": "w"},
                 "v0.7.0": {"url": "z"},
@@ -211,6 +212,7 @@ class TestUpdateConfig(unittest.TestCase):
                 'DEFAULT_IDE_VERSION="1.23.2"',
                 'DEFAULT_CLI_VERSION="1.5.4"',
                 'DEFAULT_SDK_VERSION="0.1.0"',
+                'DEFAULT_AGY_BOX_VERSION="v0.7.2"',
                 'LINUX_X64_SHA256="old"',
                 'LINUX_X64_URL="old"',
                 'LINUX_ARM64_SHA256="old"',
@@ -252,12 +254,13 @@ class TestUpdateConfig(unittest.TestCase):
             with open(diag_path, "r") as f:
                 updated_diag = f.read()
 
-        self.assertIn("agy-box v0.7.2", updated_diag)
+        self.assertIn("agy-box v0.8.0", updated_diag)
 
         self.assertIn('DEFAULT_AGY_VERSION="2.31.0"', updated)
         self.assertIn('DEFAULT_IDE_VERSION="2.6.0"', updated)
         self.assertIn('DEFAULT_CLI_VERSION="1.5.5"', updated)
         self.assertIn('DEFAULT_SDK_VERSION="0.1.23"', updated)
+        self.assertIn('DEFAULT_AGY_BOX_VERSION="v0.8.0"', updated)
         self.assertIn('AGY_LINUX_ARM64_URL="https://hub/2.31.0/linux-arm.tar.gz"', updated)
         self.assertIn('AGY_LINUX_ARM64_SHA256="hub_larm"', updated)
         self.assertIn('IDE_LINUX_X64_URL="https://ide/2.6.0/Antigravity%20IDE.tar.gz"', updated)
@@ -301,6 +304,7 @@ class TestShellParsersAndInstallers(unittest.TestCase):
             "sdk": {"latest": "0.1.23", "versions": ["0.1.23", "0.1.10", "0.1.9"]},
             "agy-box": {
                 "nightly": {"url": "https://box/nightly"},
+                "v0.8.0": {"url": "https://box/v0.8.0"},
                 "v0.7.2": {"url": "https://box/v0.7.2"},
                 "v0.7.1": {"url": "https://box/v0.7.1"},
                 "v0.7.0": {"url": "https://box/v0.7.0"},
@@ -329,6 +333,7 @@ class TestShellParsersAndInstallers(unittest.TestCase):
             echo "CLI155=$(get_cli_release_info 1.5.5 linux_amd64)"
             echo "CLI155_MUSL=$(get_cli_release_info 1.5.5 linux_amd64_musl)"
             echo "CLI154=$(get_cli_release_info 1.5.4 linux_amd64)"
+            echo "BOX080=$(get_agy_box_release_url v0.8.0)"
             echo "BOX072=$(get_agy_box_release_url v0.7.2)"
             echo "BOX071=$(get_agy_box_release_url v0.7.1)"
             echo "BOX070=$(get_agy_box_release_url v0.7.0)"
@@ -352,6 +357,7 @@ class TestShellParsersAndInstallers(unittest.TestCase):
             self.assertEqual(kv["CLI155"], "https://cli/1.5.5/amd64|cli155_amd64")
             self.assertEqual(kv["CLI155_MUSL"], "https://cli/1.5.5/musl|cli155_musl")
             self.assertEqual(kv["CLI154"], "https://cli/1.5.4/amd64|cli154_amd64")
+            self.assertEqual(kv["BOX080"], "https://box/v0.8.0")
             self.assertEqual(kv["BOX072"], "https://box/v0.7.2")
             self.assertEqual(kv["BOX071"], "https://box/v0.7.1")
             self.assertEqual(kv["BOX070"], "https://box/v0.7.0")
@@ -424,6 +430,7 @@ class TestShellParsersAndInstallers(unittest.TestCase):
             "antigravity": {},
             "agy-box": {
                 "nightly": {"url": "https://box/nightly"},
+                "v0.8.0": {"url": "https://box/v0.8.0"},
                 "v0.7.2": {"url": "https://box/v0.7.2"},
                 "v0.7.1": {"url": "https://box/v0.7.1"},
                 "v0.7.0": {"url": "https://box/v0.7.0"},
@@ -441,6 +448,7 @@ class TestShellParsersAndInstallers(unittest.TestCase):
                 source "{repo_root}/src/00_config.sh"
                 source "{repo_root}/src/10_utils.sh"
                 source "{repo_root}/src/30_installers.sh"
+                echo "BOX080=$(get_agy_box_release_url v0.8.0)"
                 echo "BOX072=$(get_agy_box_release_url v0.7.2)"
                 echo "BOX071=$(get_agy_box_release_url v0.7.1)"
                 echo "BOX070=$(get_agy_box_release_url v0.7.0)"
@@ -452,6 +460,7 @@ class TestShellParsersAndInstallers(unittest.TestCase):
                 kv = dict(
                     line.split("=", 1) for line in res.stdout.strip().splitlines() if "=" in line
                 )
+                self.assertEqual(kv["BOX080"], "https://box/v0.8.0", f"Failed on indent={indent}")
                 self.assertEqual(kv["BOX072"], "https://box/v0.7.2", f"Failed on indent={indent}")
                 self.assertEqual(kv["BOX071"], "https://box/v0.7.1", f"Failed on indent={indent}")
                 self.assertEqual(kv["BOX070"], "https://box/v0.7.0", f"Failed on indent={indent}")
@@ -460,6 +469,143 @@ class TestShellParsersAndInstallers(unittest.TestCase):
             finally:
                 if os.path.exists(vfile):
                     os.remove(vfile)
+
+    def test_install_agy_box_headless_flags_and_failure_diagnostics(self):
+        repo_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+        with tempfile.TemporaryDirectory() as tmp:
+            mock_bin = os.path.join(tmp, "mockbin")
+            home_dir = os.path.join(tmp, "home")
+            os.makedirs(mock_bin, exist_ok=True)
+            os.makedirs(home_dir, exist_ok=True)
+
+            # Populate mock_bin WITHOUT distrobox to prove podman alone satisfies prerequisites
+            import shutil
+
+            for sys_cmd in (
+                "awk",
+                "bash",
+                "cat",
+                "chmod",
+                "cp",
+                "curl",
+                "date",
+                "dirname",
+                "grep",
+                "mkdir",
+                "mktemp",
+                "pwd",
+                "rm",
+                "sed",
+                "tput",
+            ):
+                real_path = shutil.which(sys_cmd)
+                if real_path:
+                    os.symlink(real_path, os.path.join(mock_bin, sys_cmd))
+
+            tpath = os.path.join(mock_bin, "podman")
+            with open(tpath, "w") as f:
+                f.write("#!/usr/bin/env bash\nexit 0\n")
+            os.chmod(tpath, 0o755)
+
+            mgr_source = os.path.join(tmp, "mock_agy_box_manager.sh")
+            args_log = os.path.join(tmp, "mgr_calls.log")
+            with open(mgr_source, "w") as f:
+                f.write(
+                    "#!/usr/bin/env bash\n"
+                    f'echo "NONINT=${{AGY_NONINTERACTIVE:-}} ARGS=$*" >> "{args_log}"\n'
+                    'if [ "${MOCK_FAIL:-0}" = "1" ]; then exit 42; fi\n'
+                    "exit 0\n"
+                )
+            os.chmod(mgr_source, 0o755)
+
+            script = f"""
+            set -e
+            export HOME="{home_dir}"
+            export PATH="{mock_bin}"
+            export VERSIONS_JSON_CACHE="{repo_root}/versions.json"
+            export AGY_BOX_MANAGER_URL="file://{mgr_source}"
+            source "{repo_root}/src/00_config.sh"
+            LOG_FILE="{tmp}/install.log"
+            source "{repo_root}/src/10_utils.sh"
+            source "{repo_root}/src/30_installers.sh"
+            PLATFORM="Linux"
+            HAS_APT="yes"
+            AUTO=1
+            echo "VER=$SCRIPT_VERSION"
+            echo "BOX_VER=$DEFAULT_AGY_BOX_VERSION"
+            echo "RESOLVED=$(get_agy_box_release_url v0.8.0)"
+            install_agy_box
+            set +e
+            MOCK_FAIL=1 install_agy_box
+            echo "FAIL_RC=$?"
+            """
+            res = subprocess.run(["bash", "-c", script], capture_output=True, text=True)
+            self.assertEqual(res.returncode, 0, msg=res.stderr + res.stdout)
+            self.assertIn("VER=0.3.7", res.stdout)
+            self.assertIn("BOX_VER=v0.8.0", res.stdout)
+            self.assertIn(
+                "RESOLVED=https://raw.githubusercontent.com/wtg-codes/agy-box/v0.8.0/agy-box-manager",
+                res.stdout,
+            )
+            self.assertIn("--mode workstation", res.stdout)
+            self.assertIn("agy-box-manager status", res.stdout)
+            self.assertIn("FAIL_RC=1", res.stdout)
+            self.assertIn("~/.config/agy-box/logs/agy-box-manager.log", res.stdout)
+            self.assertIn("agy-box-manager logs", res.stdout)
+            with open(args_log, "r") as f:
+                calls = f.read()
+            self.assertIn("NONINT=1 ARGS=install -y --no-enter", calls)
+
+    def test_uninstall_agy_box_clean_all_and_legacy_fallback(self):
+        repo_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+        with tempfile.TemporaryDirectory() as tmp:
+            # 1. Modern v0.8.0 manager supporting clean --all --purge -y
+            home_v080 = os.path.join(tmp, "home_v080")
+            bin_v080 = os.path.join(home_v080, ".local", "bin")
+            os.makedirs(bin_v080, exist_ok=True)
+            log_v080 = os.path.join(tmp, "v080_calls.log")
+            mgr_v080 = os.path.join(bin_v080, "agy-box-manager")
+            with open(mgr_v080, "w") as f:
+                f.write(f'#!/usr/bin/env bash\necho "$*" >> "{log_v080}"\nexit 0\n')
+            os.chmod(mgr_v080, 0o755)
+
+            # 2. Legacy manager rejecting --all
+            home_old = os.path.join(tmp, "home_old")
+            bin_old = os.path.join(home_old, ".local", "bin")
+            os.makedirs(bin_old, exist_ok=True)
+            log_old = os.path.join(tmp, "old_calls.log")
+            mgr_old = os.path.join(bin_old, "agy-box-manager")
+            with open(mgr_old, "w") as f:
+                f.write(
+                    "#!/usr/bin/env bash\n"
+                    f'echo "$*" >> "{log_old}"\n'
+                    'if [ "$1" = "clean" ] && [ "${2:-}" = "--all" ]; then exit 2; fi\n'
+                    "exit 0\n"
+                )
+            os.chmod(mgr_old, 0o755)
+
+            for hdir in (home_v080, home_old):
+                script = f"""
+                set -e
+                export HOME="{hdir}"
+                source "{repo_root}/src/00_config.sh"
+                LOG_FILE="{tmp}/uninstall.log"
+                source "{repo_root}/src/10_utils.sh"
+                source "{repo_root}/src/30_installers.sh"
+                uninstall_agy_box
+                """
+                res = subprocess.run(["bash", "-c", script], capture_output=True, text=True)
+                self.assertEqual(res.returncode, 0, msg=res.stderr + res.stdout)
+
+            self.assertFalse(os.path.exists(mgr_v080))
+            self.assertFalse(os.path.exists(mgr_old))
+            with open(log_v080, "r") as f:
+                v080_calls = f.read().strip().splitlines()
+            self.assertEqual(v080_calls, ["clean --all --purge -y", "uninstall-global"])
+
+            with open(log_old, "r") as f:
+                old_calls = f.read().strip().splitlines()
+            self.assertEqual(old_calls, ["clean --all --purge -y", "clean", "uninstall-global"])
 
 
 if __name__ == "__main__":

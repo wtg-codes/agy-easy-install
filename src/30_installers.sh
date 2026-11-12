@@ -1552,81 +1552,16 @@ install_agy_box() {
         log_error "agy-box is not natively supported on macOS."
         echo -e "${C_YELLOW}💡 Guidance: To run agy-box on macOS:${C_RESET}"
         echo -e "  1. Install Podman Desktop or Docker Desktop on macOS."
-        echo -e "  2. Install distrobox using Homebrew: ${C_BOLD}brew install distrobox${C_RESET}"
-        echo -e "  3. Ensure the podman machine or docker daemon is running."
+        echo -e "  2. Ensure the podman machine or docker daemon is running."
+        echo -e "  3. Optionally install distrobox (${C_BOLD}brew install distrobox${C_RESET}) only if using --mode workstation."
         echo -e "  After completing these steps, re-run this installer."
         return 1
     fi
 
-    # 2. Check WSL/Windows or standard Linux
-    # Check distrobox
-    if ! command -v distrobox &>/dev/null; then
-        log_warn "distrobox is not installed on the host."
-        if { [ "$PLATFORM" = "Linux" ] || [ "$PLATFORM" = "Crostini" ]; } && [ "${HAS_APT:-no}" = "yes" ]; then
-            if [ "$AUTO" -eq 1 ]; then
-                log_info "Headless mode: automatically installing distrobox and podman..."
-                sudo apt update && sudo apt install -y distrobox podman
-            else
-                if gum confirm "Would you like to install distrobox and podman now?"; then
-                    sudo apt update && sudo apt install -y distrobox podman
-                elif command -v podman &>/dev/null || command -v docker &>/dev/null; then
-                    if ! gum confirm "distrobox is missing. Proceed with standalone container sandbox mode?"; then
-                        log_error "Sandbox installation cannot proceed without distrobox."
-                        return 1
-                    fi
-                else
-                    log_error "Sandbox installation cannot proceed without distrobox."
-                    return 1
-                fi
-            fi
-        elif [ "$PLATFORM" = "Linux" ] && [ "${HAS_DNF:-no}" = "yes" ]; then
-            if [ "$AUTO" -eq 1 ]; then
-                log_info "Headless mode: automatically installing distrobox and podman..."
-                sudo dnf install -y distrobox podman
-            else
-                if gum confirm "Would you like to install distrobox and podman now?"; then
-                    sudo dnf install -y distrobox podman
-                elif command -v podman &>/dev/null || command -v docker &>/dev/null; then
-                    if ! gum confirm "distrobox is missing. Proceed with standalone container sandbox mode?"; then
-                        log_error "Sandbox installation cannot proceed without distrobox."
-                        return 1
-                    fi
-                else
-                    log_error "Sandbox installation cannot proceed without distrobox."
-                    return 1
-                fi
-            fi
-        else
-            if [ "$PLATFORM" = "Crostini" ]; then
-                log_error "distrobox is missing in your ChromeOS Crostini environment."
-                echo -e "${C_YELLOW}💡 Guidance: To run agy-box on ChromeOS (Crostini):${C_RESET}"
-                echo -e "  1. Open Terminal in ChromeOS."
-                echo -e "  2. Install distrobox and podman: ${C_BOLD}sudo apt update && sudo apt install -y distrobox podman${C_RESET}"
-                echo -e "  3. Re-run this installer once installed."
-                return 1
-            elif grep -qi "microsoft" /proc/version 2>/dev/null; then
-                log_error "distrobox is missing in your WSL2 environment."
-                echo -e "${C_YELLOW}💡 Guidance: To run agy-box on WSL2 (Windows):${C_RESET}"
-                echo -e "  1. Install Podman or Docker inside your WSL2 distro (e.g., Ubuntu)."
-                echo -e "  2. Install distrobox: ${C_BOLD}curl -s https://raw.githubusercontent.com/89luca89/distrobox/main/install | sh${C_RESET}"
-                echo -e "  Alternatively, follow the official WSL2 container setup instructions."
-                return 1
-            elif command -v podman &>/dev/null || command -v docker &>/dev/null; then
-                if [ "$AUTO" -eq 0 ]; then
-                    if ! gum confirm "distrobox is missing, but a container engine is available. Proceed with standalone sandbox mode?"; then
-                        return 1
-                    fi
-                fi
-            else
-                log_error "Please install distrobox and a container manager (podman/docker) first."
-                return 1
-            fi
-        fi
-    fi
-
-    # Check podman/docker existence
+    # 2. Check container engine (podman or docker satisfies default isolated sandbox mode;
+    #    distrobox is optional and only needed for '--mode workstation')
     if ! command -v podman &>/dev/null && ! command -v docker &>/dev/null; then
-        log_error "No container manager (podman or docker) detected."
+        log_warn "No container manager (podman or docker) detected."
         if { [ "$PLATFORM" = "Linux" ] || [ "$PLATFORM" = "Crostini" ]; } && [ "${HAS_APT:-no}" = "yes" ]; then
             if [ "$AUTO" -eq 1 ]; then
                 log_info "Headless mode: automatically installing podman..."
@@ -1645,6 +1580,15 @@ install_agy_box() {
                     sudo dnf install -y podman
                 fi
             fi
+        elif [ "$PLATFORM" = "Crostini" ]; then
+            echo -e "${C_YELLOW}💡 Guidance: To run agy-box on ChromeOS (Crostini):${C_RESET}"
+            echo -e "  1. Open Terminal in ChromeOS."
+            echo -e "  2. Install podman: ${C_BOLD}sudo apt update && sudo apt install -y podman${C_RESET}"
+            echo -e "  3. Re-run this installer once installed."
+        elif grep -qi "microsoft" /proc/version 2>/dev/null; then
+            echo -e "${C_YELLOW}💡 Guidance: To run agy-box on WSL2 (Windows):${C_RESET}"
+            echo -e "  1. Install Podman or Docker inside your WSL2 distro (e.g., Ubuntu)."
+            echo -e "  2. Re-run this installer once installed."
         fi
         if ! command -v podman &>/dev/null && ! command -v docker &>/dev/null; then
             log_error "Sandbox installation cannot proceed without podman or docker."
@@ -1652,16 +1596,16 @@ install_agy_box() {
         fi
     fi
 
+    if ! command -v distrobox &>/dev/null; then
+        log_info "Using default isolated sandbox mode via podman/docker (distrobox is only needed for optional '--mode workstation')."
+    fi
+
     # Verify active container service/socket access
     local socket_ok=no
-    if command -v podman &>/dev/null; then
-        if podman info &>/dev/null; then
-            socket_ok=yes
-        fi
-    elif command -v docker &>/dev/null; then
-        if docker info &>/dev/null; then
-            socket_ok=yes
-        fi
+    if command -v podman &>/dev/null && podman info &>/dev/null; then
+        socket_ok=yes
+    elif command -v docker &>/dev/null && docker info &>/dev/null; then
+        socket_ok=yes
     fi
 
     if [ "$socket_ok" = "no" ]; then
@@ -1687,7 +1631,7 @@ install_agy_box() {
     # 3. Download and install agy-box-manager globally from tag version
     log_info "Fetching agy-box version details..."
     fetch_versions_json || true
-    local agy_ver="${DEFAULT_AGY_BOX_VERSION:-v0.7.2}"
+    local agy_ver="${DEFAULT_AGY_BOX_VERSION:-v0.8.0}"
     local remote_url="${AGY_BOX_MANAGER_URL:-}"
     if [ -z "$remote_url" ]; then
         remote_url=$(get_agy_box_release_url "$agy_ver")
@@ -1710,23 +1654,21 @@ install_agy_box() {
 
     # 4. Trigger sandbox installation
     log_info "Starting agy-box container setup ($agy_ver) — live progress below..."
+    local install_rc=0
     if [ "$AUTO" -eq 1 ]; then
-        if ! AGY_NONINTERACTIVE=1 "$target_dir/agy-box-manager" install < /dev/null; then
-            log_error "agy-box container setup failed during execution of agy-box-manager install."
-            return 1
-        fi
+        AGY_NONINTERACTIVE=1 "$target_dir/agy-box-manager" install -y --no-enter < /dev/null || install_rc=$?
     else
         if [ ! -t 0 ] && [ -t 1 ] && [ -r /dev/tty ]; then
-            if ! "$target_dir/agy-box-manager" install < /dev/tty; then
-                log_error "agy-box container setup failed during execution of agy-box-manager install."
-                return 1
-            fi
+            "$target_dir/agy-box-manager" install < /dev/tty || install_rc=$?
         else
-            if ! "$target_dir/agy-box-manager" install; then
-                log_error "agy-box container setup failed during execution of agy-box-manager install."
-                return 1
-            fi
+            "$target_dir/agy-box-manager" install || install_rc=$?
         fi
+    fi
+
+    if [ "$install_rc" -ne 0 ]; then
+        log_error "agy-box container setup failed during execution of agy-box-manager install."
+        log_error "Diagnostic log: ~/.config/agy-box/logs/agy-box-manager.log (or run: agy-box-manager logs)"
+        return 1
     fi
 
     # 5. Check if ~/.local/bin is in PATH
@@ -1740,14 +1682,18 @@ install_agy_box() {
     esac
 
     log_info "${C_GREEN}✅ agy-box sandbox installation completed successfully.${C_RESET}"
+    log_info "  ${C_CYAN}▸${C_RESET} Manage fleet:  ${C_BOLD}agy-box-manager status${C_RESET} | ${C_BOLD}enter${C_RESET} | ${C_BOLD}desktop${C_RESET} | ${C_BOLD}logs${C_RESET}"
 }
 
 uninstall_agy_box() {
     local manager_bin="$HOME/.local/bin/agy-box-manager"
     if [ -f "$manager_bin" ]; then
         log_info "Uninstalling agy-box environment..."
-        if ! "$manager_bin" clean; then
-            log_warn "agy-box clean command encountered an error."
+        if ! "$manager_bin" clean --all --purge -y; then
+            log_warn "agy-box clean --all not supported or failed; falling back to standard clean..."
+            if ! "$manager_bin" clean; then
+                log_warn "agy-box clean command encountered an error."
+            fi
         fi
         if ! "$manager_bin" uninstall-global; then
             log_warn "agy-box uninstall-global command encountered an error."

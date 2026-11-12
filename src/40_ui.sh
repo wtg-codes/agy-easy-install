@@ -784,7 +784,7 @@ run_mock_action() {
             run_cmd_ui "Starting agy-box container setup..." sleep 1.5
             echo ""
             log_info "${C_GREEN}${C_BOLD}🎉 Mock Installation Complete!${C_RESET}"
-            log_info "  ${C_CYAN}▸${C_RESET} Launch status:  ${C_BOLD}ujust agy-status${C_RESET}"
+            log_info "  ${C_CYAN}▸${C_RESET} Manage fleet:   ${C_BOLD}agy-box-manager status | enter | desktop | logs${C_RESET}"
             ;;
         uninstall_agy_box)
             log_info "${C_MAG}🚀 Uninstalling Antigravity Developer Sandbox (agy-box) (Mock)...${C_RESET}"

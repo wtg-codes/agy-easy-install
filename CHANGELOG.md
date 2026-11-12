@@ -5,6 +5,17 @@ Format follows [Keep a Changelog](https://keepachangelog.com/).
 
 ---
 
+## [0.3.7] — 2026-11-12
+
+### Added
+- **Antigravity Dev Box (`agy-box`) v0.8.0 Unified Multi-Box Fleet Support:** Bumped `DEFAULT_AGY_BOX_VERSION` to `v0.8.0` in `src/00_config.sh` (and fallback in `src/30_installers.sh`), and updated `versions.json` & `scrape_latest.py` with the `v0.8.0` release URL mapping (unified multi-box `agy-box-<adj>-<noun>` fleet, instant non-blocking shell entry without `EncryptedKeyring` / login wizard bloat, zero host shell RC file mutations, and structured host/container diagnostic logging).
+- **Diagnostic Log Hints (`install_agy_box`):** Added actionable failure diagnostics pointing to `~/.config/agy-box/logs/agy-box-manager.log` and `agy-box-manager logs` when container setup fails.
+
+### Changed
+- **Sandbox-First Host Prerequisites (`install_agy_box`):** `podman` or `docker` alone now satisfies default `sandbox` prerequisites without nagging to install `distrobox` (noting `distrobox` is only needed for optional `--mode workstation`), and CLI hints now point directly to `agy-box-manager status | enter | desktop | logs` instead of removed `ujust` wrappers.
+- **Non-Blocking Headless Fleet Provisioning (`install_agy_box`):** Updated headless (`--auto` / `--install-agy-box` / `--install-sandbox`) execution to invoke `AGY_NONINTERACTIVE=1 agy-box-manager install -y --no-enter < /dev/null`.
+- **Full Fleet Cleanup on Uninstall (`uninstall_agy_box`):** Updated uninstaller to invoke `agy-box-manager clean --all --purge -y` (with graceful fallback to `clean` for older `agy-box-manager` versions) so all managed `agy-box-*` fleet containers are removed cleanly.
+
 ## [0.3.6] — 2026-11-12
 
 ### Added
