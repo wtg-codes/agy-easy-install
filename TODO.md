@@ -32,6 +32,7 @@
 - [x] v0.3.4: Bump to agy-box v0.7.0, whitespace-tolerant awk JSON version parser, curl|bash TTY starvation fix (< /dev/tty), and standalone sandbox fallback
 - [x] v0.3.5: Bump to agy-box v0.7.1 and update version mappings in versions.json and scraper
 - [x] v0.3.6: Bump to agy-box v0.7.2 (VDI quick-exec desktop icons, deduplicated desktop launchers, D-Bus SecretService / persistent keyring auth) and update version mappings in versions.json and scraper
+- [x] v0.3.7: Sync with agy-box v0.8.0 (unified multi-box fleet, podman/docker-first default `sandbox` prerequisites without `distrobox` nag, headless `install -y --no-enter`, `clean --all --purge -y` uninstall with legacy fallback, and `agy-box-manager` `status`/`enter`/`desktop`/`logs` + `~/.config/agy-box/logs/agy-box-manager.log` diagnostic hints)
 
 ### Terminal UI
 - [x] Ephemeral `gum` bootstrap (download → temp dir → cleanup)

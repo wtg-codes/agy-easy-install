@@ -86,6 +86,9 @@ DEFAULT_AGY_BOX: Dict[str, Dict[str, str]] = {
     "nightly": {
         "url": "https://raw.githubusercontent.com/wtg-codes/agy-box/main/agy-box-manager"
     },
+    "v0.8.0": {
+        "url": "https://raw.githubusercontent.com/wtg-codes/agy-box/v0.8.0/agy-box-manager"
+    },
     "v0.7.2": {
         "url": "https://raw.githubusercontent.com/wtg-codes/agy-box/v0.7.2/agy-box-manager"
     },
