@@ -19,7 +19,7 @@ C_RESET='\033[0m'
 
 # Configuration
 SCRIPT_VERSION="0.3.7"
-DEFAULT_AGY_VERSION="2.32.1"
+DEFAULT_AGY_VERSION="2.32.2"
 DEFAULT_IDE_VERSION="2.7.0"
 DEFAULT_CLI_VERSION="1.5.9"
 DEFAULT_SDK_VERSION="0.1.23"
@@ -52,18 +52,18 @@ WIN_ARM64_URL="https://edgedl.me.gvt1.com/edgedl/release2/j0qc3/antigravity/stab
 : "$LINUX_X64_SHA256" "$LINUX_X64_URL" "$LINUX_ARM64_SHA256" "$LINUX_ARM64_URL" "$MAC_X64_SHA256" "$MAC_X64_URL" "$MAC_ARM64_SHA256" "$MAC_ARM64_URL" "$WIN_X64_SHA256" "$WIN_X64_URL" "$WIN_ARM64_SHA256" "$WIN_ARM64_URL"
 
 # Google Antigravity Fallbacks
-AGY_LINUX_X64_SHA256="4cb2d4fea74a74f17cfe251841b900249c5ad2728b961efdbf729dafae7fe842"
-AGY_LINUX_X64_URL="https://storage.googleapis.com/antigravity-public/antigravity-hub/2.32.1-6001966350991360/linux-x64/Antigravity.tar.gz"
-AGY_LINUX_ARM64_SHA256="473e4cf16aed6f5f289118309f104deb1650245393d0f1e9d2a40b53e73236c9"
-AGY_LINUX_ARM64_URL="https://storage.googleapis.com/antigravity-public/antigravity-hub/2.32.1-6001966350991360/linux-arm/Antigravity.tar.gz"
-AGY_MAC_X64_SHA256="3c59628b2e015622028d762041557542b245651b97940d15162570c658b55e55"
-AGY_MAC_X64_URL="https://storage.googleapis.com/antigravity-public/antigravity-hub/2.32.1-6001966350991360/darwin-x64/Antigravity.dmg"
-AGY_MAC_ARM64_SHA256="eb12a620a92b44c8fd7bd4844eeedcc5b145e79fb6dda5b636e4911168e34dec"
-AGY_MAC_ARM64_URL="https://storage.googleapis.com/antigravity-public/antigravity-hub/2.32.1-6001966350991360/darwin-arm/Antigravity.dmg"
-AGY_WIN_X64_SHA256="f216ee69d6a6d0c69f7fca01e3ccef9f0f1d78f861fa24891a6db185d6fa5ee1"
-AGY_WIN_X64_URL="https://storage.googleapis.com/antigravity-public/antigravity-hub/2.32.1-6001966350991360/windows-x64/Antigravity-x64.exe"
-AGY_WIN_ARM64_SHA256="8c90cff98cd460427e2ddc8e6288492822a3900d00868c69c5861a3ff3f6fe62"
-AGY_WIN_ARM64_URL="https://storage.googleapis.com/antigravity-public/antigravity-hub/2.32.1-6001966350991360/windows-arm/Antigravity-arm64.exe"
+AGY_LINUX_X64_SHA256="233d90cc8db48f4a09f8a0575b6bc0dfc0bb46f155217d89e1b0e5fd1d780235"
+AGY_LINUX_X64_URL="https://storage.googleapis.com/antigravity-public/antigravity-hub/2.32.2-4665802025205760/linux-x64/Antigravity.tar.gz"
+AGY_LINUX_ARM64_SHA256="96fb10a7a5e8cfc8398dba2307ed8e9d6734d805cbc1ddc4c1a69d0390ed9774"
+AGY_LINUX_ARM64_URL="https://storage.googleapis.com/antigravity-public/antigravity-hub/2.32.2-4665802025205760/linux-arm/Antigravity.tar.gz"
+AGY_MAC_X64_SHA256="5a4313cf2607da2188540ba9ba71900a095824e578e20defc9a5c1122cab9186"
+AGY_MAC_X64_URL="https://storage.googleapis.com/antigravity-public/antigravity-hub/2.32.2-4665802025205760/darwin-x64/Antigravity.dmg"
+AGY_MAC_ARM64_SHA256="3ae4e61fff8dcc1c271bb553607e738a5b2572195e2df07260ad2743d9344f38"
+AGY_MAC_ARM64_URL="https://storage.googleapis.com/antigravity-public/antigravity-hub/2.32.2-4665802025205760/darwin-arm/Antigravity.dmg"
+AGY_WIN_X64_SHA256="98a3a3ba19c2dfa4a019c8bbd60de97fbf5e536a206a983a73756f51c285e828"
+AGY_WIN_X64_URL="https://storage.googleapis.com/antigravity-public/antigravity-hub/2.32.2-4665802025205760/windows-x64/Antigravity-x64.exe"
+AGY_WIN_ARM64_SHA256="d7d107b86a9770357a59f762dead67c264d4b39ec29219cf9f6ad18dca0c3b3c"
+AGY_WIN_ARM64_URL="https://storage.googleapis.com/antigravity-public/antigravity-hub/2.32.2-4665802025205760/windows-arm/Antigravity-arm64.exe"
 
 # IDE Fallbacks
 IDE_LINUX_X64_SHA256="9360a86521c3e5498846254b743b1f3203768ebadf65a178bc549395936f7a5d"
