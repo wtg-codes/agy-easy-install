@@ -1,8 +1,34 @@
 # TODO — AGY Easy Install
 
-> **Last updated:** 2026-11-11 · Branch: `main`
+> **Last updated:** 2026-11-19 · Branch: `fix/harden-ci-compliance-tracking`
 > This file is the single source of truth for all pending work.
 > It MUST be updated at the end of every coding session.
+
+---
+
+## 🚨 Priority Queue — Security, CI Hardening & Reliability
+
+### P0 — Critical Security (Completed in Current Branch)
+- [x] **Guard self-hosted DGX Spark runner in `.github/workflows/ci.yml`:** Route fork PRs to `ubuntu-24.04` via `github.event.pull_request.head.repo.fork`, add explicit top-level `permissions: { contents: read }`, and configure `concurrency` (`cancel-in-progress: ${{ github.event_name == 'pull_request' }}`).
+- [x] **Add `SECURITY.md` vulnerability reporting policy** (preserving existing MIT `LICENSE` verified by gate `1.G1`).
+
+### P1 — Nightly Update CI Failure Follow-Up
+- [ ] **Fix `tests/test_scraper.py` failure breaking `.github/workflows/nightly-update.yml`:** Scheduled runs `#44240142467` (2026-11-18) and `#44460128025` (2026-11-19) failed in `TestShellParsersAndInstallers.test_poisoned_tmp_versions_json_is_ignored_and_cleaned_up` (`AssertionError: 'storage.googleapis.com' not found in '|'`). Investigate why `AGY_INFO` returned empty fields (`|`) against current `versions.json` / mock fixtures and fix the test or parser.
+- [ ] **Clean up `nightly-update.yml` `actionlint` shellcheck style warnings (`SC2129`):** Group consecutive `>> "$GITHUB_STEP_SUMMARY"` and `>> "$GITHUB_ENV"` redirects into `{ ...; } >> ...` blocks on lines 38 and 47.
+
+### P2 — GitHub Actions Supply-Chain & Linting Hardening
+- [ ] **Pin all third-party GitHub Actions to full 40-char commit SHAs** (with `# vX.Y.Z` comments) across all 5 workflows:
+  - `.github/workflows/ci.yml`: `actions/checkout@v4`
+  - `.github/workflows/compile-diagrams.yml`: `actions/checkout@v4`, `actions/setup-node@v4`, `stefanzweifel/git-auto-commit-action@v5`
+  - `.github/workflows/deploy-pages.yml`: `actions/checkout@v4`, `actions/configure-pages@v4`, `actions/upload-pages-artifact@v4`, `actions/deploy-pages@v4`
+  - `.github/workflows/nightly-update.yml`: `actions/checkout@v4`, `actions/setup-python@v5`, `actions/setup-node@v4`
+  - `.github/workflows/release.yml`: `actions/checkout@v4`
+- [ ] **Add `.github/actionlint.yaml` custom self-hosted runner labels:** Register `dgx-spark` and `agy-easy-install` under `self-hosted-runner.labels` so `actionlint` validates all workflows cleanly without unknown-label errors.
+- [ ] **Audit write-scoped workflows for job-level least-privilege `permissions:`:** Keep top-level `permissions: { contents: read }` and move `contents: write` down to the specific publishing jobs in `compile-diagrams.yml`, `nightly-update.yml`, and `release.yml`, and consider pinning the Archify repo commit SHA instead of unpinned `git clone --depth 1` of `https://github.com/tt-a1i/archify`.
+
+### P3 — ShellCheck & Compliance Hygiene
+- [ ] **Reduce remaining `shellcheck` warnings across `src/` and test scripts** flagged by `repo-hub audit .` (currently 373 lines reported without `-e` suppressions) and verify `shellcheck -S warning` clean passes.
+- [ ] **Add SPDX license headers (`SPDX-License-Identifier: MIT`)** on new scripts/modules if adopting REUSE compliance alongside the existing MIT `LICENSE`.
 
 ---
 
