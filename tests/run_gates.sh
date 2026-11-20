@@ -112,9 +112,9 @@ gate_3() {
 
     local NIGHTLY=".github/workflows/nightly-update.yml"
 
-    # Action versions
-    check "3.G1  checkout@v4"                  "grep -q 'actions/checkout@v4' $NIGHTLY"
-    check "3.G2  setup-python@v5"              "grep -q 'actions/setup-python@v5' $NIGHTLY"
+    # Action versions (accepts v4/v5 tags or full 40-char SHA pins with # v4 / # v5 comments)
+    check "3.G1  checkout@v4"                  "grep -qE 'actions/checkout@(v4|[0-9a-f]{40}[[:space:]]+# v4)' $NIGHTLY"
+    check "3.G2  setup-python@v5"              "grep -qE 'actions/setup-python@(v5|[0-9a-f]{40}[[:space:]]+# v5)' $NIGHTLY"
 
     # Pipeline features
     check "3.G3  requirements.txt used"        "grep -q 'requirements.txt' $NIGHTLY"

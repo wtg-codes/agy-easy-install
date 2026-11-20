@@ -6,14 +6,25 @@ on:
   pull_request:
     branches: [ main ]
 
+# Only PR runs are cancelled by newer pushes; main branch runs complete in full.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+# Least privilege by default; elevate only on jobs that require write scopes.
+permissions:
+  contents: read
+
 jobs:
+  # Self-hosted runners never execute code from fork PRs on a public repo:
+  # untrusted fork PRs fall back to GitHub-hosted Ubuntu runners.
   gate-tests:
     name: Run Phase Gates (DGX Spark ARM64 Self-Hosted)
-    runs-on: [self-hosted, Linux, ARM64, dgx-spark, agy-easy-install]
+    runs-on: ${{ github.event.pull_request.head.repo.fork && 'ubuntu-24.04' || fromJSON('["self-hosted","Linux","ARM64","dgx-spark","agy-easy-install"]') }}
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262  # v4
 
       - name: Install shellcheck and test dependencies
         run: |

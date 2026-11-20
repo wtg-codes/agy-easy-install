@@ -5,6 +5,19 @@ Format follows [Keep a Changelog](https://keepachangelog.com/).
 
 ---
 
+## [Unreleased]
+
+### Security
+- **Self-Hosted Runner Fork-PR Guard (`.github/workflows/ci.yml`):** Routed untrusted fork pull requests to GitHub-hosted `ubuntu-24.04` runners instead of the self-hosted DGX Spark ARM64 runner (`[self-hosted, Linux, ARM64, dgx-spark, agy-easy-install]`), added explicit top-level `permissions: { contents: read }`, and configured PR-scoped `concurrency` cancellation (`cancel-in-progress: ${{ github.event_name == 'pull_request' }}`).
+- **GitHub Actions Full SHA Pinning (`.github/workflows/*.yml`, `tests/run_gates.sh`):** Pinned all 12 third-party action references across `ci.yml`, `compile-diagrams.yml`, `deploy-pages.yml`, `nightly-update.yml`, and `release.yml` to immutable 40-character commit SHAs with version comments, and updated Phase 3 gates `3.G1` / `3.G2` to validate SHA-pinned actions.
+- **Vulnerability & Conduct Reporting (`SECURITY.md`, `CODE_OF_CONDUCT.md`):** Added `SECURITY.md` (preserving the repository's existing MIT `LICENSE`) and routed private reporting in both `SECURITY.md` and `CODE_OF_CONDUCT.md` to GitHub Private Vulnerability Reporting.
+
+### Fixed
+- **Rolling `versions.json` Test Resilience (`tests/test_scraper.py`):** Replaced hardcoded `2.31.0` / `2.6.0` version keys in `test_poisoned_tmp_versions_json_is_ignored_and_cleaned_up` with active keys read dynamically from `versions.json`, fixing gate `3.G12` and `.github/workflows/nightly-update.yml` after rolling 5-version rotation.
+
+### Documentation
+- **Prioritized Security & CI Backlog (`TODO.md`):** Documented completed P0 runner hardening and P1 scraper gate fix, and added tracked follow-ups for full 40-char SHA action pinning across all workflows, `.github/actionlint.yaml` runner label registration, and `shellcheck` cleanup.
+
 ## [0.3.7] — 2026-11-12
 
 ### Added
