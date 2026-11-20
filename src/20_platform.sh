@@ -270,6 +270,8 @@ detect_platform() {
             local MILESTONE=""
             MILESTONE=$(cat /dev/.cros_milestone 2>/dev/null || echo "Unknown")
             DISTRO_PRETTY="ChromeOS Crostini M${MILESTONE} (${DISTRO_PRETTY})"
+        elif [ -d /mnt/shared ] && grep -qE '^shared[[:space:]]+/mnt/shared[[:space:]]+virtiofs' /proc/mounts 2>/dev/null; then
+            DISTRO_PRETTY="Chromebook Linux VM (AVF — ${DISTRO_PRETTY})"
         fi
 
         if command -v apt >/dev/null 2>&1; then HAS_APT="yes"; fi

@@ -87,25 +87,32 @@ DEFAULT_AGY_BOX: Dict[str, Dict[str, str]] = {
         "url": "https://raw.githubusercontent.com/wtg-codes/agy-box/main/agy-box-manager"
     },
     "v0.8.0": {
-        "url": "https://raw.githubusercontent.com/wtg-codes/agy-box/v0.8.0/agy-box-manager"
+        "url": "https://raw.githubusercontent.com/wtg-codes/agy-box/v0.8.0/agy-box-manager",
+        "sha256": "7f4d64913cb9bb68000f549bdf8afcc21c9fdeb9dd77eec9926faa1fd086ae5b",
     },
     "v0.7.2": {
-        "url": "https://raw.githubusercontent.com/wtg-codes/agy-box/v0.7.2/agy-box-manager"
+        "url": "https://raw.githubusercontent.com/wtg-codes/agy-box/v0.7.2/agy-box-manager",
+        "sha256": "6ed971965ba0ae6492c276759e5a49441e9a4712204f57ef4d081616b67c0bd1",
     },
     "v0.7.1": {
-        "url": "https://raw.githubusercontent.com/wtg-codes/agy-box/v0.7.1/agy-box-manager"
+        "url": "https://raw.githubusercontent.com/wtg-codes/agy-box/v0.7.1/agy-box-manager",
+        "sha256": "1065a3bc563783c20e219c4e992753b67e9b1a22f9d36614e1d8ee111efa8cc2",
     },
     "v0.7.0": {
-        "url": "https://raw.githubusercontent.com/wtg-codes/agy-box/v0.7.0/agy-box-manager"
+        "url": "https://raw.githubusercontent.com/wtg-codes/agy-box/v0.7.0/agy-box-manager",
+        "sha256": "ccf077aaae996b438777fd8d6d70be51edd8cbcfc01ce9d3738130928921bb14",
     },
     "v0.6.0": {
-        "url": "https://raw.githubusercontent.com/wtg-codes/agy-box/v0.6.0/agy-box-manager"
+        "url": "https://raw.githubusercontent.com/wtg-codes/agy-box/v0.6.0/agy-box-manager",
+        "sha256": "4ea7d860be45831d73e197cc264b73b1c88bcec485cf79d342109c68ea27d4ba",
     },
     "v0.5.0": {
-        "url": "https://raw.githubusercontent.com/wtg-codes/agy-box/v0.5.0/agy-box-manager"
+        "url": "https://raw.githubusercontent.com/wtg-codes/agy-box/v0.5.0/agy-box-manager",
+        "sha256": "dd2078d007611082c255131ea05e4b66b6b54781317ba41ea2887254c3cf33ff",
     },
     "v0.4.2": {
-        "url": "https://raw.githubusercontent.com/wtg-codes/agy-box/v0.4.2/agy-box-manager"
+        "url": "https://raw.githubusercontent.com/wtg-codes/agy-box/v0.4.2/agy-box-manager",
+        "sha256": "497831dc4794acc3c1ba02b0f763693286ba3ac06710c875bcce6c63fcab052d",
     },
 }
 
@@ -297,12 +304,16 @@ def scrape_extensions(existing: Optional[Dict[str, Any]] = None) -> Dict[str, Di
 
 
 def scrape_agy_box(existing: Optional[Dict[str, Any]] = None) -> Dict[str, Dict[str, str]]:
-    """Syncs agy-box release tags from GitHub while preserving awk-compatible dictionary layout."""
+    """Syncs agy-box release tags and SHA-256 digests from GitHub while preserving awk-compatible layout."""
     merged: Dict[str, Dict[str, str]] = {}
     for source in (DEFAULT_AGY_BOX, existing if isinstance(existing, dict) else {}):
         for tag, info in source.items():
             if isinstance(info, dict) and isinstance(info.get("url"), str):
-                merged[tag] = {"url": info["url"]}
+                rec = merged.get(tag, {})
+                rec["url"] = info["url"]
+                if isinstance(info.get("sha256"), str) and info["sha256"]:
+                    rec["sha256"] = info["sha256"]
+                merged[tag] = rec
 
     try:
         gh_resp = requests.get(AGY_BOX_RELEASES_API, headers=HEADERS, timeout=10)
@@ -312,9 +323,18 @@ def scrape_agy_box(existing: Optional[Dict[str, Any]] = None) -> Dict[str, Dict[
             for rel in releases:
                 tag = rel.get("tag_name") if isinstance(rel, dict) else None
                 if isinstance(tag, str) and tag.startswith("v"):
-                    merged[tag] = {
-                        "url": f"https://raw.githubusercontent.com/wtg-codes/agy-box/{tag}/agy-box-manager"
-                    }
+                    url = f"https://raw.githubusercontent.com/wtg-codes/agy-box/{tag}/agy-box-manager"
+                    prev = merged.get(tag, {})
+                    sha = prev.get("sha256", "") if prev.get("url") == url else ""
+                    if not sha:
+                        try:
+                            sha = compute_sha(url, "sha256")
+                        except Exception as sha_err:
+                            print(f"WARNING: Could not hash agy-box {tag}: {sha_err}", file=sys.stderr)
+                    entry: Dict[str, str] = {"url": url}
+                    if sha:
+                        entry["sha256"] = sha
+                    merged[tag] = entry
     except Exception as e:
         print(f"INFO: Could not refresh agy-box tags from GitHub API: {e}", file=sys.stderr)
 

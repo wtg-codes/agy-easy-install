@@ -321,14 +321,59 @@ do_install_binary() {
     fi
 
     if [ "$install_type" = "tarball" ]; then
-        log_info "${C_CYAN}📁 Preparing directories...${C_RESET}"
-        rm -rf "${app_dir_var:?}"
-        mkdir -p "$BIN_DIR" "$app_dir_var" "$WORKSPACE_DIR" "$(dirname "$desktop_file_sys_var")" "$HOME/.local/share/icons/hicolor/512x512/apps"
+        log_info "${C_CYAN}📁 Preparing staged extraction...${C_RESET}"
+        local stage_dir="$ACTIVE_TMP_DIR/extract"
+        mkdir -p "$stage_dir" "$BIN_DIR" "$WORKSPACE_DIR" "$(dirname "$desktop_file_sys_var")" "$HOME/.local/share/icons/hicolor/512x512/apps"
 
         if [ "$JSON_OUT" -eq 0 ] && [ "$QUIET" -eq 0 ] && [ -t 1 ] && command -v gum >/dev/null 2>&1; then
-            gum spin --spinner dot --title "Extracting archive..." -- tar -xzf "$dl_target" -C "$app_dir_var" --strip-components=1
+            if ! gum spin --spinner dot --title "Extracting archive..." -- tar -xzf "$dl_target" -C "$stage_dir" --strip-components=1; then
+                log_error "Archive extraction failed! Existing installation (if any) was preserved untouched."
+                rm -rf "$ACTIVE_TMP_DIR"
+                ACTIVE_TMP_DIR=""
+                exit 1
+            fi
         else
-            tar -xzf "$dl_target" -C "$app_dir_var" --strip-components=1
+            if ! tar -xzf "$dl_target" -C "$stage_dir" --strip-components=1; then
+                log_error "Archive extraction failed! Existing installation (if any) was preserved untouched."
+                rm -rf "$ACTIVE_TMP_DIR"
+                ACTIVE_TMP_DIR=""
+                exit 1
+            fi
+        fi
+
+        if [ ! -x "$stage_dir/antigravity" ] && [ ! -x "$stage_dir/bin/antigravity" ] && [ ! -x "$stage_dir/antigravity-ide" ] && [ ! -x "$stage_dir/bin/antigravity-ide" ]; then
+            log_error "Extracted archive is missing expected Antigravity executable! Preserving existing installation."
+            rm -rf "$ACTIVE_TMP_DIR"
+            ACTIVE_TMP_DIR=""
+            exit 1
+        fi
+
+        local backup_dir=""
+        mkdir -p "$(dirname "$app_dir_var")"
+        if [ -d "$app_dir_var" ]; then
+            backup_dir="${app_dir_var}.bak.$$"
+            rm -rf "$backup_dir"
+            mv "$app_dir_var" "$backup_dir"
+            PENDING_ROLLBACK_BACKUP="$backup_dir"
+            PENDING_ROLLBACK_TARGET="$app_dir_var"
+        fi
+
+        if ! mv "$stage_dir" "$app_dir_var"; then
+            log_error "Failed to move staged installation into $app_dir_var; rolling back previous version..."
+            if [ -n "$backup_dir" ] && [ -d "$backup_dir" ]; then
+                mv "$backup_dir" "$app_dir_var" 2>/dev/null || true
+            fi
+            PENDING_ROLLBACK_BACKUP=""
+            PENDING_ROLLBACK_TARGET=""
+            rm -rf "$ACTIVE_TMP_DIR"
+            ACTIVE_TMP_DIR=""
+            exit 1
+        fi
+
+        PENDING_ROLLBACK_BACKUP=""
+        PENDING_ROLLBACK_TARGET=""
+        if [ -n "$backup_dir" ] && [ -d "$backup_dir" ]; then
+            rm -rf "$backup_dir"
         fi
 
         # Disable Electron built-in auto-update descriptor for standalone tarball installs
@@ -515,16 +560,33 @@ Workspace: $WORKSPACE_DIR"
         
         log_info "  ${C_DIM}Found app bundle: $APP_NAME${C_RESET}"
         
+        local mac_backup=""
         if [ -d "/Applications/$APP_NAME" ]; then
-            run_cmd rm -rf "/Applications/$APP_NAME"
+            mac_backup="/Applications/${APP_NAME}.bak.$$"
+            run_cmd rm -rf "$mac_backup"
+            run_cmd mv "/Applications/$APP_NAME" "$mac_backup"
+            PENDING_ROLLBACK_BACKUP="$mac_backup"
+            PENDING_ROLLBACK_TARGET="/Applications/$APP_NAME"
         fi
-        
+
         if ! cp -R "/Volumes/Antigravity/$APP_NAME" /Applications/ >> "$LOG_FILE" 2>&1; then
-            log_error "Failed to copy $APP_NAME to /Applications. Check /tmp/antigravity-install.log for details."
+            log_error "Failed to copy $APP_NAME to /Applications. Rolling back previous app bundle if present."
+            rm -rf "/Applications/$APP_NAME" 2>/dev/null || true
+            if [ -n "$mac_backup" ] && [ -d "$mac_backup" ]; then
+                mv "$mac_backup" "/Applications/$APP_NAME" 2>/dev/null || true
+            fi
+            PENDING_ROLLBACK_BACKUP=""
+            PENDING_ROLLBACK_TARGET=""
             run_cmd hdiutil detach /Volumes/Antigravity -quiet || true
             rm -rf "$ACTIVE_TMP_DIR"
             ACTIVE_TMP_DIR=""
             exit 1
+        fi
+
+        PENDING_ROLLBACK_BACKUP=""
+        PENDING_ROLLBACK_TARGET=""
+        if [ -n "$mac_backup" ] && [ -d "$mac_backup" ]; then
+            run_cmd rm -rf "$mac_backup"
         fi
         
         run_cmd hdiutil detach /Volumes/Antigravity -quiet || true
@@ -662,6 +724,7 @@ do_remove() {
             rm -f "$st_file"
         fi
     done
+    rm -f "${STATE_DIR}/install-cli.json" "${STATE_DIR}/install-sdk.json" "${STATE_DIR}/install-agy-box.json" 2>/dev/null || true
 
     log_info "${C_GREEN}✅ Uninstalled successfully.${C_RESET} (Note: Your code in $WORKSPACE_DIR was kept safe)."
 }
@@ -765,6 +828,8 @@ install_cli() {
             rm -rf "$ACTIVE_TMP_DIR"
             ACTIVE_TMP_DIR=""
             inject_path
+            mkdir -p "$STATE_DIR"
+            echo "{\"method\": \"cli\", \"product\": \"cli\", \"version\": \"$target_version\"}" > "${STATE_DIR}/install-cli.json"
             log_info "${C_GREEN}✅ Antigravity CLI installation complete!${C_RESET}"
             return
         else
@@ -832,6 +897,8 @@ install_cli() {
     
     rm -rf "$ACTIVE_TMP_DIR"
     ACTIVE_TMP_DIR=""
+    mkdir -p "$STATE_DIR"
+    echo "{\"method\": \"cli\", \"product\": \"cli\", \"version\": \"$target_version\"}" > "${STATE_DIR}/install-cli.json"
     log_info "${C_GREEN}✅ Antigravity CLI installation complete!${C_RESET}"
 }
 
@@ -902,6 +969,8 @@ install_sdk() {
     fi
 
     inject_path
+    mkdir -p "$STATE_DIR"
+    echo "{\"method\": \"sdk\", \"product\": \"sdk\", \"version\": \"$target_version\"}" > "${STATE_DIR}/install-sdk.json"
     log_info "${C_GREEN}✅ Antigravity SDK installation complete!${C_RESET}"
 }
 
@@ -1011,24 +1080,26 @@ ensure_node() {
     
     local node_url=""
     local node_dir_name=""
-    
+    local node_archive_name=""
+    local node_dist_base="${NODE_DIST_BASE_URL:-https://nodejs.org/dist/${NODE_FALLBACK_VERSION}}"
+
     case "$PLATFORM" in
         Darwin)
             if [ "$ARCH" = "arm64" ]; then
-                node_url="https://nodejs.org/dist/v20.11.1/node-v20.11.1-darwin-arm64.tar.gz"
-                node_dir_name="node-v20.11.1-darwin-arm64"
+                node_dir_name="node-${NODE_FALLBACK_VERSION}-darwin-arm64"
+                node_archive_name="${node_dir_name}.tar.gz"
             else
-                node_url="https://nodejs.org/dist/v20.11.1/node-v20.11.1-darwin-x64.tar.gz"
-                node_dir_name="node-v20.11.1-darwin-x64"
+                node_dir_name="node-${NODE_FALLBACK_VERSION}-darwin-x64"
+                node_archive_name="${node_dir_name}.tar.gz"
             fi
             ;;
         Linux|Crostini)
             if [ "$ARCH" = "aarch64" ] || [ "$ARCH" = "arm64" ]; then
-                node_url="https://nodejs.org/dist/v20.11.1/node-v20.11.1-linux-arm64.tar.xz"
-                node_dir_name="node-v20.11.1-linux-arm64"
+                node_dir_name="node-${NODE_FALLBACK_VERSION}-linux-arm64"
+                node_archive_name="${node_dir_name}.tar.xz"
             else
-                node_url="https://nodejs.org/dist/v20.11.1/node-v20.11.1-linux-x64.tar.xz"
-                node_dir_name="node-v20.11.1-linux-x64"
+                node_dir_name="node-${NODE_FALLBACK_VERSION}-linux-x64"
+                node_archive_name="${node_dir_name}.tar.xz"
             fi
             ;;
         *)
@@ -1036,23 +1107,41 @@ ensure_node() {
             exit 1
             ;;
     esac
-    
+    node_url="${node_dist_base}/${node_archive_name}"
+
     local node_lib_dir="$HOME/.local/lib/node"
     mkdir -p "$node_lib_dir" "$BIN_DIR"
-    
+
     local dl_temp
     dl_temp=$(mktemp -d)
     local archive_ext="tar.gz"
     case "$node_url" in
         *.tar.xz) archive_ext="tar.xz" ;;
     esac
-    
+
     local dl_target="$dl_temp/node.$archive_ext"
-    
+    local shasums_file="$dl_temp/SHASUMS256.txt"
+
     if [ "$JSON_OUT" -eq 1 ] || [ "$QUIET" -eq 1 ]; then
-        run_cmd curl -fSL "$node_url" -o "$dl_target"
+        run_cmd curl -fSsL "$node_url" -o "$dl_target"
     else
         curl -fSL --progress-bar "$node_url" -o "$dl_target"
+    fi
+
+    log_info "${C_BLUE}🔐 Verifying Node.js checksum (SHA-256)...${C_RESET}"
+    local expected_node_sha="${NODE_ARCHIVE_SHA256:-}"
+    if [ -z "$expected_node_sha" ]; then
+        if ! curl -fSsL "$NODE_SHASUMS_URL" -o "$shasums_file"; then
+            log_error "Failed to download Node.js SHASUMS256.txt for verification."
+            rm -rf "$dl_temp"
+            exit 1
+        fi
+        expected_node_sha=$(awk -v f="$node_archive_name" '$2 == f || $2 == ("*" f) {print $1; exit}' "$shasums_file")
+    fi
+    if ! verify_sha256 "$dl_target" "$expected_node_sha"; then
+        log_error "Node.js archive SHA-256 checksum verification failed!"
+        rm -rf "$dl_temp"
+        exit 1
     fi
     
     log_info "${C_CYAN}📁 Extracting Node.js...${C_RESET}"
@@ -1140,18 +1229,27 @@ install_jules() {
     log_info "${C_GREEN}✅ Google Jules CLI installation complete!${C_RESET}"
 }
 
-get_agy_box_release_url() {
+get_agy_box_release_info() {
     local version="$1"
     local json_file="${VERSIONS_JSON_CACHE:-}"
-    
-    if [ -z "$version" ] || [ -z "$json_file" ] || [ ! -s "$json_file" ]; then
-        echo ""
+
+    if [ -z "$version" ]; then
+        echo "|"
         return
     fi
-    
-    local url
-    url=$(sed 's#{#{\n#g; s#}#\n}\n#g' "$json_file" 2>/dev/null | awk -v ver="$version" '
-      BEGIN { in_agy=0; in_ver=0; agy_depth=0; ver_depth=0; url="" }
+
+    if [ -z "$json_file" ] || [ ! -s "$json_file" ]; then
+        if [ "$version" = "${DEFAULT_AGY_BOX_VERSION:-}" ] && [ -n "${DEFAULT_AGY_BOX_SHA256:-}" ]; then
+            echo "https://raw.githubusercontent.com/wtg-codes/agy-box/${version}/agy-box-manager|${DEFAULT_AGY_BOX_SHA256}"
+        else
+            echo "|"
+        fi
+        return
+    fi
+
+    local info
+    info=$(sed 's#{#{\n#g; s#}#\n}\n#g; s#,#,\n#g' "$json_file" 2>/dev/null | awk -v ver="$version" '
+      BEGIN { in_agy=0; in_ver=0; agy_depth=0; ver_depth=0; url=""; sha="" }
       !in_agy && index($0, "\"agy-box\"") > 0 && $0 ~ /:[[:space:]]*\{/ {
         in_agy = 1
         agy_depth = 1
@@ -1167,6 +1265,10 @@ get_agy_box_release_url() {
           if ($0 ~ /"url"[[:space:]]*:/) {
             split($0, a, "\"")
             url = a[4]
+          }
+          if ($0 ~ /"sha256"[[:space:]]*:/) {
+            split($0, b, "\"")
+            sha = b[4]
           }
           for (i = 1; i <= length($0); i++) {
             c = substr($0, i, 1)
@@ -1192,10 +1294,27 @@ get_agy_box_release_url() {
           }
         }
       }
-      END { if (url != "") print url }
+      END { if (url != "") print url "|" sha }
     ' 2>/dev/null || true)
-    
-    echo "$url"
+
+    if [ -n "$info" ]; then
+        echo "$info"
+    elif [ "$version" = "${DEFAULT_AGY_BOX_VERSION:-}" ] && [ -n "${DEFAULT_AGY_BOX_SHA256:-}" ]; then
+        echo "https://raw.githubusercontent.com/wtg-codes/agy-box/${version}/agy-box-manager|${DEFAULT_AGY_BOX_SHA256}"
+    else
+        echo "|"
+    fi
+}
+
+get_agy_box_release_url() {
+    local version="$1"
+    if [ -z "$version" ] || [ -z "${VERSIONS_JSON_CACHE:-}" ] || [ ! -s "${VERSIONS_JSON_CACHE:-}" ]; then
+        echo ""
+        return
+    fi
+    local info
+    info=$(get_agy_box_release_info "$version")
+    echo "$info" | cut -d'|' -f1
 }
 
 get_vscode_vsix_url() {
@@ -1628,28 +1747,62 @@ install_agy_box() {
         fi
     fi
 
-    # 3. Download and install agy-box-manager globally from tag version
+    # 3. Download and verify agy-box-manager CLI from tag version
     log_info "Fetching agy-box version details..."
     fetch_versions_json || true
-    local agy_ver="${DEFAULT_AGY_BOX_VERSION:-v0.8.0}"
+    local agy_ver="${AGY_BOX_VERSION:-${DEFAULT_AGY_BOX_VERSION:-v0.8.0}}"
+    local custom_url_override=0
     local remote_url="${AGY_BOX_MANAGER_URL:-}"
-    if [ -z "$remote_url" ]; then
-        remote_url=$(get_agy_box_release_url "$agy_ver")
+    local expected_box_sha="${AGY_BOX_MANAGER_SHA256:-}"
+
+    if [ -n "$remote_url" ]; then
+        custom_url_override=1
+    else
+        local box_info
+        box_info=$(get_agy_box_release_info "$agy_ver")
+        remote_url=$(printf '%s' "$box_info" | awk -F'|' '{print $1}')
+        expected_box_sha=$(printf '%s' "$box_info" | awk -F'|' '{print $2}')
+        if [ -z "$remote_url" ]; then
+            log_warn "Release version $agy_ver not found in versions.json. Falling back to official release tag URL..."
+            remote_url="https://raw.githubusercontent.com/wtg-codes/agy-box/${agy_ver}/agy-box-manager"
+            if [ "$agy_ver" = "${DEFAULT_AGY_BOX_VERSION:-}" ]; then
+                expected_box_sha="${DEFAULT_AGY_BOX_SHA256:-}"
+            fi
+        fi
     fi
-    
-    if [ -z "$remote_url" ]; then
-        log_warn "Release version $agy_ver not found in versions.json. Falling back to official release tag URL..."
-        remote_url="https://raw.githubusercontent.com/wtg-codes/agy-box/${agy_ver}/agy-box-manager"
-    fi
-    
+
     log_info "Downloading agy-box-manager CLI ($agy_ver)..."
     local target_dir="$HOME/.local/bin"
     mkdir -p "$target_dir"
-    
-    if ! curl -fSsL "$remote_url" -o "$target_dir/agy-box-manager"; then
+    local box_stage_dir
+    box_stage_dir=$(mktemp -d)
+    local staged_mgr="$box_stage_dir/agy-box-manager"
+
+    if ! curl -fSsL "$remote_url" -o "$staged_mgr"; then
         log_error "Failed to download agy-box-manager from $remote_url"
+        rm -rf "$box_stage_dir"
         return 1
     fi
+
+    if [ "$custom_url_override" -eq 1 ]; then
+        if [ -n "$expected_box_sha" ] && ! verify_sha256 "$staged_mgr" "$expected_box_sha"; then
+            log_error "agy-box-manager SHA-256 checksum verification failed for custom override URL!"
+            rm -rf "$box_stage_dir"
+            return 1
+        fi
+    elif [ "$agy_ver" = "nightly" ]; then
+        log_warn "Rolling 'nightly' agy-box requested: static SHA-256 pinning is bypassed on rolling main."
+    else
+        log_info "Verifying agy-box-manager SHA-256 checksum ($agy_ver)..."
+        if ! verify_sha256 "$staged_mgr" "$expected_box_sha"; then
+            log_error "agy-box-manager SHA-256 checksum verification failed for $agy_ver!"
+            rm -rf "$box_stage_dir"
+            return 1
+        fi
+    fi
+
+    cp "$staged_mgr" "$target_dir/agy-box-manager"
+    rm -rf "$box_stage_dir"
     chmod +x "$target_dir/agy-box-manager"
 
     # 4. Trigger sandbox installation
@@ -1681,6 +1834,8 @@ install_agy_box() {
             ;;
     esac
 
+    mkdir -p "$STATE_DIR"
+    echo "{\"method\": \"agy-box\", \"product\": \"agy-box\", \"version\": \"$agy_ver\"}" > "${STATE_DIR}/install-agy-box.json"
     log_info "${C_GREEN}✅ agy-box sandbox installation completed successfully.${C_RESET}"
     log_info "  ${C_CYAN}▸${C_RESET} Manage fleet:  ${C_BOLD}agy-box-manager status${C_RESET} | ${C_BOLD}enter${C_RESET} | ${C_BOLD}desktop${C_RESET} | ${C_BOLD}logs${C_RESET}"
 }
@@ -1698,9 +1853,10 @@ uninstall_agy_box() {
         if ! "$manager_bin" uninstall-global; then
             log_warn "agy-box uninstall-global command encountered an error."
         fi
-        rm -f "$manager_bin"
+        rm -f "$manager_bin" "${STATE_DIR}/install-agy-box.json"
         log_info "${C_GREEN}✅ agy-box uninstalled successfully.${C_RESET}"
     else
+        rm -f "${STATE_DIR}/install-agy-box.json" 2>/dev/null || true
         log_warn "agy-box-manager is not installed globally."
     fi
 }

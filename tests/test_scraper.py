@@ -492,15 +492,20 @@ class TestShellParsersAndInstallers(unittest.TestCase):
                 "chmod",
                 "cp",
                 "curl",
+                "cut",
                 "date",
                 "dirname",
                 "grep",
                 "mkdir",
                 "mktemp",
+                "mv",
                 "pwd",
                 "rm",
                 "sed",
+                "sha256sum",
+                "shasum",
                 "tput",
+                "tr",
             ):
                 real_path = shutil.which(sys_cmd)
                 if real_path:
@@ -545,7 +550,7 @@ class TestShellParsersAndInstallers(unittest.TestCase):
             """
             res = subprocess.run(["bash", "-c", script], capture_output=True, text=True)
             self.assertEqual(res.returncode, 0, msg=res.stderr + res.stdout)
-            self.assertIn("VER=0.3.7", res.stdout)
+            self.assertIn("VER=0.3.8", res.stdout)
             self.assertIn("BOX_VER=v0.8.0", res.stdout)
             self.assertIn(
                 "RESOLVED=https://raw.githubusercontent.com/wtg-codes/agy-box/v0.8.0/agy-box-manager",
@@ -610,6 +615,175 @@ class TestShellParsersAndInstallers(unittest.TestCase):
             with open(log_old, "r") as f:
                 old_calls = f.read().strip().splitlines()
             self.assertEqual(old_calls, ["clean --all --purge -y", "clean", "uninstall-global"])
+
+    def test_verify_sha256_fail_closed_and_agy_box_digest_enforcement(self):
+        import hashlib
+
+        repo_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+        with tempfile.TemporaryDirectory() as tmp:
+            payload = os.path.join(tmp, "sample.bin")
+            with open(payload, "wb") as f:
+                f.write(b"antigravity-supply-chain-check\n")
+            good_sha = hashlib.sha256(b"antigravity-supply-chain-check\n").hexdigest()
+            bad_file = os.path.join(tmp, "bad.bin")
+            with open(bad_file, "wb") as f:
+                f.write(b"tampered\n")
+            empty_sha_file = os.path.join(tmp, "empty_sha.bin")
+            with open(empty_sha_file, "wb") as f:
+                f.write(b"unverified\n")
+
+            script = f"""
+            set -e
+            export HOME="{tmp}/home"
+            mkdir -p "$HOME"
+            source "{repo_root}/src/00_config.sh"
+            source "{repo_root}/src/10_utils.sh"
+            source "{repo_root}/src/30_installers.sh"
+            export VERSIONS_JSON_CACHE="{repo_root}/versions.json"
+
+            verify_sha256 "{payload}" "{good_sha.upper()}"
+            echo "GOOD_OK=1"
+
+            set +e
+            verify_sha256 "{empty_sha_file}" ""
+            echo "EMPTY_RC=$?"
+            verify_sha256 "{bad_file}" "{good_sha}"
+            echo "BAD_RC=$?"
+            set -e
+
+            echo "BOX_INFO=$(get_agy_box_release_info v0.8.0)"
+            """
+            res = subprocess.run(["bash", "-c", script], capture_output=True, text=True)
+            self.assertEqual(res.returncode, 0, msg=res.stderr + res.stdout)
+            self.assertIn("GOOD_OK=1", res.stdout)
+            self.assertIn("EMPTY_RC=1", res.stdout)
+            self.assertIn("BAD_RC=1", res.stdout)
+            self.assertFalse(os.path.exists(bad_file), "Tampered file must be unlinked on mismatch")
+            self.assertFalse(os.path.exists(empty_sha_file), "Empty digest must fail closed and unlink")
+            self.assertIn(
+                "|7f4d64913cb9bb68000f549bdf8afcc21c9fdeb9dd77eec9926faa1fd086ae5b",
+                res.stdout,
+            )
+
+    def test_user_scoped_log_avoids_shared_tmp_collision(self):
+        repo_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+        with tempfile.TemporaryDirectory() as tmp:
+            home_dir = os.path.join(tmp, "student_home")
+            os.makedirs(home_dir, exist_ok=True)
+            script = f"""
+            set -e
+            unset AGY_INSTALL_LOG
+            export HOME="{home_dir}"
+            export XDG_STATE_HOME="{home_dir}/.local/state"
+            source "{repo_root}/src/00_config.sh"
+            source "{repo_root}/src/10_utils.sh"
+            log_info "Multi-user classroom log test"
+            echo "LOG_PATH=$LOG_FILE"
+            """
+            res = subprocess.run(["bash", "-c", script], capture_output=True, text=True)
+            self.assertEqual(res.returncode, 0, msg=res.stderr + res.stdout)
+            expected_log = os.path.join(home_dir, ".local", "state", "antigravity", "install.log")
+            self.assertIn(f"LOG_PATH={expected_log}", res.stdout)
+            self.assertTrue(os.path.isfile(expected_log))
+            dir_mode = os.stat(os.path.dirname(expected_log)).st_mode & 0o777
+            self.assertEqual(dir_mode, 0o700)
+
+    def test_corrupt_tarball_preserves_existing_binary_install_and_health_check_json(self):
+        import hashlib
+
+        repo_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+        with tempfile.TemporaryDirectory() as tmp:
+            home_dir = os.path.join(tmp, "home")
+            existing_app = os.path.join(home_dir, ".local", "lib", "antigravity")
+            bin_dir = os.path.join(home_dir, ".local", "bin")
+            os.makedirs(existing_app, exist_ok=True)
+            os.makedirs(bin_dir, exist_ok=True)
+            existing_bin = os.path.join(existing_app, "antigravity")
+            with open(existing_bin, "w") as f:
+                f.write("#!/usr/bin/env bash\necho 'working-v2.32.1'\n")
+            os.chmod(existing_bin, 0o755)
+
+            # Create a deliberately corrupt .tar.gz with a matching SHA-256 so checksum passes
+            # and extraction fails — proving pre-existing installation is preserved untouched!
+            corrupt_tar = os.path.join(tmp, "corrupt.tar.gz")
+            corrupt_bytes = b"not-a-valid-gzip-tarball"
+            with open(corrupt_tar, "wb") as f:
+                f.write(corrupt_bytes)
+            corrupt_sha = hashlib.sha256(corrupt_bytes).hexdigest()
+
+            vjson = os.path.join(tmp, "versions.json")
+            with open(vjson, "w") as f:
+                json.dump(
+                    {
+                        "antigravity": {
+                            "9.9.9": {
+                                "LINUX_X64": {
+                                    "url": f"file://{corrupt_tar}",
+                                    "sha256": corrupt_sha,
+                                }
+                            }
+                        }
+                    },
+                    f,
+                    indent=2,
+                )
+
+            upgrade_script = f"""
+            set -e
+            export HOME="{home_dir}"
+            export VERSIONS_JSON_CACHE="{vjson}"
+            source "{repo_root}/src/00_config.sh"
+            source "{repo_root}/src/10_utils.sh"
+            source "{repo_root}/src/20_platform.sh"
+            source "{repo_root}/src/30_installers.sh"
+            PLATFORM="Linux"
+            ARCH="x86_64"
+            QUIET=1
+            do_install_binary "antigravity" "9.9.9"
+            """
+            res_upg = subprocess.run(["bash", "-c", upgrade_script], capture_output=True, text=True)
+            self.assertNotEqual(res_upg.returncode, 0)
+            self.assertTrue(
+                os.path.isfile(existing_bin),
+                "Existing installation must survive failed archive extraction!",
+            )
+
+            # Verify --check --json fails (exit 1) on empty home and passes (exit 0) on CLI-only home
+            empty_home = os.path.join(tmp, "empty_home")
+            os.makedirs(empty_home, exist_ok=True)
+            cli_home = os.path.join(tmp, "cli_home")
+            cli_bin = os.path.join(cli_home, ".local", "bin")
+            os.makedirs(cli_bin, exist_ok=True)
+            fake_agy = os.path.join(cli_bin, "agy")
+            with open(fake_agy, "w") as f:
+                f.write("#!/usr/bin/env bash\necho 'agy 1.5.9'\n")
+            os.chmod(fake_agy, 0o755)
+
+            mgr = os.path.join(repo_root, "antigravity-manager.sh")
+            env_empty = dict(os.environ, HOME=empty_home, PATH="/usr/bin:/bin")
+            r_fail = subprocess.run(
+                ["bash", mgr, "--check", "--json", "--no-update"],
+                env=env_empty,
+                capture_output=True,
+                text=True,
+            )
+            self.assertEqual(r_fail.returncode, 1, msg=r_fail.stderr + r_fail.stdout)
+            fail_obj = json.loads(r_fail.stdout)
+            self.assertEqual(fail_obj["status"], "error")
+            self.assertGreater(fail_obj["failed"], 0)
+
+            env_cli = dict(os.environ, HOME=cli_home, PATH=f"{cli_bin}:/usr/bin:/bin")
+            r_ok = subprocess.run(
+                ["bash", mgr, "--check", "--json", "--no-update"],
+                env=env_cli,
+                capture_output=True,
+                text=True,
+            )
+            self.assertEqual(r_ok.returncode, 0, msg=r_ok.stderr + r_ok.stdout)
+            ok_obj = json.loads(r_ok.stdout)
+            self.assertEqual(ok_obj["status"], "success")
+            self.assertEqual(ok_obj["failed"], 0)
+            self.assertEqual(ok_obj["versions"]["cli"], "1.5.9")
 
 
 if __name__ == "__main__":

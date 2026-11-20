@@ -18,13 +18,20 @@ C_DIM='\033[2m'
 C_RESET='\033[0m'
 
 # Configuration
-SCRIPT_VERSION="0.3.7"
+SCRIPT_VERSION="0.3.8"
 DEFAULT_AGY_VERSION="2.32.2"
 DEFAULT_IDE_VERSION="2.7.0"
 DEFAULT_CLI_VERSION="1.5.9"
 DEFAULT_SDK_VERSION="0.1.23"
 DEFAULT_JULES_VERSION="latest"
 DEFAULT_AGY_BOX_VERSION="v0.8.0"
+DEFAULT_AGY_BOX_SHA256="7f4d64913cb9bb68000f549bdf8afcc21c9fdeb9dd77eec9926faa1fd086ae5b"
+GUM_0_17_0_LINUX_X86_64_SHA256="69ee169bd6387331928864e94d47ed01ef649fbfe875baed1bbf27b5377a6fdb"
+GUM_0_17_0_LINUX_ARM64_SHA256="b0b9ed95cbf7c8b7073f17b9591811f5c001e33c7cfd066ca83ce8a07c576f9c"
+GUM_0_17_0_DARWIN_X86_64_SHA256="cd66576aeebe6cd19c771863c7e8d696e0e1d5387d1e7075666baa67c2052e53"
+GUM_0_17_0_DARWIN_ARM64_SHA256="e2a4b8596efa05821d8c58d0c1afbcd7ad1699ba69c689cc3ff23a4a99c8b237"
+NODE_FALLBACK_VERSION="v20.11.1"
+NODE_SHASUMS_URL="${NODE_SHASUMS_URL:-https://nodejs.org/dist/${NODE_FALLBACK_VERSION}/SHASUMS256.txt}"
 DEFAULT_VERSIONS_JSON_URL="https://raw.githubusercontent.com/wtg-codes/agy-easy-install/main/versions.json"
 VERSIONS_JSON_URL="${VERSIONS_JSON_URL:-$DEFAULT_VERSIONS_JSON_URL}"
 VERSIONS_JSON_CACHE="${VERSIONS_JSON_CACHE:-}"
@@ -95,7 +102,11 @@ ICON_PATH="$APP_DIR/resources/icon.png"
 # State & Logging
 STATE_DIR="$HOME/.config/antigravity"
 STATE_FILE="$STATE_DIR/install.json"
-LOG_FILE="/tmp/antigravity-install.log"
+LOG_FILE="${AGY_INSTALL_LOG:-}"
+LOG_INITIALIZED=0
+PENDING_ROLLBACK_BACKUP=""
+PENDING_ROLLBACK_TARGET=""
+JSON_CUSTOM_PAYLOAD=""
 VERBOSE=0
 QUIET=0
 AUTO=0
@@ -103,10 +114,73 @@ JSON_OUT=0
 JSON_STATUS="success"
 JSON_METHOD="none"
 
+ensure_log_file() {
+    if [ "${LOG_INITIALIZED:-0}" -eq 1 ] && [ -n "${LOG_FILE:-}" ] && [ ! -L "$LOG_FILE" ]; then
+        return 0
+    fi
+
+    local candidate="${LOG_FILE:-}"
+    if [ -n "$candidate" ]; then
+        local cdir
+        cdir=$(dirname "$candidate")
+        if [ ! -L "$candidate" ] && mkdir -p "$cdir" 2>/dev/null && (umask 077 && : >> "$candidate") 2>/dev/null; then
+            LOG_FILE="$candidate"
+            LOG_INITIALIZED=1
+            return 0
+        fi
+    fi
+
+    local state_log_dir="${XDG_STATE_HOME:-$HOME/.local/state}/antigravity"
+    local user_log="$state_log_dir/install.log"
+    if [ -n "${HOME:-}" ] && (umask 077 && mkdir -p "$state_log_dir") 2>/dev/null; then
+        chmod 700 "$state_log_dir" 2>/dev/null || true
+        if [ ! -L "$user_log" ] && (umask 077 && : >> "$user_log") 2>/dev/null; then
+            LOG_FILE="$user_log"
+            LOG_INITIALIZED=1
+            return 0
+        fi
+    fi
+
+    LOG_FILE=$(umask 077 && mktemp "${TMPDIR:-/tmp}/antigravity-install.XXXXXX.log" 2>/dev/null || echo "/dev/null")
+    LOG_INITIALIZED=1
+}
+
+verify_sha256() {
+    local file_path="$1"
+    local expected_raw="$2"
+    if [ ! -f "$file_path" ]; then
+        return 1
+    fi
+    local expected
+    expected=$(printf '%s' "$expected_raw" | tr 'A-F' 'a-f')
+    if [[ ! "$expected" =~ ^[0-9a-f]{64}$ ]]; then
+        rm -f "$file_path" 2>/dev/null || true
+        return 1
+    fi
+    local actual=""
+    if command -v sha256sum >/dev/null 2>&1; then
+        actual=$(sha256sum "$file_path" 2>/dev/null | awk '{print $1}' | tr 'A-F' 'a-f')
+    elif command -v shasum >/dev/null 2>&1; then
+        actual=$(shasum -a 256 "$file_path" 2>/dev/null | awk '{print $1}' | tr 'A-F' 'a-f')
+    else
+        rm -f "$file_path" 2>/dev/null || true
+        log_error "sha256sum or shasum is required for checksum verification."
+        return 1
+    fi
+    if [ "$actual" != "$expected" ]; then
+        rm -f "$file_path" 2>/dev/null || true
+        return 1
+    fi
+    return 0
+}
+
 cleanup_ui() {
     if [ "${JSON_OUT:-0}" -eq 0 ] && [ "${QUIET:-0}" -eq 0 ] && [ -t 1 ]; then
         tput cnorm 2>/dev/null || true
         printf "\r\033[K" 2>/dev/null || true
+    fi
+    if [ -n "${PENDING_ROLLBACK_BACKUP:-}" ] && [ -d "$PENDING_ROLLBACK_BACKUP" ] && [ -n "${PENDING_ROLLBACK_TARGET:-}" ] && [ ! -d "$PENDING_ROLLBACK_TARGET" ]; then
+        mv "$PENDING_ROLLBACK_BACKUP" "$PENDING_ROLLBACK_TARGET" 2>/dev/null || cp -R "$PENDING_ROLLBACK_BACKUP" "$PENDING_ROLLBACK_TARGET" 2>/dev/null || true
     fi
     if [ -n "${GUM_DIR:-}" ] && [ -d "$GUM_DIR" ]; then
         rm -rf "$GUM_DIR"
@@ -123,23 +197,28 @@ exit_handler() {
     local exit_code=$?
     cleanup_ui
     if [ "$JSON_OUT" -eq 1 ]; then
-        if [ $exit_code -ne 0 ]; then
+        if [ "$exit_code" -ne 0 ]; then
             JSON_STATUS="error"
         fi
-        cat <<EOF
+        if [ -n "${JSON_CUSTOM_PAYLOAD:-}" ]; then
+            printf '%s\n' "$JSON_CUSTOM_PAYLOAD"
+        else
+            cat <<EOF
 {
   "status": "$JSON_STATUS",
   "method": "$JSON_METHOD",
   "path": "$BIN_DIR"
 }
 EOF
+        fi
     fi
 }
 trap exit_handler EXIT INT TERM
 
 log_info() {
     local msg="$1"
-    echo "$(date '+%Y-%m-%d %H:%M:%S') INFO: $(echo "$msg" | sed -E 's/\x1B\[[0-9;]*[mK]//g')" >> "$LOG_FILE"
+    ensure_log_file
+    echo "$(date '+%Y-%m-%d %H:%M:%S') INFO: $(echo "$msg" | sed -E 's/\x1B\[[0-9;]*[mK]//g')" >> "$LOG_FILE" 2>/dev/null || true
     if [ "$JSON_OUT" -eq 0 ] && [ "$QUIET" -eq 0 ]; then
         echo -e "$msg"
     fi
@@ -147,7 +226,8 @@ log_info() {
 
 log_error() {
     local msg="$1"
-    echo "$(date '+%Y-%m-%d %H:%M:%S') ERROR: $(echo "$msg" | sed -E 's/\x1B\[[0-9;]*[mK]//g')" >> "$LOG_FILE"
+    ensure_log_file
+    echo "$(date '+%Y-%m-%d %H:%M:%S') ERROR: $(echo "$msg" | sed -E 's/\x1B\[[0-9;]*[mK]//g')" >> "$LOG_FILE" 2>/dev/null || true
     if [ "$JSON_OUT" -eq 0 ]; then
         echo -e "${C_RED}❌ $msg${C_RESET}"
     fi
@@ -155,7 +235,8 @@ log_error() {
 
 log_warn() {
     local msg="$1"
-    echo "$(date '+%Y-%m-%d %H:%M:%S') WARN: $(echo "$msg" | sed -E 's/\x1B\[[0-9;]*[mK]//g')" >> "$LOG_FILE"
+    ensure_log_file
+    echo "$(date '+%Y-%m-%d %H:%M:%S') WARN: $(echo "$msg" | sed -E 's/\x1B\[[0-9;]*[mK]//g')" >> "$LOG_FILE" 2>/dev/null || true
     if [ "$JSON_OUT" -eq 0 ] && [ "$QUIET" -eq 0 ]; then
         echo -e "${C_YELLOW}⚠ $msg${C_RESET}"
     fi
@@ -167,30 +248,51 @@ bootstrap_ui() {
     fi
     log_info "  ${C_DIM}Bootstrapping UI dependencies...${C_RESET}"
     GUM_DIR=$(mktemp -d)
-    
+
     local GUM_VERSION="0.17.0"
     local OS="Linux"
     local ARCH="x86_64"
-    
+    local expected_gum_sha=""
+
     [ "$PLATFORM" = "Darwin" ] && OS="Darwin"
     if [ "$(uname -m)" = "aarch64" ] || [ "$(uname -m)" = "arm64" ]; then
         ARCH="arm64"
     fi
-    
+
+    case "${OS}_${ARCH}" in
+        Linux_x86_64) expected_gum_sha="$GUM_0_17_0_LINUX_X86_64_SHA256" ;;
+        Linux_arm64) expected_gum_sha="$GUM_0_17_0_LINUX_ARM64_SHA256" ;;
+        Darwin_x86_64) expected_gum_sha="$GUM_0_17_0_DARWIN_X86_64_SHA256" ;;
+        Darwin_arm64) expected_gum_sha="$GUM_0_17_0_DARWIN_ARM64_SHA256" ;;
+    esac
+
     local TARBALL="gum_${GUM_VERSION}_${OS}_${ARCH}.tar.gz"
-    
-    if curl -fSsL "https://github.com/charmbracelet/gum/releases/download/v${GUM_VERSION}/${TARBALL}" | tar -xzf - -C "$GUM_DIR" 2>/dev/null; then
-        local GUM_BIN
-        GUM_BIN=$(find "$GUM_DIR" -name "gum" -type f | head -n 1)
-        if [ -n "$GUM_BIN" ]; then
-            local gum_dir_path
-            gum_dir_path=$(dirname "$GUM_BIN")
-            export PATH="$gum_dir_path:$PATH"
+    local gum_archive="$GUM_DIR/$TARBALL"
+    local gum_base_url="${GUM_RELEASE_BASE_URL:-https://github.com/charmbracelet/gum/releases/download/v${GUM_VERSION}}"
+
+    if curl -fSsL "${gum_base_url}/${TARBALL}" -o "$gum_archive" 2>/dev/null && verify_sha256 "$gum_archive" "$expected_gum_sha"; then
+        if tar -xzf "$gum_archive" -C "$GUM_DIR" 2>/dev/null; then
+            rm -f "$gum_archive"
+            local GUM_BIN
+            GUM_BIN=$(find "$GUM_DIR" -name "gum" -type f | head -n 1)
+            if [ -n "$GUM_BIN" ]; then
+                local gum_dir_path
+                gum_dir_path=$(dirname "$GUM_BIN")
+                export PATH="$gum_dir_path:$PATH"
+                return 0
+            fi
         fi
+    else
+        log_warn "Could not verify ephemeral gum UI archive; falling back to standard text prompts."
     fi
+
+    rm -rf "$GUM_DIR" 2>/dev/null || true
+    GUM_DIR=""
+    return 0
 }
 
 run_cmd() {
+    ensure_log_file
     if [ "$VERBOSE" -eq 1 ]; then
         "$@" 2>&1 | tee -a "$LOG_FILE"
     else
@@ -224,7 +326,7 @@ check_dependencies() {
         log_error "Please install missing dependencies and try again."
         exit 1
     fi
-    touch "$LOG_FILE" || true
+    ensure_log_file
 }
 
 fetch_versions_json() {
@@ -263,7 +365,6 @@ fetch_versions_json() {
     rm -f "$VERSIONS_JSON_CACHE" 2>/dev/null || true
     return 1
 }
-
 inject_path() {
     if [[ ":$PATH:" == *":$BIN_DIR:"* ]]; then
         return
@@ -536,6 +637,8 @@ detect_platform() {
             local MILESTONE=""
             MILESTONE=$(cat /dev/.cros_milestone 2>/dev/null || echo "Unknown")
             DISTRO_PRETTY="ChromeOS Crostini M${MILESTONE} (${DISTRO_PRETTY})"
+        elif [ -d /mnt/shared ] && grep -qE '^shared[[:space:]]+/mnt/shared[[:space:]]+virtiofs' /proc/mounts 2>/dev/null; then
+            DISTRO_PRETTY="Chromebook Linux VM (AVF — ${DISTRO_PRETTY})"
         fi
 
         if command -v apt >/dev/null 2>&1; then HAS_APT="yes"; fi
@@ -1083,14 +1186,59 @@ do_install_binary() {
     fi
 
     if [ "$install_type" = "tarball" ]; then
-        log_info "${C_CYAN}📁 Preparing directories...${C_RESET}"
-        rm -rf "${app_dir_var:?}"
-        mkdir -p "$BIN_DIR" "$app_dir_var" "$WORKSPACE_DIR" "$(dirname "$desktop_file_sys_var")" "$HOME/.local/share/icons/hicolor/512x512/apps"
+        log_info "${C_CYAN}📁 Preparing staged extraction...${C_RESET}"
+        local stage_dir="$ACTIVE_TMP_DIR/extract"
+        mkdir -p "$stage_dir" "$BIN_DIR" "$WORKSPACE_DIR" "$(dirname "$desktop_file_sys_var")" "$HOME/.local/share/icons/hicolor/512x512/apps"
 
         if [ "$JSON_OUT" -eq 0 ] && [ "$QUIET" -eq 0 ] && [ -t 1 ] && command -v gum >/dev/null 2>&1; then
-            gum spin --spinner dot --title "Extracting archive..." -- tar -xzf "$dl_target" -C "$app_dir_var" --strip-components=1
+            if ! gum spin --spinner dot --title "Extracting archive..." -- tar -xzf "$dl_target" -C "$stage_dir" --strip-components=1; then
+                log_error "Archive extraction failed! Existing installation (if any) was preserved untouched."
+                rm -rf "$ACTIVE_TMP_DIR"
+                ACTIVE_TMP_DIR=""
+                exit 1
+            fi
         else
-            tar -xzf "$dl_target" -C "$app_dir_var" --strip-components=1
+            if ! tar -xzf "$dl_target" -C "$stage_dir" --strip-components=1; then
+                log_error "Archive extraction failed! Existing installation (if any) was preserved untouched."
+                rm -rf "$ACTIVE_TMP_DIR"
+                ACTIVE_TMP_DIR=""
+                exit 1
+            fi
+        fi
+
+        if [ ! -x "$stage_dir/antigravity" ] && [ ! -x "$stage_dir/bin/antigravity" ] && [ ! -x "$stage_dir/antigravity-ide" ] && [ ! -x "$stage_dir/bin/antigravity-ide" ]; then
+            log_error "Extracted archive is missing expected Antigravity executable! Preserving existing installation."
+            rm -rf "$ACTIVE_TMP_DIR"
+            ACTIVE_TMP_DIR=""
+            exit 1
+        fi
+
+        local backup_dir=""
+        mkdir -p "$(dirname "$app_dir_var")"
+        if [ -d "$app_dir_var" ]; then
+            backup_dir="${app_dir_var}.bak.$$"
+            rm -rf "$backup_dir"
+            mv "$app_dir_var" "$backup_dir"
+            PENDING_ROLLBACK_BACKUP="$backup_dir"
+            PENDING_ROLLBACK_TARGET="$app_dir_var"
+        fi
+
+        if ! mv "$stage_dir" "$app_dir_var"; then
+            log_error "Failed to move staged installation into $app_dir_var; rolling back previous version..."
+            if [ -n "$backup_dir" ] && [ -d "$backup_dir" ]; then
+                mv "$backup_dir" "$app_dir_var" 2>/dev/null || true
+            fi
+            PENDING_ROLLBACK_BACKUP=""
+            PENDING_ROLLBACK_TARGET=""
+            rm -rf "$ACTIVE_TMP_DIR"
+            ACTIVE_TMP_DIR=""
+            exit 1
+        fi
+
+        PENDING_ROLLBACK_BACKUP=""
+        PENDING_ROLLBACK_TARGET=""
+        if [ -n "$backup_dir" ] && [ -d "$backup_dir" ]; then
+            rm -rf "$backup_dir"
         fi
 
         # Disable Electron built-in auto-update descriptor for standalone tarball installs
@@ -1277,16 +1425,33 @@ Workspace: $WORKSPACE_DIR"
         
         log_info "  ${C_DIM}Found app bundle: $APP_NAME${C_RESET}"
         
+        local mac_backup=""
         if [ -d "/Applications/$APP_NAME" ]; then
-            run_cmd rm -rf "/Applications/$APP_NAME"
+            mac_backup="/Applications/${APP_NAME}.bak.$$"
+            run_cmd rm -rf "$mac_backup"
+            run_cmd mv "/Applications/$APP_NAME" "$mac_backup"
+            PENDING_ROLLBACK_BACKUP="$mac_backup"
+            PENDING_ROLLBACK_TARGET="/Applications/$APP_NAME"
         fi
-        
+
         if ! cp -R "/Volumes/Antigravity/$APP_NAME" /Applications/ >> "$LOG_FILE" 2>&1; then
-            log_error "Failed to copy $APP_NAME to /Applications. Check /tmp/antigravity-install.log for details."
+            log_error "Failed to copy $APP_NAME to /Applications. Rolling back previous app bundle if present."
+            rm -rf "/Applications/$APP_NAME" 2>/dev/null || true
+            if [ -n "$mac_backup" ] && [ -d "$mac_backup" ]; then
+                mv "$mac_backup" "/Applications/$APP_NAME" 2>/dev/null || true
+            fi
+            PENDING_ROLLBACK_BACKUP=""
+            PENDING_ROLLBACK_TARGET=""
             run_cmd hdiutil detach /Volumes/Antigravity -quiet || true
             rm -rf "$ACTIVE_TMP_DIR"
             ACTIVE_TMP_DIR=""
             exit 1
+        fi
+
+        PENDING_ROLLBACK_BACKUP=""
+        PENDING_ROLLBACK_TARGET=""
+        if [ -n "$mac_backup" ] && [ -d "$mac_backup" ]; then
+            run_cmd rm -rf "$mac_backup"
         fi
         
         run_cmd hdiutil detach /Volumes/Antigravity -quiet || true
@@ -1424,6 +1589,7 @@ do_remove() {
             rm -f "$st_file"
         fi
     done
+    rm -f "${STATE_DIR}/install-cli.json" "${STATE_DIR}/install-sdk.json" "${STATE_DIR}/install-agy-box.json" 2>/dev/null || true
 
     log_info "${C_GREEN}✅ Uninstalled successfully.${C_RESET} (Note: Your code in $WORKSPACE_DIR was kept safe)."
 }
@@ -1527,6 +1693,8 @@ install_cli() {
             rm -rf "$ACTIVE_TMP_DIR"
             ACTIVE_TMP_DIR=""
             inject_path
+            mkdir -p "$STATE_DIR"
+            echo "{\"method\": \"cli\", \"product\": \"cli\", \"version\": \"$target_version\"}" > "${STATE_DIR}/install-cli.json"
             log_info "${C_GREEN}✅ Antigravity CLI installation complete!${C_RESET}"
             return
         else
@@ -1594,6 +1762,8 @@ install_cli() {
     
     rm -rf "$ACTIVE_TMP_DIR"
     ACTIVE_TMP_DIR=""
+    mkdir -p "$STATE_DIR"
+    echo "{\"method\": \"cli\", \"product\": \"cli\", \"version\": \"$target_version\"}" > "${STATE_DIR}/install-cli.json"
     log_info "${C_GREEN}✅ Antigravity CLI installation complete!${C_RESET}"
 }
 
@@ -1664,6 +1834,8 @@ install_sdk() {
     fi
 
     inject_path
+    mkdir -p "$STATE_DIR"
+    echo "{\"method\": \"sdk\", \"product\": \"sdk\", \"version\": \"$target_version\"}" > "${STATE_DIR}/install-sdk.json"
     log_info "${C_GREEN}✅ Antigravity SDK installation complete!${C_RESET}"
 }
 
@@ -1773,24 +1945,26 @@ ensure_node() {
     
     local node_url=""
     local node_dir_name=""
-    
+    local node_archive_name=""
+    local node_dist_base="${NODE_DIST_BASE_URL:-https://nodejs.org/dist/${NODE_FALLBACK_VERSION}}"
+
     case "$PLATFORM" in
         Darwin)
             if [ "$ARCH" = "arm64" ]; then
-                node_url="https://nodejs.org/dist/v20.11.1/node-v20.11.1-darwin-arm64.tar.gz"
-                node_dir_name="node-v20.11.1-darwin-arm64"
+                node_dir_name="node-${NODE_FALLBACK_VERSION}-darwin-arm64"
+                node_archive_name="${node_dir_name}.tar.gz"
             else
-                node_url="https://nodejs.org/dist/v20.11.1/node-v20.11.1-darwin-x64.tar.gz"
-                node_dir_name="node-v20.11.1-darwin-x64"
+                node_dir_name="node-${NODE_FALLBACK_VERSION}-darwin-x64"
+                node_archive_name="${node_dir_name}.tar.gz"
             fi
             ;;
         Linux|Crostini)
             if [ "$ARCH" = "aarch64" ] || [ "$ARCH" = "arm64" ]; then
-                node_url="https://nodejs.org/dist/v20.11.1/node-v20.11.1-linux-arm64.tar.xz"
-                node_dir_name="node-v20.11.1-linux-arm64"
+                node_dir_name="node-${NODE_FALLBACK_VERSION}-linux-arm64"
+                node_archive_name="${node_dir_name}.tar.xz"
             else
-                node_url="https://nodejs.org/dist/v20.11.1/node-v20.11.1-linux-x64.tar.xz"
-                node_dir_name="node-v20.11.1-linux-x64"
+                node_dir_name="node-${NODE_FALLBACK_VERSION}-linux-x64"
+                node_archive_name="${node_dir_name}.tar.xz"
             fi
             ;;
         *)
@@ -1798,23 +1972,41 @@ ensure_node() {
             exit 1
             ;;
     esac
-    
+    node_url="${node_dist_base}/${node_archive_name}"
+
     local node_lib_dir="$HOME/.local/lib/node"
     mkdir -p "$node_lib_dir" "$BIN_DIR"
-    
+
     local dl_temp
     dl_temp=$(mktemp -d)
     local archive_ext="tar.gz"
     case "$node_url" in
         *.tar.xz) archive_ext="tar.xz" ;;
     esac
-    
+
     local dl_target="$dl_temp/node.$archive_ext"
-    
+    local shasums_file="$dl_temp/SHASUMS256.txt"
+
     if [ "$JSON_OUT" -eq 1 ] || [ "$QUIET" -eq 1 ]; then
-        run_cmd curl -fSL "$node_url" -o "$dl_target"
+        run_cmd curl -fSsL "$node_url" -o "$dl_target"
     else
         curl -fSL --progress-bar "$node_url" -o "$dl_target"
+    fi
+
+    log_info "${C_BLUE}🔐 Verifying Node.js checksum (SHA-256)...${C_RESET}"
+    local expected_node_sha="${NODE_ARCHIVE_SHA256:-}"
+    if [ -z "$expected_node_sha" ]; then
+        if ! curl -fSsL "$NODE_SHASUMS_URL" -o "$shasums_file"; then
+            log_error "Failed to download Node.js SHASUMS256.txt for verification."
+            rm -rf "$dl_temp"
+            exit 1
+        fi
+        expected_node_sha=$(awk -v f="$node_archive_name" '$2 == f || $2 == ("*" f) {print $1; exit}' "$shasums_file")
+    fi
+    if ! verify_sha256 "$dl_target" "$expected_node_sha"; then
+        log_error "Node.js archive SHA-256 checksum verification failed!"
+        rm -rf "$dl_temp"
+        exit 1
     fi
     
     log_info "${C_CYAN}📁 Extracting Node.js...${C_RESET}"
@@ -1902,18 +2094,27 @@ install_jules() {
     log_info "${C_GREEN}✅ Google Jules CLI installation complete!${C_RESET}"
 }
 
-get_agy_box_release_url() {
+get_agy_box_release_info() {
     local version="$1"
     local json_file="${VERSIONS_JSON_CACHE:-}"
-    
-    if [ -z "$version" ] || [ -z "$json_file" ] || [ ! -s "$json_file" ]; then
-        echo ""
+
+    if [ -z "$version" ]; then
+        echo "|"
         return
     fi
-    
-    local url
-    url=$(sed 's#{#{\n#g; s#}#\n}\n#g' "$json_file" 2>/dev/null | awk -v ver="$version" '
-      BEGIN { in_agy=0; in_ver=0; agy_depth=0; ver_depth=0; url="" }
+
+    if [ -z "$json_file" ] || [ ! -s "$json_file" ]; then
+        if [ "$version" = "${DEFAULT_AGY_BOX_VERSION:-}" ] && [ -n "${DEFAULT_AGY_BOX_SHA256:-}" ]; then
+            echo "https://raw.githubusercontent.com/wtg-codes/agy-box/${version}/agy-box-manager|${DEFAULT_AGY_BOX_SHA256}"
+        else
+            echo "|"
+        fi
+        return
+    fi
+
+    local info
+    info=$(sed 's#{#{\n#g; s#}#\n}\n#g; s#,#,\n#g' "$json_file" 2>/dev/null | awk -v ver="$version" '
+      BEGIN { in_agy=0; in_ver=0; agy_depth=0; ver_depth=0; url=""; sha="" }
       !in_agy && index($0, "\"agy-box\"") > 0 && $0 ~ /:[[:space:]]*\{/ {
         in_agy = 1
         agy_depth = 1
@@ -1929,6 +2130,10 @@ get_agy_box_release_url() {
           if ($0 ~ /"url"[[:space:]]*:/) {
             split($0, a, "\"")
             url = a[4]
+          }
+          if ($0 ~ /"sha256"[[:space:]]*:/) {
+            split($0, b, "\"")
+            sha = b[4]
           }
           for (i = 1; i <= length($0); i++) {
             c = substr($0, i, 1)
@@ -1954,10 +2159,27 @@ get_agy_box_release_url() {
           }
         }
       }
-      END { if (url != "") print url }
+      END { if (url != "") print url "|" sha }
     ' 2>/dev/null || true)
-    
-    echo "$url"
+
+    if [ -n "$info" ]; then
+        echo "$info"
+    elif [ "$version" = "${DEFAULT_AGY_BOX_VERSION:-}" ] && [ -n "${DEFAULT_AGY_BOX_SHA256:-}" ]; then
+        echo "https://raw.githubusercontent.com/wtg-codes/agy-box/${version}/agy-box-manager|${DEFAULT_AGY_BOX_SHA256}"
+    else
+        echo "|"
+    fi
+}
+
+get_agy_box_release_url() {
+    local version="$1"
+    if [ -z "$version" ] || [ -z "${VERSIONS_JSON_CACHE:-}" ] || [ ! -s "${VERSIONS_JSON_CACHE:-}" ]; then
+        echo ""
+        return
+    fi
+    local info
+    info=$(get_agy_box_release_info "$version")
+    echo "$info" | cut -d'|' -f1
 }
 
 get_vscode_vsix_url() {
@@ -2390,28 +2612,62 @@ install_agy_box() {
         fi
     fi
 
-    # 3. Download and install agy-box-manager globally from tag version
+    # 3. Download and verify agy-box-manager CLI from tag version
     log_info "Fetching agy-box version details..."
     fetch_versions_json || true
-    local agy_ver="${DEFAULT_AGY_BOX_VERSION:-v0.8.0}"
+    local agy_ver="${AGY_BOX_VERSION:-${DEFAULT_AGY_BOX_VERSION:-v0.8.0}}"
+    local custom_url_override=0
     local remote_url="${AGY_BOX_MANAGER_URL:-}"
-    if [ -z "$remote_url" ]; then
-        remote_url=$(get_agy_box_release_url "$agy_ver")
+    local expected_box_sha="${AGY_BOX_MANAGER_SHA256:-}"
+
+    if [ -n "$remote_url" ]; then
+        custom_url_override=1
+    else
+        local box_info
+        box_info=$(get_agy_box_release_info "$agy_ver")
+        remote_url=$(printf '%s' "$box_info" | awk -F'|' '{print $1}')
+        expected_box_sha=$(printf '%s' "$box_info" | awk -F'|' '{print $2}')
+        if [ -z "$remote_url" ]; then
+            log_warn "Release version $agy_ver not found in versions.json. Falling back to official release tag URL..."
+            remote_url="https://raw.githubusercontent.com/wtg-codes/agy-box/${agy_ver}/agy-box-manager"
+            if [ "$agy_ver" = "${DEFAULT_AGY_BOX_VERSION:-}" ]; then
+                expected_box_sha="${DEFAULT_AGY_BOX_SHA256:-}"
+            fi
+        fi
     fi
-    
-    if [ -z "$remote_url" ]; then
-        log_warn "Release version $agy_ver not found in versions.json. Falling back to official release tag URL..."
-        remote_url="https://raw.githubusercontent.com/wtg-codes/agy-box/${agy_ver}/agy-box-manager"
-    fi
-    
+
     log_info "Downloading agy-box-manager CLI ($agy_ver)..."
     local target_dir="$HOME/.local/bin"
     mkdir -p "$target_dir"
-    
-    if ! curl -fSsL "$remote_url" -o "$target_dir/agy-box-manager"; then
+    local box_stage_dir
+    box_stage_dir=$(mktemp -d)
+    local staged_mgr="$box_stage_dir/agy-box-manager"
+
+    if ! curl -fSsL "$remote_url" -o "$staged_mgr"; then
         log_error "Failed to download agy-box-manager from $remote_url"
+        rm -rf "$box_stage_dir"
         return 1
     fi
+
+    if [ "$custom_url_override" -eq 1 ]; then
+        if [ -n "$expected_box_sha" ] && ! verify_sha256 "$staged_mgr" "$expected_box_sha"; then
+            log_error "agy-box-manager SHA-256 checksum verification failed for custom override URL!"
+            rm -rf "$box_stage_dir"
+            return 1
+        fi
+    elif [ "$agy_ver" = "nightly" ]; then
+        log_warn "Rolling 'nightly' agy-box requested: static SHA-256 pinning is bypassed on rolling main."
+    else
+        log_info "Verifying agy-box-manager SHA-256 checksum ($agy_ver)..."
+        if ! verify_sha256 "$staged_mgr" "$expected_box_sha"; then
+            log_error "agy-box-manager SHA-256 checksum verification failed for $agy_ver!"
+            rm -rf "$box_stage_dir"
+            return 1
+        fi
+    fi
+
+    cp "$staged_mgr" "$target_dir/agy-box-manager"
+    rm -rf "$box_stage_dir"
     chmod +x "$target_dir/agy-box-manager"
 
     # 4. Trigger sandbox installation
@@ -2443,6 +2699,8 @@ install_agy_box() {
             ;;
     esac
 
+    mkdir -p "$STATE_DIR"
+    echo "{\"method\": \"agy-box\", \"product\": \"agy-box\", \"version\": \"$agy_ver\"}" > "${STATE_DIR}/install-agy-box.json"
     log_info "${C_GREEN}✅ agy-box sandbox installation completed successfully.${C_RESET}"
     log_info "  ${C_CYAN}▸${C_RESET} Manage fleet:  ${C_BOLD}agy-box-manager status${C_RESET} | ${C_BOLD}enter${C_RESET} | ${C_BOLD}desktop${C_RESET} | ${C_BOLD}logs${C_RESET}"
 }
@@ -2460,9 +2718,10 @@ uninstall_agy_box() {
         if ! "$manager_bin" uninstall-global; then
             log_warn "agy-box uninstall-global command encountered an error."
         fi
-        rm -f "$manager_bin"
+        rm -f "$manager_bin" "${STATE_DIR}/install-agy-box.json"
         log_info "${C_GREEN}✅ agy-box uninstalled successfully.${C_RESET}"
     else
+        rm -f "${STATE_DIR}/install-agy-box.json" 2>/dev/null || true
         log_warn "agy-box-manager is not installed globally."
     fi
 }
@@ -3447,108 +3706,168 @@ Workspace: $WORKSPACE_DIR"
     esac
 }
 do_health_check() {
+    JSON_METHOD="check"
     log_info "${C_MAG}🔍 Running Google Antigravity Health Check...${C_RESET}"
-    echo ""
+    if [ "$JSON_OUT" -eq 0 ] && [ "$QUIET" -eq 0 ]; then
+        echo ""
+    fi
 
     local passed=0
     local failed=0
 
     check_status() {
         if eval "$2" > /dev/null 2>&1; then
-            echo -e "  ${C_GREEN}✅ $1${C_RESET}"
+            if [ "$JSON_OUT" -eq 0 ] && [ "$QUIET" -eq 0 ]; then
+                echo -e "  ${C_GREEN}✅ $1${C_RESET}"
+            fi
             passed=$((passed + 1))
         else
-            echo -e "  ${C_RED}❌ $1${C_RESET}"
+            if [ "$JSON_OUT" -eq 0 ]; then
+                echo -e "  ${C_RED}❌ $1${C_RESET}" >&2
+            fi
             failed=$((failed + 1))
         fi
     }
 
-    # 1. Antigravity Hub & Antigravity IDE Binaries
+    # 1. Detect installed products across Desktop (Hub/IDE) and Headless (CLI/SDK/agy-box)
     local agy_ver ide_ver cli_ver sdk_ver
     agy_ver=$(get_installed_agy_version 2>/dev/null || true)
     ide_ver=$(get_installed_ide_version 2>/dev/null || true)
     cli_ver=$(get_installed_cli_version 2>/dev/null || true)
     sdk_ver=$(get_installed_sdk_version 2>/dev/null || true)
 
-    local any_app_found=0
+    local desktop_installed=0
+    local headless_installed=0
     local bin_path=""
+
     if command -v antigravity >/dev/null 2>&1; then
         bin_path=$(command -v antigravity)
         check_status "Antigravity binary found in PATH ($bin_path${agy_ver:+, v$agy_ver})" "true"
-        any_app_found=1
+        desktop_installed=1
     elif [ -x "$BIN_DIR/antigravity" ]; then
         check_status "Antigravity binary found in $BIN_DIR ($BIN_DIR/antigravity${agy_ver:+, v$agy_ver})" "true"
-        any_app_found=1
+        desktop_installed=1
     elif [ -d "/Applications/Antigravity.app" ]; then
         check_status "Antigravity app bundle found (/Applications/Antigravity.app${agy_ver:+, v$agy_ver})" "true"
-        any_app_found=1
+        desktop_installed=1
     elif [ -d "/Applications/Google Antigravity.app" ]; then
         bin_path="/Applications/Google Antigravity.app/Contents/MacOS/Google Antigravity"
         check_status "Antigravity binary found in Applications" "test -x '$bin_path'"
-        any_app_found=1
+        desktop_installed=1
     fi
 
     if command -v antigravity-ide >/dev/null 2>&1; then
         bin_path=$(command -v antigravity-ide)
         check_status "Antigravity IDE binary found in PATH ($bin_path${ide_ver:+, v$ide_ver})" "true"
-        any_app_found=1
+        desktop_installed=1
     elif [ -x "$BIN_DIR/antigravity-ide" ]; then
         check_status "Antigravity IDE binary found in $BIN_DIR ($BIN_DIR/antigravity-ide${ide_ver:+, v$ide_ver})" "true"
-        any_app_found=1
+        desktop_installed=1
     elif [ -d "/Applications/Antigravity IDE.app" ]; then
         check_status "Antigravity IDE app bundle found (/Applications/Antigravity IDE.app${ide_ver:+, v$ide_ver})" "true"
-        any_app_found=1
+        desktop_installed=1
     fi
 
-    if [ "$any_app_found" -eq 0 ]; then
-        check_status "Antigravity binary found in PATH" "false"
-    fi
-
-    # 2. Chrome/Chromium installation
-    local chrome_path
-    chrome_path=$(find_chrome_binary)
-    if [ -n "$chrome_path" ] && [ -x "$chrome_path" ]; then
-        check_status "Chrome/Chromium found ($chrome_path)" "true"
-    else
-        check_status "Chrome/Chromium found" "false"
-    fi
-
-    # 3. State file
-    if [ -f "$STATE_FILE" ]; then
-        check_status "Installation state file exists ($STATE_FILE)" "true"
-    elif [ -f "${STATE_DIR}/install-ide.json" ]; then
-        check_status "Installation state file exists (${STATE_DIR}/install-ide.json)" "true"
-    else
-        check_status "Installation state file exists ($STATE_FILE)" "false"
-    fi
-
-    # 4. Workspace
-    check_status "Default workspace exists ($WORKSPACE_DIR)" "test -d '$WORKSPACE_DIR'"
-
-    # 5. Antigravity CLI (Optional)
+    # 2. Antigravity CLI, Python SDK, Google Jules CLI & agy-box Sandbox
     if command -v agy >/dev/null 2>&1; then
-        echo -e "  ${C_GREEN}✅ Antigravity CLI found in PATH ($(command -v agy)${cli_ver:+, v$cli_ver})${C_RESET}"
+        check_status "Antigravity CLI found in PATH ($(command -v agy)${cli_ver:+, v$cli_ver})" "true"
+        headless_installed=1
     elif [ -x "$BIN_DIR/agy" ]; then
-        echo -e "  ${C_GREEN}✅ Antigravity CLI found ($BIN_DIR/agy${cli_ver:+, v$cli_ver})${C_RESET}"
+        check_status "Antigravity CLI found ($BIN_DIR/agy${cli_ver:+, v$cli_ver})" "true"
+        headless_installed=1
     fi
 
-    # 6. Antigravity Python SDK (Optional)
-    if command -v python3 >/dev/null 2>&1 && python3 -c 'import importlib.metadata; importlib.metadata.version("google-antigravity")' >/dev/null 2>&1; then
-        echo -e "  ${C_GREEN}✅ Antigravity Python SDK found in Python environment${sdk_ver:+ (v$sdk_ver)}${C_RESET}"
+    if [ -n "$sdk_ver" ]; then
+        check_status "Antigravity Python SDK found in Python environment (v$sdk_ver)" "true"
+        headless_installed=1
     fi
 
-    # 7. Google Jules CLI (Optional)
+    if command -v agy-box-manager >/dev/null 2>&1; then
+        check_status "Antigravity Sandbox (agy-box-manager) found in PATH ($(command -v agy-box-manager))" "true"
+        headless_installed=1
+    elif [ -x "$BIN_DIR/agy-box-manager" ]; then
+        check_status "Antigravity Sandbox (agy-box-manager) found ($BIN_DIR/agy-box-manager)" "true"
+        headless_installed=1
+    fi
+
     if command -v jules >/dev/null 2>&1; then
-        echo -e "  ${C_GREEN}✅ Google Jules CLI found in PATH ($(command -v jules))${C_RESET}"
+        if [ "$JSON_OUT" -eq 0 ] && [ "$QUIET" -eq 0 ]; then
+            echo -e "  ${C_GREEN}✅ Google Jules CLI found in PATH ($(command -v jules))${C_RESET}"
+        fi
     elif [ -x "$BIN_DIR/jules" ]; then
-        echo -e "  ${C_GREEN}✅ Google Jules CLI found ($BIN_DIR/jules)${C_RESET}"
+        if [ "$JSON_OUT" -eq 0 ] && [ "$QUIET" -eq 0 ]; then
+            echo -e "  ${C_GREEN}✅ Google Jules CLI found ($BIN_DIR/jules)${C_RESET}"
+        fi
     fi
 
-    echo ""
+    # If neither Desktop nor Headless products are present, flag missing installation
+    if [ "$desktop_installed" -eq 0 ] && [ "$headless_installed" -eq 0 ]; then
+        check_status "Antigravity installation detected (Hub, IDE, CLI, SDK, or agy-box)" "false"
+    fi
+
+    # 3. Desktop-specific checks (Chrome/Chromium, state file, workspace) when desktop app is expected
+    local desktop_state_present=0
+    if [ -f "$STATE_FILE" ] || [ -f "${STATE_DIR}/install-ide.json" ]; then
+        desktop_state_present=1
+    fi
+
+    if [ "$desktop_installed" -eq 1 ] || [ "$desktop_state_present" -eq 1 ]; then
+        local chrome_path
+        chrome_path=$(find_chrome_binary)
+        if [ -n "$chrome_path" ] && [ -x "$chrome_path" ]; then
+            check_status "Chrome/Chromium found ($chrome_path)" "true"
+        else
+            check_status "Chrome/Chromium found" "false"
+        fi
+
+        if [ -f "$STATE_FILE" ]; then
+            check_status "Installation state file exists ($STATE_FILE)" "true"
+        elif [ -f "${STATE_DIR}/install-ide.json" ]; then
+            check_status "Installation state file exists (${STATE_DIR}/install-ide.json)" "true"
+        else
+            check_status "Installation state file exists ($STATE_FILE)" "false"
+        fi
+
+        check_status "Default workspace exists ($WORKSPACE_DIR)" "test -d '$WORKSPACE_DIR'"
+    elif [ "$headless_installed" -eq 1 ]; then
+        if [ "$JSON_OUT" -eq 0 ] && [ "$QUIET" -eq 0 ]; then
+            echo -e "  ${C_CYAN}ℹ️  Headless/CLI profile active — desktop GUI & Chrome checks skipped${C_RESET}"
+        fi
+    fi
+
+    local overall_status="success"
+    if [ "$failed" -gt 0 ]; then
+        overall_status="error"
+        JSON_STATUS="error"
+    fi
+
+    JSON_CUSTOM_PAYLOAD=$(cat <<EOF
+{
+  "status": "$overall_status",
+  "method": "check",
+  "path": "$BIN_DIR",
+  "arch": "${ARCH:-unknown}",
+  "passed": $passed,
+  "failed": $failed,
+  "versions": {
+    "antigravity": "${agy_ver:-}",
+    "ide": "${ide_ver:-}",
+    "cli": "${cli_ver:-}",
+    "sdk": "${sdk_ver:-}"
+  }
+}
+EOF
+)
+
+    if [ "$JSON_OUT" -eq 0 ] && [ "$QUIET" -eq 0 ]; then
+        echo ""
+    fi
     if [ "$failed" -eq 0 ]; then
         log_info "${C_GREEN}${C_BOLD}🎉 Health check passed! Your installation is healthy.${C_RESET}"
+        return 0
     else
         log_warn "${C_BOLD}$failed issue(s) detected.${C_RESET} You may need to run the installer again."
+        exit 1
     fi
 }
 print_usage() {
@@ -3665,7 +3984,17 @@ check_for_updates() {
         
         local temp_script
         temp_script=$(mktemp)
-        if curl -fSsL "$MANAGER_URL" -o "$temp_script" && bash -n "$temp_script"; then
+        local update_valid=0
+        if curl -fSsL "$MANAGER_URL" -o "$temp_script" && head -n 1 "$temp_script" | grep -q '^#!/usr/bin/env bash' && grep -qE '^SCRIPT_VERSION="[0-9]+\.[0-9]+\.[0-9]+"' "$temp_script" && bash -n "$temp_script"; then
+            update_valid=1
+            if [ -n "${MANAGER_SHA256:-}" ]; then
+                if ! verify_sha256 "$temp_script" "$MANAGER_SHA256"; then
+                    log_error "Self-update SHA-256 verification failed against MANAGER_SHA256!"
+                    update_valid=0
+                fi
+            fi
+        fi
+        if [ "$update_valid" -eq 1 ]; then
             if [ -w "$0" ]; then
                 cp "$temp_script" "$0"
                 chmod +x "$0"
