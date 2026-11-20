@@ -129,6 +129,8 @@ gate_3() {
     check "3.G10 scraper has type hints"       "grep -qE 'def scrape_url.*->.*:' scrape_latest.py"
     check "3.G11 errors to stderr"             "grep -q 'stderr' scrape_latest.py"
     check "3.G12 scraper unit tests pass"      "python3 -m unittest tests/test_scraper.py"
+    check "3.G13 actionlint config exists"     "test -s .github/actionlint.yaml"
+    check "3.G14 top-level read permissions"   "! grep -qE '^permissions:[[:space:]]*$' .github/workflows/nightly-update.yml || head -n 12 .github/workflows/nightly-update.yml | grep -q 'contents: read'"
 }
 
 # =============================================================================

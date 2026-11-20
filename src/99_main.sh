@@ -112,7 +112,17 @@ check_for_updates() {
         
         local temp_script
         temp_script=$(mktemp)
-        if curl -fSsL "$MANAGER_URL" -o "$temp_script" && bash -n "$temp_script"; then
+        local update_valid=0
+        if curl -fSsL "$MANAGER_URL" -o "$temp_script" && head -n 1 "$temp_script" | grep -q '^#!/usr/bin/env bash' && grep -qE '^SCRIPT_VERSION="[0-9]+\.[0-9]+\.[0-9]+"' "$temp_script" && bash -n "$temp_script"; then
+            update_valid=1
+            if [ -n "${MANAGER_SHA256:-}" ]; then
+                if ! verify_sha256 "$temp_script" "$MANAGER_SHA256"; then
+                    log_error "Self-update SHA-256 verification failed against MANAGER_SHA256!"
+                    update_valid=0
+                fi
+            fi
+        fi
+        if [ "$update_valid" -eq 1 ]; then
             if [ -w "$0" ]; then
                 cp "$temp_script" "$0"
                 chmod +x "$0"

@@ -7,10 +7,20 @@ Format follows [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+## [0.3.8] — 2026-11-20
+
 ### Security
-- **Self-Hosted Runner Fork-PR Guard (`.github/workflows/ci.yml`):** Routed untrusted fork pull requests to GitHub-hosted `ubuntu-24.04` runners instead of the self-hosted DGX Spark ARM64 runner (`[self-hosted, Linux, ARM64, dgx-spark, agy-easy-install]`), added explicit top-level `permissions: { contents: read }`, and configured PR-scoped `concurrency` cancellation (`cancel-in-progress: ${{ github.event_name == 'pull_request' }}`).
-- **GitHub Actions Full SHA Pinning (`.github/workflows/*.yml`, `tests/run_gates.sh`):** Pinned all 12 third-party action references across `ci.yml`, `compile-diagrams.yml`, `deploy-pages.yml`, `nightly-update.yml`, and `release.yml` to immutable 40-character commit SHAs with version comments, and updated Phase 3 gates `3.G1` / `3.G2` to validate SHA-pinned actions.
-- **Vulnerability & Conduct Reporting (`SECURITY.md`, `CODE_OF_CONDUCT.md`):** Added `SECURITY.md` (preserving the repository's existing MIT `LICENSE`) and routed private reporting in both `SECURITY.md` and `CODE_OF_CONDUCT.md` to GitHub Private Vulnerability Reporting.
+- **Auxiliary Download SHA-256 Verification (`src/00_config.sh`, `src/10_utils.sh`, `src/30_installers.sh`, `src/99_main.sh`, `scrape_latest.py`, `versions.json`):** Added fail-closed `verify_sha256()` (`sha256sum` / `shasum -a 256` with strict 64-hex validation) and enforced SHA-256 verification across tagged `agy-box-manager` releases (`v0.8.0`..`v0.4.2`), ephemeral `gum` `v0.17.0` UI archives, standalone Node.js `v20.11.1` tarballs (`SHASUMS256.txt`), and `MANAGER_SHA256` self-updates (#22).
+- **Multi-User Symlink-Safe Log File (`src/00_config.sh`, `src/10_utils.sh`):** Moved default `LOG_FILE` from shared `/tmp/antigravity-install.log` to `0700` user-scoped `${XDG_STATE_HOME:-$HOME/.local/state}/antigravity/install.log` (preserving `AGY_INSTALL_LOG` overrides and `umask 077` `mktemp` fallback when `$HOME` is non-writable) (#23).
+- **Job-Scoped Workflow Permissions & Actionlint Config (`.github/workflows/*.yml`, `.github/actionlint.yaml`):** Scoped top-level workflow permissions to `contents: read` with job-level `contents: write` on `compile-diagrams.yml`, `nightly-update.yml`, and `release.yml`, grouped `SC2129` redirects, and added `.github/actionlint.yaml` (#22).
+- **Self-Hosted Runner Fork-PR Guard (`.github/workflows/ci.yml`):** Routed untrusted fork pull requests to GitHub-hosted `ubuntu-24.04` runners instead of the self-hosted DGX Spark ARM64 runner (`[self-hosted, Linux, ARM64, dgx-spark, agy-easy-install]`), added explicit top-level `permissions: { contents: read }`, and configured PR-scoped `concurrency` cancellation (`cancel-in-progress: ${{ github.event_name == 'pull_request' }}`) (#21).
+- **GitHub Actions Full SHA Pinning (`.github/workflows/*.yml`, `tests/run_gates.sh`):** Pinned all 12 third-party action references across `ci.yml`, `compile-diagrams.yml`, `deploy-pages.yml`, `nightly-update.yml`, and `release.yml` to immutable 40-character commit SHAs with version comments, and updated Phase 3 gates `3.G1` / `3.G2` to validate SHA-pinned actions (#21).
+- **Vulnerability & Conduct Reporting (`SECURITY.md`, `CODE_OF_CONDUCT.md`):** Added `SECURITY.md` (preserving the repository's existing MIT `LICENSE`) and routed private reporting in both `SECURITY.md` and `CODE_OF_CONDUCT.md` to GitHub Private Vulnerability Reporting (#21).
+
+### Added
+- **Atomic Binary Upgrade Rollback (`src/10_utils.sh`, `src/30_installers.sh`):** Staged binary tarball extractions inside `$ACTIVE_TMP_DIR/extract` before touching existing `~/.local/lib/antigravity*` installs, with automatic `.bak` backup-and-rollback on extraction, swap, or `INT`/`TERM` failure (#23).
+- **Component-Aware `--check` & Structured `--check --json` (`src/50_health.sh`):** Added component state markers (`install-cli.json`, `install-sdk.json`, `install-agy-box.json`), treated CLI/SDK/sandbox-only headless installs accurately without false GUI/Chrome failures, returned exit code `1` when checks fail, and emitted structured version/check JSON under `--check --json` (#23).
+- **Chromebook Linux VM (AVF) Detection (`src/20_platform.sh`):** Added vendor-neutral `Chromebook Linux VM (AVF)` platform detection alongside `ChromeOS Crostini` and `WSL` (#23).
 
 ### Fixed
 - **Rolling `versions.json` Test Resilience (`tests/test_scraper.py`):** Replaced hardcoded `2.31.0` / `2.6.0` version keys in `test_poisoned_tmp_versions_json_is_ignored_and_cleaned_up` with active keys read dynamically from `versions.json`, fixing gate `3.G12` and `.github/workflows/nightly-update.yml` after rolling 5-version rotation.

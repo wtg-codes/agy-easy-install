@@ -7,11 +7,13 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   publish-release:
     name: Build & Publish Release
+    permissions:
+      contents: write
     runs-on: [self-hosted, Linux, ARM64, dgx-spark, agy-easy-install]
     steps:
       - name: Checkout repository

@@ -14,12 +14,14 @@
 
 ### P1 — Nightly Update CI Failure Follow-Up
 - [x] **Fix `tests/test_scraper.py` failure breaking `.github/workflows/nightly-update.yml`:** Replaced hardcoded `2.31.0` / `2.6.0` release keys in `TestShellParsersAndInstallers.test_poisoned_tmp_versions_json_is_ignored_and_cleaned_up` with dynamic active keys from `versions.json` so rolling 5-release nightly rotation never breaks gate `3.G12`.
-- [ ] **Clean up `nightly-update.yml` `actionlint` shellcheck style warnings (`SC2129`):** Group consecutive `>> "$GITHUB_STEP_SUMMARY"` and `>> "$GITHUB_ENV"` redirects into `{ ...; } >> ...` blocks on lines 38 and 47.
+- [x] **Clean up `nightly-update.yml` `actionlint` shellcheck style warnings (`SC2129`):** Grouped consecutive `>> "$GITHUB_STEP_SUMMARY"` and `>> "$GITHUB_ENV"` redirects into `{ ...; } >> ...` blocks.
 
 ### P2 — GitHub Actions Supply-Chain & Linting Hardening
 - [x] **Pin all third-party GitHub Actions to full 40-char commit SHAs** (with `# vX` comments) across all 5 workflows (`ci.yml`, `compile-diagrams.yml`, `deploy-pages.yml`, `nightly-update.yml`, `release.yml`), updating Phase 3 gates `3.G1` / `3.G2` in `tests/run_gates.sh` accordingly.
-- [ ] **Add `.github/actionlint.yaml` custom self-hosted runner labels:** Register `dgx-spark` and `agy-easy-install` under `self-hosted-runner.labels` so `actionlint` validates all workflows cleanly without unknown-label errors.
-- [ ] **Audit write-scoped workflows for job-level least-privilege `permissions:`:** Keep top-level `permissions: { contents: read }` and move `contents: write` down to the specific publishing jobs in `compile-diagrams.yml`, `nightly-update.yml`, and `release.yml`, and consider pinning the Archify repo commit SHA instead of unpinned `git clone --depth 1` of `https://github.com/tt-a1i/archify`.
+- [x] **Add `.github/actionlint.yaml` custom self-hosted runner labels:** Registered `dgx-spark` and `agy-easy-install` under `self-hosted-runner.labels`.
+- [x] **Audit write-scoped workflows for job-level least-privilege `permissions:`:** Kept top-level `permissions: { contents: read }` and moved `contents: write` down to the specific publishing jobs in `compile-diagrams.yml`, `nightly-update.yml`, and `release.yml`.
+- [x] **Verify SHA-256 digests across auxiliary installer downloads (#22):** Added fail-closed `verify_sha256()` helper and enforced SHA-256 checks for `agy-box-manager` (`v*` release tags in `versions.json` & `scrape_latest.py`), `gum` `v0.17.0` UI bootstrap, standalone Node.js `v20.11.1` (`SHASUMS256.txt`), and `MANAGER_SHA256` self-updates.
+- [x] **Multi-user log safety, atomic upgrade rollback & `--check` exit-code / JSON diagnostics (#23):** Moved default `LOG_FILE` to `0700` user state (`${XDG_STATE_HOME:-$HOME/.local/state}/antigravity/install.log` with `mktemp` fallback), staged tarball extraction with interrupt-safe `.bak` rollback, added Chromebook Linux VM (AVF) detection, and made `--check` (`--json`) component-aware with non-zero exit status on failure.
 
 ### P3 — ShellCheck & Compliance Hygiene
 - [ ] **Reduce remaining `shellcheck` warnings across `src/` and test scripts** flagged by `repo-hub audit .` (currently 373 lines reported without `-e` suppressions) and verify `shellcheck -S warning` clean passes.
