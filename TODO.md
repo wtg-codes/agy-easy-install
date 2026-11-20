@@ -17,12 +17,7 @@
 - [ ] **Clean up `nightly-update.yml` `actionlint` shellcheck style warnings (`SC2129`):** Group consecutive `>> "$GITHUB_STEP_SUMMARY"` and `>> "$GITHUB_ENV"` redirects into `{ ...; } >> ...` blocks on lines 38 and 47.
 
 ### P2 — GitHub Actions Supply-Chain & Linting Hardening
-- [ ] **Pin all third-party GitHub Actions to full 40-char commit SHAs** (with `# vX.Y.Z` comments) across all 5 workflows:
-  - `.github/workflows/ci.yml`: `actions/checkout@v4`
-  - `.github/workflows/compile-diagrams.yml`: `actions/checkout@v4`, `actions/setup-node@v4`, `stefanzweifel/git-auto-commit-action@v5`
-  - `.github/workflows/deploy-pages.yml`: `actions/checkout@v4`, `actions/configure-pages@v4`, `actions/upload-pages-artifact@v4`, `actions/deploy-pages@v4`
-  - `.github/workflows/nightly-update.yml`: `actions/checkout@v4`, `actions/setup-python@v5`, `actions/setup-node@v4`
-  - `.github/workflows/release.yml`: `actions/checkout@v4`
+- [x] **Pin all third-party GitHub Actions to full 40-char commit SHAs** (with `# vX` comments) across all 5 workflows (`ci.yml`, `compile-diagrams.yml`, `deploy-pages.yml`, `nightly-update.yml`, `release.yml`), updating Phase 3 gates `3.G1` / `3.G2` in `tests/run_gates.sh` accordingly.
 - [ ] **Add `.github/actionlint.yaml` custom self-hosted runner labels:** Register `dgx-spark` and `agy-easy-install` under `self-hosted-runner.labels` so `actionlint` validates all workflows cleanly without unknown-label errors.
 - [ ] **Audit write-scoped workflows for job-level least-privilege `permissions:`:** Keep top-level `permissions: { contents: read }` and move `contents: write` down to the specific publishing jobs in `compile-diagrams.yml`, `nightly-update.yml`, and `release.yml`, and consider pinning the Archify repo commit SHA instead of unpinned `git clone --depth 1` of `https://github.com/tt-a1i/archify`.
 
