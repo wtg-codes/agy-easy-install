@@ -13,7 +13,7 @@
 - [x] **Add `SECURITY.md` vulnerability reporting policy** (preserving existing MIT `LICENSE` verified by gate `1.G1`).
 
 ### P1 — Nightly Update CI Failure Follow-Up
-- [ ] **Fix `tests/test_scraper.py` failure breaking `.github/workflows/nightly-update.yml`:** Scheduled runs `#44240142467` (2026-11-18) and `#44460128025` (2026-11-19) failed in `TestShellParsersAndInstallers.test_poisoned_tmp_versions_json_is_ignored_and_cleaned_up` (`AssertionError: 'storage.googleapis.com' not found in '|'`). Investigate why `AGY_INFO` returned empty fields (`|`) against current `versions.json` / mock fixtures and fix the test or parser.
+- [x] **Fix `tests/test_scraper.py` failure breaking `.github/workflows/nightly-update.yml`:** Replaced hardcoded `2.31.0` / `2.6.0` release keys in `TestShellParsersAndInstallers.test_poisoned_tmp_versions_json_is_ignored_and_cleaned_up` with dynamic active keys from `versions.json` so rolling 5-release nightly rotation never breaks gate `3.G12`.
 - [ ] **Clean up `nightly-update.yml` `actionlint` shellcheck style warnings (`SC2129`):** Group consecutive `>> "$GITHUB_STEP_SUMMARY"` and `>> "$GITHUB_ENV"` redirects into `{ ...; } >> ...` blocks on lines 38 and 47.
 
 ### P2 — GitHub Actions Supply-Chain & Linting Hardening

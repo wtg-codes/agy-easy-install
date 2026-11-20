@@ -381,16 +381,20 @@ class TestShellParsersAndInstallers(unittest.TestCase):
 
     def test_poisoned_tmp_versions_json_is_ignored_and_cleaned_up(self):
         repo_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+        with open(os.path.join(repo_root, "versions.json"), "r") as vf:
+            real_versions = json.load(vf)
+        agy_ver = next(iter(real_versions["antigravity"]))
+        ide_ver = next(iter(real_versions["ide"]))
         with tempfile.TemporaryDirectory() as tmp:
             poisoned = os.path.join(tmp, "versions.json")
             with open(poisoned, "w") as f:
                 json.dump(
                     {
                         "antigravity": {
-                            "2.31.0": {"LINUX_X64": {"url": "https://hub-231", "sha256": "bad"}}
+                            agy_ver: {"LINUX_X64": {"url": "https://hub-poisoned", "sha256": "bad"}}
                         },
                         "ide": {
-                            "2.6.0": {"LINUX_X64": {"url": "https://ide-260", "sha256": "bad"}}
+                            ide_ver: {"LINUX_X64": {"url": "https://ide-poisoned", "sha256": "bad"}}
                         },
                     },
                     f,
@@ -409,16 +413,16 @@ class TestShellParsersAndInstallers(unittest.TestCase):
             VERSIONS_JSON_URL="file://{repo_root}/versions.json"
             fetch_versions_json
             echo "CACHE_PATH=$VERSIONS_JSON_CACHE"
-            echo "IDE_INFO=$(get_product_release_info ide 2.6.0 LINUX_X64)"
-            echo "AGY_INFO=$(get_product_release_info antigravity 2.31.0 LINUX_X64)"
+            echo "IDE_INFO=$(get_product_release_info ide {ide_ver} LINUX_X64)"
+            echo "AGY_INFO=$(get_product_release_info antigravity {agy_ver} LINUX_X64)"
             """
             res = subprocess.run(["bash", "-c", script], capture_output=True, text=True)
             self.assertEqual(res.returncode, 0, msg=res.stderr)
             kv = dict(
                 line.split("=", 1) for line in res.stdout.strip().splitlines() if "=" in line
             )
-            self.assertNotIn("ide-260", kv["IDE_INFO"])
-            self.assertNotIn("hub-231", kv["AGY_INFO"])
+            self.assertNotIn("ide-poisoned", kv["IDE_INFO"])
+            self.assertNotIn("hub-poisoned", kv["AGY_INFO"])
             self.assertIn("edgedl.me.gvt1.com", kv["IDE_INFO"])
             self.assertIn("storage.googleapis.com", kv["AGY_INFO"])
             self.assertNotEqual(kv["CACHE_PATH"], poisoned)
