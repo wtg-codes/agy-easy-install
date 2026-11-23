@@ -15,15 +15,6 @@ concurrency:
 permissions:
   contents: read
 
-# Only PR runs are cancelled by newer pushes; main branch runs complete in full.
-concurrency:
-  group: ${{ github.workflow }}-${{ github.ref || github.run_id }}
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
-
-# Least privilege by default; elevate only on jobs that require write scopes.
-permissions:
-  contents: read
-
 jobs:
   # Self-hosted runners never execute code from fork PRs on a public repo:
   # untrusted fork PRs fall back to GitHub-hosted Ubuntu runners.
