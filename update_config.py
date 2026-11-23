@@ -113,6 +113,13 @@ def main() -> None:
             box_ver_pattern = re.compile(r'^DEFAULT_AGY_BOX_VERSION=".*"$', re.MULTILINE)
             if box_ver_pattern.search(config):
                 config = box_ver_pattern.sub(f'DEFAULT_AGY_BOX_VERSION="{latest_box}"', config)
+            box_entry = box_data.get(latest_box)
+            if isinstance(box_entry, dict) and isinstance(box_entry.get("sha256"), str) and box_entry["sha256"]:
+                box_sha_pattern = re.compile(r'^DEFAULT_AGY_BOX_SHA256=".*"$', re.MULTILINE)
+                if box_sha_pattern.search(config):
+                    config = box_sha_pattern.sub(
+                        f'DEFAULT_AGY_BOX_SHA256="{box_entry["sha256"]}"', config
+                    )
 
     with open(sys.argv[2], "w", encoding="utf-8") as f:
         f.write(config)

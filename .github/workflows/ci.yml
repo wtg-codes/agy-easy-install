@@ -4,7 +4,7 @@ on:
   push:
     branches: [ main, feat-* ]
   pull_request:
-    branches: [ main ]
+    branches: [ main, 'fix/**', 'feat-*' ]
 
 # Only PR runs are cancelled by newer pushes; main branch runs complete in full.
 concurrency:

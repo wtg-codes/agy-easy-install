@@ -1,0 +1,4 @@
+self-hosted-runner:
+  labels:
+    - dgx-spark
+    - agy-easy-install
