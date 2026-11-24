@@ -23,7 +23,8 @@
 - [x] **Verify SHA-256 digests across auxiliary installer downloads (#22):** Added fail-closed `verify_sha256()` helper and enforced SHA-256 checks for `agy-box-manager` (`v*` release tags in `versions.json` & `scrape_latest.py`), `gum` `v0.17.0` UI bootstrap, standalone Node.js `v20.11.1` (`SHASUMS256.txt`), and `MANAGER_SHA256` self-updates.
 - [x] **Multi-user log safety, atomic upgrade rollback & `--check` exit-code / JSON diagnostics (#23):** Moved default `LOG_FILE` to `0700` user state (`${XDG_STATE_HOME:-$HOME/.local/state}/antigravity/install.log` with `mktemp` fallback), staged tarball extraction with interrupt-safe `.bak` rollback, added Chromebook Linux VM (AVF) detection, and made `--check` (`--json`) component-aware with non-zero exit status on failure.
 
-### P3 — ShellCheck & Compliance Hygiene
+### P3 — ShellCheck, Compliance Hygiene & Chromebook AVF Droid VM
+- [ ] **Chromebook Android 16 AVF Droid VM (`ttyd`) CLI image-paste support (deferred):** Bundle optional `agy-clip-server` (`0.0.0.0:8765` localhost paste bridge) + `~/.local/bin/{xclip,wl-paste}` shims and `systemd --user` auto-start unit when installing `agy` CLI inside Android 16 AVF Linux Terminal environments (where `ttyd` forwards text only and `weston --continue-without-input` has no keyboard seat).
 - [ ] **Reduce remaining `shellcheck` warnings across `src/` and test scripts** flagged by `repo-hub audit .` (currently 373 lines reported without `-e` suppressions) and verify `shellcheck -S warning` clean passes.
 - [ ] **Add SPDX license headers (`SPDX-License-Identifier: MIT`)** on new scripts/modules if adopting REUSE compliance alongside the existing MIT `LICENSE`.
 
